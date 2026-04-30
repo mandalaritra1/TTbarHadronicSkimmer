@@ -79,11 +79,12 @@ Target structure (~150-200 lines):
 3. `args = build_args(ui)`
 4. `run_analysis(args)`
 5. QCD combiner — replace inline block (.md lines 1228-1248) with `combine_coffea_outputs(...)` call (already exists in `python/combine_coffea.py`).
-6. Quick-look plot cells (kept).
+6. Quick-look plot cells were initially kept, then removed after review so the notebook ends cleanly after the standalone QCD combiner.
 
 - [x] Replace widget block in notebook with `from python.interactive_config import build_ui, build_args; ui = build_ui()`.
 - [x] Replace ntuple/dask/run-loop blocks with `run_analysis(args)`.
 - [x] Replace QCD combiner cell with `combine_coffea_outputs(...)` call.
+- [x] Remove stale end-of-notebook scratch plot cells tied to hard-coded `gen_jetmsd_reco_jetmsd` checks.
 - [x] `jupytext --sync ttbaranalysis.ipynb` (re-pair `.md`).
 - [ ] Notebook smoke test: render widgets → `build_args()` → `run_analysis(args)` in `--test` mode produces same `.coffea` as CLI. Widget/build-args smoke passes; event-processing smoke is still blocked by the same local runner timeout noted in Phase 1.
 - [x] Commit: `4dc0c00 phase 2: slim ttbaranalysis notebook`
@@ -184,3 +185,4 @@ Append a short note here whenever a phase is finished or a new session takes ove
 - 2026-05-01 (Codex): User clarified local tests should always use `ZPrimeLocal` with files under `rootfiles/` because XRootD is unavailable locally. Updated test-mode chunksizes to 100 entries to make `maxchunks=1` smoke tests fast. Started a pre-change `ZPrimeLocal` smoke with the old large chunksize; it was still running when this note was added.
 - 2026-05-01 (Codex): Stopped the long pre-change smoke, reran `ZPrimeLocal` with `chunksize=100`, and also tried `--noSyst`; both reached Coffea preprocessing/merge quickly but did not complete within a 120 s sandbox timeout. The CLI wrapper/import path is validated; event-processing smoke remains open.
 - 2026-05-01 (Codex): Committed Phase 1 follow-up as `1e47d9e`. Slimmed `ttbaranalysis.md` from 1348 to 151 lines, synced `ttbaranalysis.ipynb`, kept the standalone QCD combiner and quick-look plot cells, and dropped the unrelated dataset-discovery tail. Smoke-tested `build_ui()` + `build_args(ui)` under `.venv/bin/python`; it restores the local `ZPrimeLocal` widget config and produces the expected args namespace. Committed Phase 2 as `4dc0c00`.
+- 2026-05-01 (Codex): Follow-up cleanup removed the remaining scratch quick-look plot tail from `ttbaranalysis.md`/`.ipynb`; the notebook now ends after the standalone QCD combiner.
