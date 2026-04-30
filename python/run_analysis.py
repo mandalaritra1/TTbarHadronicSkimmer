@@ -133,8 +133,8 @@ def run_analysis(args):
     useDeepCSV = args.btagger == "deepcsv"
     htCut = 1400.0 if args.ht == "1400" else 950.0
     dask_memory = f"{int(args.daskMemory)}GB"
-    chunksize_dask = 100000
-    chunksize_futures = 200000
+    chunksize_dask = 100 if args.test else 100000
+    chunksize_futures = 100 if args.test else 200000
     maxchunks = 10 if args.test else None
 
     systematics = [

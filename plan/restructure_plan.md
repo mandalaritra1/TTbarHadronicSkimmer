@@ -36,9 +36,9 @@ User decisions:
 
 Goal: `ttbaranalysis.py --iov ... --dataset ...` produces the same outputs as the notebook's run cell. Then both `.py` and `.ipynb` import the same shared functions from `python/`.
 
-**Status: in progress, NOTHING COMMITTED YET. New files are on disk but unstaged.**
+**Status: implementation complete; final commit pending in this session.**
 
-New modules created (untracked, on disk, NOT yet committed):
+New modules created:
 - [x] `python/run_analysis.py` — `run_analysis(args)` extracted from notebook (main loop, error recovery, ntuple post-proc, Dask teardown). Imports from `python.ntuple_utils`, `python.dask_resources`, `python.functions`, `ttbarprocessor`. Used by both `ttbaranalysis.py` and the notebook.
 - [x] `python/interactive_config.py` — `DEFAULTS`, `DEFAULT_SIGNALS`, `build_ui()`, `build_args(W)`, `load_config()`. Notebook-only consumer. Public API: `from python.interactive_config import build_ui, build_args`.
 - [x] `python/ntuple_utils.py` — combines library functions previously in `scripts/write_ntuple.py` (`write_ntuple`, `merge_root_ntuples`, xrootd helpers) with the .md helpers (`_ntuple_paths_for_coffea`, `_merge_ntuple_chunks`, `_default_ntuple_base_dir`, `_normalize_ntuple_base_dir`, `_write_lpc_ntuple_merge_instructions`, `_write_accumulated_ntuple`).
@@ -46,9 +46,10 @@ New modules created (untracked, on disk, NOT yet committed):
 
 Refactored:
 - [x] `scripts/write_ntuple.py` rewritten as a thin CLI wrapper that imports `write_ntuple` and `merge_root_ntuples` from `python.ntuple_utils`. CLI behavior preserved verbatim.
+- [x] `python/run_analysis.py` uses `chunksize=100` in `--test` mode for both futures and Dask executors, while preserving production chunksizes (`200000` futures, `100000` Dask). Local smoke tests should use `ZPrimeLocal` with `--redirector rootfiles/` because XRootD is not available locally.
 
-Still to do (HANDOFF POINT — start here in next session):
-- [ ] **Slim `ttbaranalysis.py`** to argparse + `run_analysis(args)`. The current `ttbaranalysis.py` (339 lines) has its own old runner loop and is missing several args that `run_analysis` requires. Add to argparse:
+Still to do:
+- [x] **Slim `ttbaranalysis.py`** to argparse + `run_analysis(args)`. Added argparse coverage for:
   - `--ntupleContent` (`slim` | `full`, default `slim`)
   - `--ntupleStorage` (`chunks` | `accumulator`, default `chunks`)
   - `--ntupleBaseDir` (str, default `""`)
@@ -56,9 +57,9 @@ Still to do (HANDOFF POINT — start here in next session):
   - `--daskMemory` (int, default `5`)
   - Note: `args.subsample` already exists. Confirm `args.era`, `args.pt`, `args.mass` defaults are `[]` (they already are with `action='append', default=[]`).
   - Final structure: ~60 lines: imports, `parser = argparse.ArgumentParser(...)`, `parser.add_argument(...)` calls, `args = parser.parse_args()`, `from python.run_analysis import run_analysis`, `run_analysis(args)`.
-- [ ] Verify `python ttbaranalysis.py --iov 2024 --dataset TTbar --test` runs (futures executor, no Dask).
-- [ ] Verify `python ttbaranalysis.py --iov 2024 --dataset TTbar --test --ntuple` runs.
-- [ ] Run import smoke: `python -c "from python.run_analysis import run_analysis; from python.interactive_config import build_ui, build_args; from python.ntuple_utils import write_ntuple; from python.dask_resources import _start_dask_resources; print('ok')"`
+- [ ] Verify `.venv/bin/python ttbaranalysis.py --iov 2024 --dataset ZPrimeLocal --test --redirector rootfiles/ --overwrite` runs (futures executor, no Dask). Attempted after `chunksize=100`; it reaches Coffea preprocessing/merge on the local ROOT file but did not finish within 120 s in this sandbox.
+- [ ] Verify `.venv/bin/python ttbaranalysis.py --iov 2024 --dataset ZPrimeLocal --test --redirector rootfiles/ --ntuple --overwrite` runs. Deferred until the non-ntuple local smoke finishes reliably.
+- [x] Run import smoke: `.venv/bin/python -c "from python.run_analysis import run_analysis; from python.interactive_config import build_ui, build_args; from python.ntuple_utils import write_ntuple; from python.dask_resources import _start_dask_resources; print('ok')"` → ok, with a Matplotlib cache warning because `/home/aritra/.config/matplotlib` is not writable in this sandbox.
 - [ ] Commit: "phase 1: extract shared modules, bring CLI to parity with notebook"
 
 **Pitfalls / things to watch:**
@@ -66,6 +67,7 @@ Still to do (HANDOFF POINT — start here in next session):
 - `python.functions.printTime` and `makeSaveDirectories` are imported — confirm they still exist in `python/functions.py`.
 - The notebook's old code referenced `from write_ntuple import ...` — that import is now broken in the notebook (since write_ntuple lives at scripts/write_ntuple.py and is no longer importable as a top-level module). Phase 2 (notebook slim) will replace those imports with `from python.ntuple_utils import ...` or simply rely on `run_analysis` calling them internally.
 - `scripts/write_ntuple.py` adds repo root to `sys.path` so `from python.ntuple_utils import ...` works regardless of cwd. Verify this doesn't shadow anything.
+- Local smoke tests should use `ZPrimeLocal` plus `--redirector rootfiles/`; the local machine currently has the needed ROOT files but not a working XRootD/pyxrootd environment. Remote TTbar/QCD smoke tests are not useful locally until XRootD is fixed.
 
 ---
 
@@ -155,8 +157,8 @@ notebooks/
 
 ## Verification
 
-- [ ] CLI parity (post-phase-1): `python ttbaranalysis.py --iov 2024 --dataset TTbar --test` produces a `.coffea` in `outputs/dy/`.
-- [ ] CLI ntuple parity: same with `--ntuple` produces ntuple-bearing `.coffea`.
+- [ ] CLI parity (post-phase-1): `.venv/bin/python ttbaranalysis.py --iov 2024 --dataset ZPrimeLocal --test --redirector rootfiles/ --overwrite` produces a `.coffea` in `outputs/dy/`. Attempted after the `chunksize=100` change; still timed out after 120 s in the sandbox after Coffea preprocessing/merge.
+- [ ] CLI ntuple parity: same with `--ntuple` produces ntuple-bearing `.coffea` and merged ROOT ntuple. Deferred until the non-ntuple smoke finishes reliably.
 - [ ] Notebook parity (post-phase-2): identical `.coffea` from notebook in `--test` mode.
 - [ ] Moved-notebook smoke (post-phase-3): no `FileNotFoundError` in first cells of moved notebooks.
 - [ ] Import smoke (post-phase-4): the one-liner from Phase 4 prints `ok`.
@@ -178,3 +180,6 @@ Append a short note here whenever a phase is finished or a new session takes ove
 - 2026-05-01 (later): Started Phase 1. Created `python/{run_analysis,interactive_config,ntuple_utils,dask_resources}.py` and rewrote `scripts/write_ntuple.py` as a thin CLI wrapper. **Nothing committed yet** — all 4 new files plus the `scripts/write_ntuple.py` rewrite are untracked/unstaged. The current `ttbaranalysis.py` is still the old 339-line version. **Resume: pick up at "Slim `ttbaranalysis.py`" in the Phase 1 list above.** Then test, then commit Phase 1, then start Phase 2 (slim the notebook).
   - Files on disk to verify before next steps: `git status` should show `?? python/run_analysis.py`, `?? python/interactive_config.py`, `?? python/ntuple_utils.py`, `?? python/dask_resources.py`, `M scripts/write_ntuple.py`.
   - The notebook (`ttbaranalysis.ipynb` / `.md`) is still the bloated 1348-line version. Do not edit it during Phase 1 testing — Phase 2 handles that.
+- 2026-05-01 (Codex): Slimmed `ttbaranalysis.py` to a thin argparse wrapper around `python.run_analysis.run_analysis(args)`. Static compile and import smoke pass under `.venv/bin/python`. CLI and CLI+ntuple smoke commands enter the shared runner but cannot complete in this local venv because importing `XRootD.client` segfaults inside `pyxrootd` (`.venv/bin/python -c "from XRootD import client"` exits 139). This is an environment blocker independent of the wrapper refactor.
+- 2026-05-01 (Codex): User clarified local tests should always use `ZPrimeLocal` with files under `rootfiles/` because XRootD is unavailable locally. Updated test-mode chunksizes to 100 entries to make `maxchunks=1` smoke tests fast. Started a pre-change `ZPrimeLocal` smoke with the old large chunksize; it was still running when this note was added.
+- 2026-05-01 (Codex): Stopped the long pre-change smoke, reran `ZPrimeLocal` with `chunksize=100`, and also tried `--noSyst`; both reached Coffea preprocessing/merge quickly but did not complete within a 120 s sandbox timeout. The CLI wrapper/import path is validated; event-processing smoke remains open.
