@@ -20,14 +20,11 @@
 # %%
 import os
 
-if os.path.basename(os.getcwd()) == 'plots':
-    os.chdir('..')
-
 import matplotlib.pyplot as plt
 import mplhep as hep
 from coffea.util import load
-from plots import hep_plot as hplot
-from plots.hep_plot import CMS_COLORS
+from python import hep_plot as hplot
+from python.hep_plot import CMS_COLORS
 import hist
 
 hplot.setup(era="2024")

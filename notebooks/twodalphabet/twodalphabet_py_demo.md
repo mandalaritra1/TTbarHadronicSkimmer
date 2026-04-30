@@ -47,7 +47,7 @@ repo = Path.cwd()
 if repo.name == "notebooks":
     repo = repo.parent
 sys.path.insert(0, str(repo / "python"))
-sys.path.insert(0, str(repo / "plots"))
+# hep_plot now lives in python/, already on sys.path above
 
 import twodalphabet_py
 twodalphabet_py = importlib.reload(twodalphabet_py)

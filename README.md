@@ -34,7 +34,7 @@ cd TTbarHadronicSkimmer
 Setup lpcjobqueue by following instruction from [here](https://github.com/CoffeaTeam/lpcjobqueue). Afterwards, the singularity container can be run with:
 
 ```bash
-./shell coffeateam/coffea-dask-almalinux9:2025.12.0-py3.12  
+./scripts/shell coffeateam/coffea-dask-almalinux9:2025.12.0-py3.12  
 ```
 
 ### (optional) Jupyter Lab
@@ -115,7 +115,7 @@ outputs/dy/TTbar_2024_ntuple.coffea       # when --ntuple is set
 When `--ntuple` is set (or the **Ntuple** checkbox is ticked in the notebook), a flat per-event ntuple is embedded in the `.coffea` output. Convert it to a ROOT TTree with:
 
 ```bash
-python write_ntuple.py outputs/dy/TTbar_2024_ntuple.coffea TTbar_2024.root ttbar
+python scripts/write_ntuple.py outputs/dy/TTbar_2024_ntuple.coffea TTbar_2024.root ttbar
 ```
 
 No ROOT installation is required — `uproot` handles the file writing.
@@ -124,6 +124,6 @@ Branches stored: `jet0/1_pt`, `jet0/1_eta`, `jet0/1_phi`, `jet0/1_msd`, `jet0/1_
 
 ## Viewing Histograms
 
-To view basic histograms and systematic variations after running, use [`plots/syst_viewer.ipynb`](plots/syst_viewer.ipynb).
+To view basic histograms and systematic variations after running, use [`notebooks/plots/syst_viewer.ipynb`](notebooks/plots/syst_viewer.ipynb).
 
-To plot distributions from the flat ntuple, use [`plots/ntuple_plots.ipynb`](plots/ntuple_plots.ipynb).
+To plot distributions from the flat ntuple, use [`notebooks/ntuple/ntuple_plots.ipynb`](notebooks/ntuple/ntuple_plots.ipynb).
