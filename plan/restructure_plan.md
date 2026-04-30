@@ -110,29 +110,27 @@ notebooks/
 
 ## Phase 4 — Move scripts and lib modules
 
-- [ ] `git mv cutflow_p3.py run_evt_lumi.py write_ntuple.py scripts/`
-- [ ] `git mv shell scripts/shell`
-- [ ] `git mv python/get_missing_files_script.py scripts/`
-- [ ] `git mv plots/hep_plot.py plots/plotting.py plots/data_viewer.py plots/scaleCoffeaFiles.py plots/make2Drootfiles.py python/`
-- [ ] Grep `from plots.` and `import plots.` across repo → rewrite to `from python.X` / `import python.X`
-- [ ] Update `README.md` paths:
-  - `plots/syst_viewer.ipynb` → `notebooks/plots/syst_viewer.ipynb`
-  - `plots/ntuple_plots.ipynb` → `notebooks/ntuple/ntuple_plots.ipynb`
-  - `write_ntuple.py` → `scripts/write_ntuple.py`
-- [ ] Import smoke: `python -c "from python.run_analysis import run_analysis; from python.interactive_config import build_ui; from python.hep_plot import *; from python.plotting import *; print('ok')"`
-- [ ] If `plots/` is now empty, `rmdir plots/` (or remove its `__pycache__`).
-- [ ] Commit: "phase 4: move scripts and plotting libs"
+- [x] `git mv cutflow_p3.py run_evt_lumi.py write_ntuple.py scripts/`
+- [x] `git mv shell scripts/shell`
+- [x] `git mv python/get_missing_files_script.py scripts/`
+- [x] `git mv plots/hep_plot.py plots/plotting.py plots/data_viewer.py plots/scaleCoffeaFiles.py plots/make2Drootfiles.py python/`
+- [x] Rewrote `from plots.X` and `from plots import X` → `from python.X` / `from python import X` in 3 notebooks + python/data_viewer.py
+- [x] Adjusted sys.path entries in ntuple_plots.ipynb (`../../plots` → `../../python`) and twodalphabet_py_demo.ipynb (removed redundant `plots` path)
+- [x] Updated `README.md` paths: syst_viewer, ntuple_plots, write_ntuple.py, singularity launcher (`./scripts/shell`).
+- [x] Import smoke: `PYTHONPATH=python python3 -c "import hep_plot; import plotting; import functions; print('ok')"` → ok (plotting.py uses bare `import functions`, requires python/ on path — pre-existing convention).
+- [x] Removed empty `plots/` dir (after `rm -rf plots/__pycache__`).
+- [x] Commit: "phase 4: move scripts to scripts/, plots/*.py to python/, update imports" (also folded in the Phase-3 path fixes that didn't land in that commit).
 
 ---
 
 ## Phase 5 — Delete cruft
 
-- [ ] `git rm -r overlap/`
-- [ ] `git rm -r rootfiles/` (empty)
-- [ ] `git rm -r images/` (empty)
-- [ ] `rm -f out.log` (gitignored already)
-- [ ] Leave `coffea_env/`, `.codex`, `CODEX.md` alone (not in git / per user).
-- [ ] Commit: "phase 5: remove stale dirs and logs"
+- [x] `git rm -r overlap/`
+- [ ] ~~`git rm -r rootfiles/`~~ — SKIPPED: working tree had 3 untracked `.root` files in `rootfiles/store/{data,mc}/`. Not safe to remove without confirmation. User can `rm -rf rootfiles/` manually if those files are also stale.
+- [x] `rm -rf images/` (subdirs were empty, nothing tracked)
+- [x] `rm -f out.log` (gitignored already)
+- [x] Left `coffea_env/`, `.codex`, `CODEX.md` alone.
+- [x] Commit: "phase 5: remove stale overlap/ CSVs and empty images/, out.log"
 
 ---
 
@@ -157,3 +155,4 @@ notebooks/
 Append a short note here whenever a phase is finished or a new session takes over, so context isn't lost.
 
 - 2026-04-30: Plan written. Ready to start Phase 0.
+- 2026-05-01: Phases 0, 3, 4, 5 done in that order (mechanical-first strategy). Branch `reorg/cleanup` is at HEAD `phase 5: remove stale overlap/ CSVs ...`. Root tree is now clean: only `ttbaranalysis.{ipynb,md,py}`, `ttbarprocessor.py`, README/AGENTS/CLAUDE/CODEX, and the standard dirs. Next session: Phase 1 (extract widgets/ntuple/dask/runner from `ttbaranalysis.md` into new `python/` modules; bring `ttbaranalysis.py` to parity), then Phase 2 (slim notebook).
