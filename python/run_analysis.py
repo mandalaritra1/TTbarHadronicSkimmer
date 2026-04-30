@@ -102,6 +102,37 @@ def _archive_existing_output(path, tag="old"):
     return archive_path
 
 
+def _build_savefilename(savedir, sample, subsection, iov, args):
+    output_subsection = _output_subsection(sample, subsection)
+    modifier_suffix = "_bkgest" if args.bkgest else ""
+
+    if "RSGluon" in sample:
+        savefilename = f"{savedir}{sample}{subsection}_{iov}{modifier_suffix}.coffea"
+    elif "ZPrime" in sample:
+        signal_width = sample.replace("ZPrime", "")
+        savefilename = (
+            f"{savedir}ZPrime{subsection}_{signal_width}_{iov}{modifier_suffix}.coffea"
+        )
+    else:
+        section_suffix = f"_{output_subsection}" if output_subsection else ""
+        savefilename = f"{savedir}{sample}_{iov}{section_suffix}{modifier_suffix}.coffea"
+
+    if args.toptagger == "cmsv2":
+        savefilename = savefilename.replace(".coffea", "_cmsv2.coffea")
+    if args.btagger == "csvv2":
+        savefilename = savefilename.replace(".coffea", "_csvv2.coffea")
+    if args.ht == "950":
+        savefilename = savefilename.replace(".coffea", "_ht950.coffea")
+    if args.blind:
+        savefilename = savefilename.replace(".coffea", "_blind.coffea")
+    if args.noSyst:
+        savefilename = savefilename.replace(".coffea", "_noSyst.coffea")
+    if args.test:
+        savefilename = savefilename.replace(".coffea", "_test.coffea")
+
+    return savefilename
+
+
 def _quiet_dask_logging():
     dask.config.set({"logging.distributed": "error"})
     for name in [
@@ -286,37 +317,11 @@ def run_analysis(args):
 
                 print(files[0])
 
-                output_subsection = _output_subsection(sample, subsection)
-                subString = f"_{output_subsection}" if output_subsection else ""
-                if args.bkgest:
-                    subString += "_bkgest"
-
                 if (args.toptagger == "cmsv2") and (args.btagger == "csvv2"):
                     savedir = "outputs/oldanalysis/"
 
-                savefilename = f"{savedir}{sample}_{IOV}{subString}.coffea"
-                if "RSGluon" in sample:
-                    subString = subString.replace(output_subsection, "")
-                    savefilename = (
-                        f"{savedir}{sample}{subsection}_{IOV}{subString}.coffea"
-                    )
-                elif "ZPrime" in sample:
-                    subString = subString.replace(output_subsection, "")
-                    savefilename = f'{savedir}ZPrime{subsection}_{sample.replace("ZPrime", "")}_{IOV}{subString}.coffea'
+                savefilename = _build_savefilename(savedir, sample, subsection, IOV, args)
                 print(f"running {IOV} {sample} {subsection}")
-
-                if args.toptagger == "cmsv2":
-                    savefilename = savefilename.replace(".coffea", "_cmsv2.coffea")
-                if args.btagger == "csvv2":
-                    savefilename = savefilename.replace(".coffea", "_csvv2.coffea")
-                if args.ht == "950":
-                    savefilename = savefilename.replace(".coffea", "_ht950.coffea")
-                if args.blind:
-                    savefilename = savefilename.replace(".coffea", "_blind.coffea")
-                if args.noSyst:
-                    savefilename = savefilename.replace(".coffea", "_noSyst.coffea")
-                if args.test:
-                    savefilename = savefilename.replace(".coffea", "_test.coffea")
 
                 section_label = _format_section_label(IOV, sample, subsection)
                 if section_index + 1 < len(sections):
