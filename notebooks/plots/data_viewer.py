@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: coffea-dask (3.14.4)
 #     language: python
 #     name: python3
 # ---
@@ -19,6 +19,9 @@
 
 # %%
 import os
+
+if os.path.basename(os.getcwd()) == 'plots':
+    os.chdir('..')
 
 import matplotlib.pyplot as plt
 import mplhep as hep
