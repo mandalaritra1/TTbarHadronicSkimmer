@@ -19,9 +19,10 @@
 
 # %%
 import os
-
-if os.path.basename(os.getcwd()) == 'plots':
-    os.chdir('..')
+from pathlib import Path
+_cwd = Path.cwd().resolve()
+_repo_root = next(p for p in [_cwd, *_cwd.parents] if (p / "python").is_dir() and (p / "outputs").is_dir())
+os.chdir(_repo_root)
 
 import matplotlib.pyplot as plt
 import mplhep as hep
