@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTbarHadronicSkimmer Command Builder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #5d6978;
+      --line: #d7dce3;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --code: #101828;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 0.8fr);
+      gap: 18px;
+      align-items: start;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    section + section { margin-top: 14px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 650;
+      color: #344054;
+      margin-bottom: 5px;
+    }
+    select, input[type="text"], input[type="number"], textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 9px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+    select[multiple] {
+      min-height: 142px;
+    }
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 14px;
+      margin-top: 8px;
+    }
+    .check {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 14px;
+      color: #344054;
+    }
+    .check input { margin: 0; }
+    .command {
+      position: sticky;
+      top: 18px;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--code);
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 180px;
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover { background: var(--accent-dark); }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 10px 0 0;
+    }
+    @media (max-width: 880px) {
+      main { padding: 16px; }
+      .layout { grid-template-columns: 1fr; }
+      .command { position: static; }
+      .grid, .checks { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TTbarHadronicSkimmer Command Builder</h1>
+    <p class="subtitle">Select the same options as the notebook UI and copy the equivalent <code>ttbaranalysis.py</code> command.</p>
+
+    <div class="layout">
+      <div>
+        <section>
+          <h2>Datasets</h2>
+          <div class="grid">
+            <div>
+              <label for="dataset">Dataset</label>
+              <select id="dataset" multiple></select>
+              <p class="hint">Use Ctrl/Cmd-click for multiple datasets.</p>
+            </div>
+            <div>
+              <label for="subsample">Subsample</label>
+              <select id="subsample" multiple></select>
+            </div>
+            <div>
+              <label for="iov">IOV</label>
+              <select id="iov"></select>
+            </div>
+            <div>
+              <label for="mass">Mass points</label>
+              <input id="mass" type="text" placeholder="e.g. 1000,4000">
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check"><input id="signals" type="checkbox"> Signals only</label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Analysis Options</h2>
+          <div class="grid">
+            <div>
+              <label for="bkgest">Background estimate</label>
+              <select id="bkgest">
+                <option value="">None</option>
+                <option value="2dalphabet">2dalphabet</option>
+                <option value="mistag">mistag</option>
+              </select>
+            </div>
+            <div>
+              <label for="toptagger">Top tagger</label>
+              <select id="toptagger">
+                <option>deepak8</option>
+                <option>cmsv2</option>
+              </select>
+            </div>
+            <div>
+              <label for="redirector">Redirector</label>
+              <select id="redirector">
+                <option value="rootfiles/">Local (rootfiles/)</option>
+                <option value="root://cmsxrootd.fnal.gov/">FNAL XRootD</option>
+                <option value="root://xcache/">CMS xcache</option>
+                <option value="/mnt/data/cms/">Winterfell</option>
+              </select>
+            </div>
+            <div>
+              <label for="ttagWP">Top-tag WP</label>
+              <select id="ttagWP">
+                <option>loose</option>
+                <option selected>medium</option>
+                <option>tight</option>
+              </select>
+            </div>
+            <div>
+              <label for="btagger">B tagger</label>
+              <select id="btagger">
+                <option>deepcsv</option>
+                <option>csvv2</option>
+              </select>
+            </div>
+            <div>
+              <label for="ht">HT cut</label>
+              <select id="ht">
+                <option selected>1400</option>
+                <option>950</option>
+              </select>
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check"><input id="blind" type="checkbox"> Blind</label>
+            <label class="check"><input id="noSyst" type="checkbox"> No systematics</label>
+            <label class="check"><input id="ntuple" type="checkbox"> Ntuple</label>
+            <label class="check"><input id="overwrite" type="checkbox"> Overwrite</label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Ntuple Options</h2>
+          <div class="grid">
+            <div>
+              <label for="ntupleContent">Ntuple columns</label>
+              <select id="ntupleContent">
+                <option value="slim">Slim 2DAlphabet</option>
+                <option value="full">Full diagnostics</option>
+              </select>
+            </div>
+            <div>
+              <label for="ntupleStorage">Ntuple mode</label>
+              <select id="ntupleStorage">
+                <option value="chunks">Write chunks</option>
+                <option value="accumulator">Accumulate memory</option>
+              </select>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label for="ntupleBaseDir">Ntuple dir</label>
+              <input id="ntupleBaseDir" type="text" placeholder="optional shared chunk directory">
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Run Options</h2>
+          <div class="grid">
+            <div>
+              <label for="env">Environment</label>
+              <select id="env">
+                <option>casa</option>
+                <option selected>lpc</option>
+                <option>winterfell</option>
+                <option>local</option>
+              </select>
+            </div>
+            <div>
+              <label for="daskMemory">Dask memory GB</label>
+              <input id="daskMemory" type="number" min="1" max="20" step="1" value="5">
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check"><input id="dask" type="checkbox"> Dask</label>
+            <label class="check"><input id="test" type="checkbox"> Test</label>
+            <label class="check"><input id="nocluster" type="checkbox"> No cluster</label>
+          </div>
+        </section>
+      </div>
+
+      <section class="command">
+        <h2>Command</h2>
+        <pre id="command"></pre>
+        <div class="actions">
+          <button id="copy" type="button">Copy</button>
+          <button id="reset" type="button">Reset</button>
+        </div>
+        <p class="hint">This page is static. Dataset/subsample choices were hard-coded from <code>data/nanoAOD/*.json</code>.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const DATASETS = ["data", "QCD", "QCD_flat", "TTbar", "ZPrime1", "ZPrime10", "ZPrime30", "ZPrimeDM", "RSGluon", "ZPrimeLocal"];
+    const SIGNALS = ["RSGluon", "ZPrime10", "ZPrime30", "ZPrimeDM", "ZPrime1"];
+    const IOVS = ["2022", "2023", "2024"];
+    const SUBSAMPLES = {
+      data: {
+        "2023": ["B", "C", "D"],
+        "2024": ["C", "D", "E", "F", "G", "H", "I"]
+      },
+      QCD: {
+        "2024": [
+          "QCD_PT-15to20", "QCD_PT-20to30", "QCD_PT-30to50", "QCD_PT-50to80",
+          "QCD_PT-80to120", "QCD_PT-120to170", "QCD_PT-170to300",
+          "QCD_PT-300to470", "QCD_PT-470to600", "QCD_PT-600to800",
+          "QCD_PT-800to1000", "QCD_PT-1000to1500", "QCD_PT-1500to2000",
+          "QCD_PT-2000to2500", "QCD_PT-2500to3000"
+        ]
+      },
+      QCD_flat: {"2024": ["QCD_flat"]},
+      TTbar: {"2023": ["inclusive"], "2024": ["inclusive"]},
+      ZPrime1: {"2023": ["1000", "2000", "2500", "3000", "3500", "4000", "4500", "5000", "6000", "7000"], "2024": ["4000"]},
+      ZPrime10: {},
+      ZPrime30: {},
+      ZPrimeDM: {},
+      RSGluon: {},
+      ZPrimeLocal: {"2024": ["4000"]}
+    };
+
+    const DEFAULTS = {
+      dataset: ["ZPrimeLocal"],
+      signals: false,
+      iov: "2024",
+      redirector: "rootfiles/",
+      toptagger: "deepak8",
+      ttagWP: "medium",
+      btagger: "deepcsv",
+      ht: "1400",
+      bkgest: "",
+      ntupleContent: "slim",
+      ntupleStorage: "chunks",
+      env: "lpc",
+      daskMemory: "5"
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function quote(value) {
+      const text = String(value);
+      return /^[A-Za-z0-9_./:=@+-]+$/.test(text) ? text : "'" + text.replaceAll("'", "'\\''") + "'";
+    }
+
+    function selectedValues(select) {
+      return Array.from(select.selectedOptions).map((option) => option.value);
+    }
+
+    function setSelected(select, values) {
+      const wanted = new Set(values);
+      Array.from(select.options).forEach((option) => {
+        option.selected = wanted.has(option.value);
+      });
+    }
+
+    function fillSelect(select, values) {
+      select.innerHTML = "";
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function currentDatasets() {
+      return $("signals").checked ? SIGNALS : selectedValues($("dataset"));
+    }
+
+    function refreshSubsamples() {
+      const current = new Set(selectedValues($("subsample")));
+      const iov = $("iov").value;
+      const seen = new Set();
+      const values = [];
+      currentDatasets().forEach((dataset) => {
+        ((SUBSAMPLES[dataset] || {})[iov] || []).forEach((subsample) => {
+          if (!seen.has(subsample)) {
+            seen.add(subsample);
+            values.push(subsample);
+          }
+        });
+      });
+      fillSelect($("subsample"), values);
+      setSelected($("subsample"), values.filter((value) => current.has(value)));
+    }
+
+    function add(command, flag, value) {
+      command.push(flag, String(value));
+    }
+
+    function buildCommand() {
+      const command = ["python", "ttbaranalysis.py"];
+      if ($("signals").checked) {
+        command.push("--signals");
+      } else {
+        selectedValues($("dataset")).forEach((dataset) => add(command, "--dataset", dataset));
+      }
+      add(command, "--iov", $("iov").value);
+
+      selectedValues($("subsample")).forEach((subsample) => add(command, "--subsample", subsample));
+      $("mass").value.split(",").map((x) => x.trim()).filter(Boolean).forEach((mass) => add(command, "--mass", mass));
+
+      if ($("blind").checked) command.push("--blind");
+      if ($("bkgest").value) add(command, "--bkgest", $("bkgest").value);
+      add(command, "--toptagger", $("toptagger").value);
+      add(command, "--redirector", $("redirector").value);
+      add(command, "--ttagWP", $("ttagWP").value);
+      add(command, "--btagger", $("btagger").value);
+      add(command, "--ht", $("ht").value);
+      if ($("noSyst").checked) command.push("--noSyst");
+      if ($("ntuple").checked) {
+        command.push("--ntuple");
+        add(command, "--ntupleContent", $("ntupleContent").value);
+        add(command, "--ntupleStorage", $("ntupleStorage").value);
+        if ($("ntupleBaseDir").value.trim()) add(command, "--ntupleBaseDir", $("ntupleBaseDir").value.trim());
+      }
+
+      if ($("dask").checked) command.push("--dask");
+      add(command, "--env", $("env").value);
+      if ($("test").checked) command.push("--test");
+      if ($("nocluster").checked) command.push("--nocluster");
+      if ($("overwrite").checked) command.push("--overwrite");
+      add(command, "--daskMemory", $("daskMemory").value || "5");
+
+      $("command").textContent = command.map(quote).join(" ");
+    }
+
+    function resetForm() {
+      fillSelect($("dataset"), DATASETS);
+      fillSelect($("iov"), IOVS);
+      setSelected($("dataset"), DEFAULTS.dataset);
+      $("signals").checked = DEFAULTS.signals;
+      $("iov").value = DEFAULTS.iov;
+      $("redirector").value = DEFAULTS.redirector;
+      $("toptagger").value = DEFAULTS.toptagger;
+      $("ttagWP").value = DEFAULTS.ttagWP;
+      $("btagger").value = DEFAULTS.btagger;
+      $("ht").value = DEFAULTS.ht;
+      $("bkgest").value = DEFAULTS.bkgest;
+      $("ntupleContent").value = DEFAULTS.ntupleContent;
+      $("ntupleStorage").value = DEFAULTS.ntupleStorage;
+      $("env").value = DEFAULTS.env;
+      $("daskMemory").value = DEFAULTS.daskMemory;
+      ["mass", "ntupleBaseDir"].forEach((id) => { $(id).value = ""; });
+      ["blind", "noSyst", "ntuple", "overwrite", "dask", "test", "nocluster"].forEach((id) => { $(id).checked = false; });
+      refreshSubsamples();
+      buildCommand();
+    }
+
+    document.querySelectorAll("input, select").forEach((input) => {
+      input.addEventListener("input", () => {
+        if (["dataset", "iov", "signals"].includes(input.id)) refreshSubsamples();
+        buildCommand();
+      });
+      input.addEventListener("change", () => {
+        if (["dataset", "iov", "signals"].includes(input.id)) refreshSubsamples();
+        buildCommand();
+      });
+    });
+    $("copy").addEventListener("click", async () => {
+      await navigator.clipboard.writeText($("command").textContent);
+      $("copy").textContent = "Copied";
+      setTimeout(() => { $("copy").textContent = "Copy"; }, 1200);
+    });
+    $("reset").addEventListener("click", resetForm);
+
+    resetForm();
+  </script>
+</body>
+</html>
