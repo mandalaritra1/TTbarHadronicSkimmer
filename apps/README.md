@@ -8,10 +8,10 @@ directly from disk or through a static file CDN. Its dataset/subsample choices
 are hard-coded from the current `data/nanoAOD/*.json` manifests.
 
 GitHub's normal file view displays HTML source instead of running it. Use a raw
-static-file URL, for example:
+HTML renderer, for example:
 
 ```text
-https://cdn.jsdelivr.net/gh/mandalaritra1/TTbarHadronicSkimmer@reorg/cleanup/apps/command_builder.html
+https://htmlpreview.github.io/?https://github.com/mandalaritra1/TTbarHadronicSkimmer/blob/reorg/cleanup/apps/command_builder.html
 ```
 
 ## Coffea Explorer
