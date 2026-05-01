@@ -42,6 +42,7 @@ DEFAULTS = dict(
     overwrite=False,
     dask=False,
     daskMemory=5,
+    chunksize=0,
     env="lpc",
     test=False,
     nocluster=False,
@@ -229,6 +230,10 @@ def build_ui():
         description="Dask GB", style=style, layout=layout_wide,
         continuous_update=False,
     )
+    W["chunksize"] = widgets.IntText(
+        value=int(cfg.get("chunksize", DEFAULTS["chunksize"])),
+        description="Chunksize", style=style, layout=layout_wide,
+    )
     W["env"] = widgets.Dropdown(
         options=_ENV_OPTS,
         value=cfg["env"] if cfg["env"] in _ENV_OPTS else "lpc",
@@ -283,7 +288,7 @@ def build_ui():
                 "ntupleBaseDir", "overwrite"):
         display(W[key])
     print("Run options")
-    for key in ("dask", "daskMemory", "env", "test", "nocluster", "cliOnly"):
+    for key in ("dask", "daskMemory", "chunksize", "env", "test", "nocluster", "cliOnly"):
         display(W[key])
     display(btn_reset)
     print("Adjust widgets above, then run the next cell to apply settings.")
@@ -363,5 +368,7 @@ def build_cli_command(args, python_executable="python", script="ttbaranalysis.py
     if args.overwrite:
         command.append("--overwrite")
     command.extend(["--daskMemory", str(args.daskMemory)])
+    if getattr(args, "chunksize", 0):
+        command.extend(["--chunksize", str(args.chunksize)])
 
     return " ".join(shlex.quote(part) for part in command)

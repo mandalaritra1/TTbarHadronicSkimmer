@@ -52,6 +52,12 @@ def build_parser():
     parser.add_argument("-n", "--nocluster", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--daskMemory", type=int, default=5)
+    parser.add_argument(
+        "--chunksize",
+        type=int,
+        default=0,
+        help="events per coffea chunk; 0 uses the default for the selected mode",
+    )
 
     return parser
 
