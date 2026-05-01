@@ -4,8 +4,8 @@
 if [ "$1" == "" ]; then
   echo "We no longer have a default image. Please specify a coffea image."
   echo "Good choices would be:"
-  echo " - coffeateam/coffea-dask-almalinux9:2025.12.0-py3.12"
-  echo " ./scripts/shell coffeateam/coffea-dask-almalinux9:2025.12.0-py3.12"
+  echo " - coffeateam/coffea-dask-almalinux8:latest (for coffea CalVer)"
+  echo " - coffeateam/coffea-base-almalinux8:latest (for coffea 0.7)"
   echo "All options can be enumerated by looking at either"
   echo " https://hub.docker.com/repositories/coffeateam"
   echo "or"
