@@ -9,6 +9,7 @@ Usage in the notebook:
 """
 import json
 import os
+import shlex
 from types import SimpleNamespace
 
 import ipywidgets as widgets
@@ -32,7 +33,7 @@ DEFAULTS = dict(
     redirector="rootfiles/",
     ttagWP="medium",
     btagger="deepcsv",
-    ht="1500",
+    ht="1400",
     noSyst=False,
     ntuple=False,
     ntupleContent="slim",
@@ -44,6 +45,7 @@ DEFAULTS = dict(
     env="lpc",
     test=False,
     nocluster=False,
+    cliOnly=False,
 )
 
 _DATASET_OPTS = [
@@ -234,6 +236,9 @@ def build_ui():
     )
     W["test"] = widgets.Checkbox(value=cfg["test"], description="Test", style=style, layout=layout)
     W["nocluster"] = widgets.Checkbox(value=cfg["nocluster"], description="No cluster", style=style, layout=layout)
+    W["cliOnly"] = widgets.Checkbox(
+        value=cfg["cliOnly"], description="Print CLI only", style=style, layout=layout,
+    )
 
     def save_config(_=None):
         snap = {k: _widget_value(w) for k, w in W.items()}
@@ -278,7 +283,7 @@ def build_ui():
                 "ntupleBaseDir", "overwrite"):
         display(W[key])
     print("Run options")
-    for key in ("dask", "daskMemory", "env", "test", "nocluster"):
+    for key in ("dask", "daskMemory", "env", "test", "nocluster", "cliOnly"):
         display(W[key])
     display(btn_reset)
     print("Adjust widgets above, then run the next cell to apply settings.")
@@ -307,3 +312,56 @@ def build_args(W):
     cfg["pt"] = []
     cfg["mass"] = mass_list
     return SimpleNamespace(**cfg)
+
+
+def build_cli_command(args, python_executable="python", script="ttbaranalysis.py"):
+    """Build the CLI command equivalent to the notebook widget selection."""
+    command = [python_executable, script]
+
+    if getattr(args, "signals", False):
+        command.append("--signals")
+    else:
+        for dataset in args.dataset:
+            command.extend(["--dataset", dataset])
+
+    command.extend(["--iov", args.iov])
+
+    for era in getattr(args, "era", []):
+        command.extend(["--era", era])
+    for pt in getattr(args, "pt", []):
+        command.extend(["--pt", pt])
+    for mass in getattr(args, "mass", []):
+        command.extend(["--mass", mass])
+    for subsample in getattr(args, "subsample", []):
+        command.extend(["--subsample", subsample])
+
+    if args.blind:
+        command.append("--blind")
+    if args.bkgest:
+        command.extend(["--bkgest", args.bkgest])
+    command.extend(["--toptagger", args.toptagger])
+    command.extend(["--redirector", args.redirector])
+    command.extend(["--ttagWP", args.ttagWP])
+    command.extend(["--btagger", args.btagger])
+    command.extend(["--ht", args.ht])
+    if args.noSyst:
+        command.append("--noSyst")
+    if args.ntuple:
+        command.append("--ntuple")
+        command.extend(["--ntupleContent", args.ntupleContent])
+        command.extend(["--ntupleStorage", args.ntupleStorage])
+        if args.ntupleBaseDir:
+            command.extend(["--ntupleBaseDir", args.ntupleBaseDir])
+
+    if args.dask:
+        command.append("--dask")
+    command.extend(["--env", args.env])
+    if args.test:
+        command.append("--test")
+    if args.nocluster:
+        command.append("--nocluster")
+    if args.overwrite:
+        command.append("--overwrite")
+    command.extend(["--daskMemory", str(args.daskMemory)])
+
+    return " ".join(shlex.quote(part) for part in command)

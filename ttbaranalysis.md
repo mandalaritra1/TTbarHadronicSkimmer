@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 ```
 
 ```python
-from python.interactive_config import build_ui, build_args
+from python.interactive_config import build_cli_command, build_ui, build_args
 from python.run_analysis import run_analysis
 ```
 
@@ -41,10 +41,15 @@ print("------args------")
 for argname, value in vars(args).items():
     print(argname, "=", value)
 print("----------------")
+print(build_cli_command(args))
 ```
 
 ```python
-run_summary = run_analysis(args)
+if args.cliOnly:
+    run_summary = None
+    print(build_cli_command(args))
+else:
+    run_summary = run_analysis(args)
 ```
 
 ## Standalone QCD Coffea Combiner
