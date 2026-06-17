@@ -68,12 +68,42 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--signal-pattern",
         default=None,
-        help="Glob for signal coffea files. Default: ZPrime*_<year>*.coffea. Empty string disables.",
+        help=(
+            "Glob for one legacy combined signal coffea group. "
+            "Default: ZPrime*_<year>*.coffea. Empty string disables."
+        ),
     )
     parser.add_argument(
         "--signal-label",
         default="signal",
-        help="Label used in the signal output filename (TTbarAllHad<yr>_<label>.root).",
+        help="Label used with --signal-pattern in the signal output filename.",
+    )
+    parser.add_argument(
+        "--signal-points",
+        nargs="+",
+        default=None,
+        help=(
+            "Exact ZPrime points to export separately as MASS or MASS:WIDTH, "
+            "e.g. 900 1000 4000 4000:10 4000:30. Missing width defaults to 1."
+        ),
+    )
+    parser.add_argument(
+        "--signal-masses",
+        nargs="+",
+        default=None,
+        help=(
+            "ZPrime mass labels to export separately, e.g. 900 1000 4000. "
+            "Uses input pattern ZPrime<MASS>_<WIDTH>_<year>*.coffea."
+        ),
+    )
+    parser.add_argument(
+        "--signal-widths",
+        nargs="+",
+        default=["1"],
+        help=(
+            "ZPrime width labels to export for each requested mass. "
+            "Default: 1. The 1%% width omits the width from the output label."
+        ),
     )
     parser.add_argument(
         "--hist",
@@ -114,6 +144,61 @@ def _discover_files(coffea_dir: Path, pattern: str, label: str, sort_qcd: bool =
     if not paths:
         raise FileNotFoundError(f"No {label} files found in {coffea_dir} matching {pattern!r}")
     return paths
+
+
+def _normalize_zprime_field(value: str, field_name: str) -> str:
+    label = str(value).strip()
+    if label.endswith("%"):
+        label = label[:-1]
+    if not label:
+        raise ValueError(f"Empty ZPrime {field_name} label")
+    if any(char in label for char in "/\\_"):
+        raise ValueError(
+            f"ZPrime {field_name} label {value!r} cannot contain path or field separators"
+        )
+    return label
+
+
+def _zprime_signal_specs(
+    masses: list[str],
+    widths: list[str],
+    year: str,
+) -> list[tuple[str, str]]:
+    """Return ``(output_label, input_glob)`` pairs for requested ZPrime signals."""
+
+    specs = []
+    for mass_value in masses:
+        mass = _normalize_zprime_field(mass_value, "mass")
+        for width_value in widths:
+            width = _normalize_zprime_field(width_value, "width")
+            output_label = f"signalZPrime{mass}"
+            if width != "1":
+                output_label += f"_{width}"
+            input_pattern = f"ZPrime{mass}_{width}_{year}*.coffea"
+            specs.append((output_label, input_pattern))
+    return specs
+
+
+def _zprime_signal_point_specs(points: list[str], year: str) -> list[tuple[str, str]]:
+    specs = []
+    for point in points:
+        fields = str(point).split(":", maxsplit=1)
+        mass = fields[0]
+        width = fields[1] if len(fields) == 2 else "1"
+        specs.extend(_zprime_signal_specs([mass], [width], year))
+    return specs
+
+
+def _check_unique_signal_specs(specs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    seen_patterns: dict[str, str] = {}
+    for output_label, input_pattern in specs:
+        if output_label in seen_patterns:
+            raise ValueError(
+                f"Duplicate signal output label {output_label!r} from patterns "
+                f"{seen_patterns[output_label]!r} and {input_pattern!r}"
+            )
+        seen_patterns[output_label] = input_pattern
+    return specs
 
 
 def _load_outputs(paths: list[Path], label: str, util_module) -> list[dict]:
@@ -234,7 +319,27 @@ def main() -> None:
         ttbar_outputs = _load_outputs(ttbar_paths, "TTbar", util)
         samples.append(("TTbar", ttbar_outputs))
 
-    if signal_pattern:
+    if args.signal_points or args.signal_masses:
+        if args.signal_pattern is not None:
+            raise ValueError("--signal-pattern cannot be combined with requested ZPrime points")
+        if args.signal_label != "signal":
+            raise ValueError("--signal-label cannot be combined with requested ZPrime points")
+        if args.signal_points and args.signal_masses:
+            raise ValueError("--signal-points cannot be combined with --signal-masses")
+        signal_specs = _check_unique_signal_specs(
+            _zprime_signal_point_specs(args.signal_points, args.year)
+            if args.signal_points
+            else _zprime_signal_specs(args.signal_masses, args.signal_widths, args.year)
+        )
+        for signal_label, signal_pattern_for_point in signal_specs:
+            signal_paths = _discover_files(
+                coffea_dir,
+                signal_pattern_for_point,
+                signal_label,
+            )
+            signal_outputs = _load_outputs(signal_paths, signal_label, util)
+            samples.append((signal_label, signal_outputs))
+    elif signal_pattern:
         signal_paths = _discover_files(coffea_dir, signal_pattern, "signal")
         signal_outputs = _load_outputs(signal_paths, "signal", util)
         samples.append((args.signal_label, signal_outputs))

@@ -467,3 +467,155 @@ def format_latex_table(rows, caption=None, label=None, normalization=None):
 
 def cutflow_normalization_text(output):
     return _normalization_text(output)
+
+
+def _format_matrix_value(value, kind):
+    """Format a single matrix cell.
+
+    ``events`` -> integer with thousands separators (data-style cutflow).
+    ``yield``  -> one decimal place, no separators (scaled-signal style).
+    """
+
+    if value is None:
+        return "-"
+    value = _as_float(value)
+    if kind == "yield":
+        return f"{value:.1f}"
+    return f"{int(round(value)):,}"
+
+
+def build_cutflow_matrix(
+    outputs,
+    labels=None,
+    value="events",
+    include_zero=False,
+    add_total=False,
+):
+    """Lay several processor outputs side by side as one cutflow matrix.
+
+    Rows are the (cumulative) cutflow steps; columns are the supplied outputs.
+    ``value="events"`` uses the unweighted counts (data-style, e.g. per-year
+    table); ``value="yield"`` uses the scaled weighted yields (signal-style,
+    e.g. per-mass-point table scaled to a reference cross section).
+
+    Steps are unioned across files in processor order so heterogeneous columns
+    still align. ``add_total`` appends a Total column summing across columns
+    (meaningful for raw event counts).
+    """
+
+    outputs = list(outputs)
+    if labels is None:
+        labels = [f"col{i + 1}" for i in range(len(outputs))]
+    if len(labels) != len(outputs):
+        raise ValueError("labels and outputs must have the same length")
+    if value not in ("events", "yield"):
+        raise ValueError("value must be one of: events, yield")
+
+    weight_mode = "scaled" if value == "yield" else "none"
+    field = "weighted" if value == "yield" else "events"
+
+    ordered_steps = []
+    seen = set()
+    per_file = []
+    for output in outputs:
+        rows = build_cutflow_rows(output, weight_mode=weight_mode, include_zero=True)
+        index = {}
+        for row in rows:
+            index[row["key"]] = row
+            if row["key"] not in seen:
+                seen.add(row["key"])
+                ordered_steps.append((row["key"], row.get("group", ""), row["step"]))
+        per_file.append(index)
+
+    matrix_rows = []
+    for key, group, label in ordered_steps:
+        values = []
+        for index in per_file:
+            row = index.get(key)
+            values.append(None if row is None else row.get(field))
+        numeric = [_as_float(v) for v in values if v is not None]
+        if not include_zero and numeric and all(v == 0.0 for v in numeric):
+            continue
+        matrix_row = {
+            "key": key,
+            "group": group,
+            "step": label,
+            "values": values,
+        }
+        if add_total:
+            matrix_row["total"] = sum(_as_float(v) for v in values if v is not None)
+        matrix_rows.append(matrix_row)
+
+    columns = list(labels) + (["Total"] if add_total else [])
+    return {
+        "columns": columns,
+        "rows": matrix_rows,
+        "value": value,
+        "add_total": add_total,
+    }
+
+
+def format_markdown_matrix(matrix, title=None, normalization=None):
+    rows = matrix["rows"]
+    if not rows:
+        return "No cutflow rows found."
+
+    kind = matrix["value"]
+    headers = ["Cut"] + list(matrix["columns"])
+
+    lines = []
+    if title:
+        lines.extend([f"## {title}", ""])
+    if normalization:
+        lines.extend([f"_Normalization: {normalization}_", ""])
+
+    lines.append("| " + " | ".join(headers) + " |")
+    lines.append("| " + " | ".join(["---"] * len(headers)) + " |")
+    for row in rows:
+        cells = [row["step"]]
+        cells.extend(_format_matrix_value(v, kind) for v in row["values"])
+        if matrix["add_total"]:
+            cells.append(_format_matrix_value(row.get("total"), kind))
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+def format_latex_matrix(matrix, caption=None, label=None, normalization=None):
+    rows = matrix["rows"]
+    if not rows:
+        return "% No cutflow rows found."
+
+    kind = matrix["value"]
+    columns = list(matrix["columns"])
+    headers = ["Cut"] + columns
+    alignment = "l" + "r" * len(columns)
+
+    lines = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\small",
+    ]
+    if caption:
+        lines.append(rf"\caption{{{_latex_escape(caption)}}}")
+    if label:
+        lines.append(rf"\label{{{_latex_escape(label)}}}")
+    if normalization:
+        lines.append(rf"\par\medskip\footnotesize Normalization: {_latex_escape(normalization)}\par\medskip")
+    lines.extend([
+        rf"\begin{{tabular}}{{{alignment}}}",
+        r"\hline",
+        " & ".join(_latex_escape(h) for h in headers) + r" \\",
+        r"\hline",
+    ])
+    for row in rows:
+        cells = [_latex_escape(row["step"])]
+        cells.extend(_format_matrix_value(v, kind) for v in row["values"])
+        if matrix["add_total"]:
+            cells.append(_format_matrix_value(row.get("total"), kind))
+        lines.append(" & ".join(cells) + r" \\")
+    lines.extend([
+        r"\hline",
+        r"\end{tabular}",
+        r"\end{table}",
+    ])
+    return "\n".join(lines)

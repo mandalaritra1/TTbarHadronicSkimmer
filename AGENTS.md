@@ -4,13 +4,15 @@ This is an active CMS analysis code repository. You may edit this repository whe
 
 For analysis context, first read:
 
-- `/mnt/extra/wsLinux/ai-wiki/AGENTS.md`
-- `/mnt/extra/wsLinux/ai-wiki/wiki/meta/index.md`
+- `/Users/aritra/Projects/ai-wiki/AGENTS.md`
+- `/Users/aritra/Projects/ai-wiki/wiki/meta/index.md`
 
 Then open the repo-specific wiki card:
 
-- `/mnt/extra/wsLinux/ai-wiki/wiki/repos/ttbarhadronic_skimmer.md`
+- `/Users/aritra/Projects/ai-wiki/wiki/repos/ttbarhadronic_skimmer.md`
 
-Treat `/mnt/extra/wsLinux/ai-wiki` as the compiled knowledge base. When a code change creates durable analysis knowledge, changes workflow behavior, fixes a reusable bug, or changes project status, you may edit `/mnt/extra/wsLinux/ai-wiki` to update the relevant repo, topic, bug, project, synthesis, or question pages.
+Treat `/Users/aritra/Projects/ai-wiki` as the compiled knowledge base. When a code change creates durable analysis knowledge, changes workflow behavior, fixes a reusable bug, or changes project status, you may edit `/Users/aritra/Projects/ai-wiki` to update the relevant repo, topic, bug, project, synthesis, or question pages.
 
-When editing the wiki, follow `/mnt/extra/wsLinux/ai-wiki/AGENTS.md`, update `wiki/meta/index.md` if pages are created, removed, renamed, or meaningfully changed, and append `wiki/meta/log.md`. Treat raw sources, PDFs, research notes, and other linked repositories as read-only unless the user explicitly asks otherwise.
+When editing the wiki, follow `/Users/aritra/Projects/ai-wiki/AGENTS.md`, update `wiki/meta/index.md` if pages are created, removed, renamed, or meaningfully changed, and append `wiki/meta/log.md`. Treat raw sources, PDFs, research notes, and other linked repositories as read-only unless the user explicitly asks otherwise.
+
+Additional project documentation lives at `/Users/aritra/Projects/documentations/doc-ttbarhad`. Treat it as documentation context and follow its own `AGENTS.md` before editing it.

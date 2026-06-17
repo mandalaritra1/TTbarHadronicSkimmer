@@ -190,8 +190,7 @@ python plots/make2Drootfiles.py \
   --out-dir outputs/twodalphabet \
   --data-pattern "data_2024_*.coffea" \
   --ttbar-pattern "TTbar_2024*.coffea" \
-  --signal-pattern "ZPrime4000*_2024*.coffea" \
-  --signal-label signalRSGluon4000 \
+  --signal-points 900 1000 4000 4000:10 4000:30 \
   --skip-qcd
 ```
 
@@ -200,8 +199,16 @@ This writes files like:
 ```text
 outputs/twodalphabet/TTbarAllHad24_Data.root
 outputs/twodalphabet/TTbarAllHad24_TTbar.root
-outputs/twodalphabet/TTbarAllHad24_signalRSGluon4000.root
+outputs/twodalphabet/TTbarAllHad24_signalZPrime900.root
+outputs/twodalphabet/TTbarAllHad24_signalZPrime4000.root
+outputs/twodalphabet/TTbarAllHad24_signalZPrime4000_10.root
+outputs/twodalphabet/TTbarAllHad24_signalZPrime4000_30.root
 ```
+
+For ZPrime signals, `--signal-points MASS:WIDTH` preserves the coffea width
+field in the input glob: `ZPrime<MASS>_<WIDTH>_2024*.coffea`. A bare `MASS`
+defaults to 1% width. The 1% width uses output label `signalZPrime<MASS>`,
+while non-1% widths use `signalZPrime<MASS>_<WIDTH>`.
 
 Each ROOT file contains the nominal 2DAlphabet region histograms:
 
@@ -220,7 +227,7 @@ addition to nominal, add `--include-systs`.
 Check the output layout with:
 
 ```bash
-rootls -t outputs/twodalphabet/TTbarAllHad24_signalRSGluon4000.root
+rootls -t outputs/twodalphabet/TTbarAllHad24_signalZPrime4000.root
 ```
 
 ## Cutflow Tables

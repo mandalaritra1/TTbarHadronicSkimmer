@@ -4,7 +4,15 @@ import unittest
 
 sys.path.append(os.path.join(os.getcwd(), "python"))
 
-from cutflow import category_label, build_cutflow_rows, format_latex_table, format_markdown_table  # noqa: E402
+from cutflow import (  # noqa: E402
+    build_cutflow_matrix,
+    build_cutflow_rows,
+    category_label,
+    format_latex_matrix,
+    format_latex_table,
+    format_markdown_matrix,
+    format_markdown_table,
+)
 
 
 class CutflowTableFormattingTest(unittest.TestCase):
@@ -95,6 +103,64 @@ class CutflowTableFormattingTest(unittest.TestCase):
         self.assertEqual(category_label("atfwd"), "Antitag, forward rapidity")
         self.assertEqual(category_label("2tcen"), "Two top-tagged jets, central rapidity")
         self.assertEqual(category_label("2tfwd"), "Two top-tagged jets, forward rapidity")
+
+
+class CutflowMatrixTest(unittest.TestCase):
+    STEPS = [
+        {"key": "input_events", "label": "All events", "group": "Bookkeeping"},
+        {"key": "trigger", "label": "Trigger", "group": "Preselection"},
+        {"key": "tag_2tag", "label": "Two top-tagged jets", "group": "Tagging"},
+    ]
+
+    def _output(self, unweighted, scaled):
+        return {
+            "cutflow_table_steps": self.STEPS,
+            "cutflow_unweighted": unweighted,
+            "cutflow_weighted_scaled": scaled,
+        }
+
+    def test_events_matrix_columns_and_total(self):
+        a = self._output(
+            {"input_events": 100, "trigger": 80, "tag_2tag": 20},
+            {"input_events": 0.0, "trigger": 0.0, "tag_2tag": 0.0},
+        )
+        b = self._output(
+            {"input_events": 200, "trigger": 150, "tag_2tag": 40},
+            {"input_events": 0.0, "trigger": 0.0, "tag_2tag": 0.0},
+        )
+
+        matrix = build_cutflow_matrix(
+            [a, b], labels=["2016", "2017"], value="events", add_total=True
+        )
+
+        self.assertEqual(matrix["columns"], ["2016", "2017", "Total"])
+        trigger = next(r for r in matrix["rows"] if r["key"] == "trigger")
+        self.assertEqual(trigger["values"], [80.0, 150.0])
+        self.assertEqual(trigger["total"], 230.0)
+
+    def test_yield_matrix_uses_scaled_weights(self):
+        a = self._output(
+            {"input_events": 100, "trigger": 80, "tag_2tag": 20},
+            {"input_events": 59740.0, "trigger": 3030.5, "tag_2tag": 29.0},
+        )
+
+        matrix = build_cutflow_matrix(
+            [a], labels=["1000 GeV"], value="yield"
+        )
+        trigger = next(r for r in matrix["rows"] if r["key"] == "trigger")
+        self.assertEqual(trigger["values"], [3030.5])
+
+        markdown = format_markdown_matrix(matrix, title="Signal cutflow")
+        latex = format_latex_matrix(matrix, caption="Signal cutflow")
+        self.assertIn("| Cut | 1000 GeV |", markdown)
+        self.assertIn("3030.5", markdown)
+        self.assertIn(r"\begin{table}", latex)
+        self.assertIn("3030.5", latex)
+
+    def test_mismatched_labels_raise(self):
+        a = self._output({"input_events": 1}, {"input_events": 1.0})
+        with self.assertRaises(ValueError):
+            build_cutflow_matrix([a], labels=["x", "y"])
 
 
 if __name__ == "__main__":

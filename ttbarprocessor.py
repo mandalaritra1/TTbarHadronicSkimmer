@@ -92,7 +92,7 @@ _LUMI_PB = {
     '2017':    41530.,
     '2018':    59740.,
     '2023':    27000.,
-    '2024':    112700.,
+    '2024':    109950.,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
 }
 
 # Per-IOV top-tagger score thresholds.
