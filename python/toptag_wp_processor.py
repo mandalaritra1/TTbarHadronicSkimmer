@@ -45,6 +45,7 @@ from coffea import processor
 # locally and on Dask workers (where the package path is not importable).
 sys.path.append(os.getcwd() + '/python/')
 from truthstudy import get_hadronic_tops, _ensure_p4  # noqa: E402
+import glopart_recomb as gr  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +105,17 @@ JET_ETA_MAX = 2.5
 # gen-top match radius.
 DR_MATCH = 0.8
 
+# --- Recomb-study additions (opt-in via TopTagWPProcessor(recomb_study=True)) ---
+# The 4 extra two-prong heads needed by the recombination, beyond the 3 the
+# baseline TopvsQCD ratio already uses. Together with the baseline's 3 heads
+# these form gr.RAW_HEADS.
+RECOMB_EXTRA_HEADS = [
+    'globalParT3_Xqq', 'globalParT3_Xcs', 'globalParT3_Xbb', 'globalParT3_Xcc',
+]
+# Invariant mass of the two leading AK8 jets (event context), used for the
+# mis-tag-vs-mtt decorrelation check.
+MTT_EDGES = (70, 0.0, 7000.0)
+
 
 def _qcd_genweight_mask(gen_weight, nsigma=2.0):
     """Mirror TTbarResProcessor's QCD large-genWeight event rejection."""
@@ -145,6 +157,18 @@ def _make_score_vs_msd_hist():
     )
 
 
+def _make_score_vs_mtt_hist():
+    """score vs invariant mass of the two leading AK8 jets (recomb study only)."""
+    return hist.Hist(
+        hist.axis.StrCategory([], name="dataset", growth=True),
+        hist.axis.StrCategory([], name="jettype", growth=True),
+        hist.axis.Regular(*MTT_EDGES, name="mtt", label=r"$m_{t\bar t}$ [GeV]"),
+        hist.axis.Regular(200, 0.0, 1.0, name="disc", label="disc"),
+        storage="weight",
+        name="Counts",
+    )
+
+
 def _make_jet_pt_hist():
     return hist.Hist(
         hist.axis.StrCategory([], name="dataset", growth=True),
@@ -171,7 +195,8 @@ class TopTagWPProcessor(processor.ProcessorABC):
         Optional per-sample metadata (sample, subsample, year, is_mc, xsec_pb).
     """
 
-    def __init__(self, iov='2024', match_gen_top=None, sample_metadata=None):
+    def __init__(self, iov='2024', match_gen_top=None, sample_metadata=None,
+                 recomb_study=False, recomb_weights=None, recomb_transform='logscore'):
         if iov not in TAGGER_CONFIG:
             raise KeyError(
                 f"IOV '{iov}' not in TAGGER_CONFIG (known: {list(TAGGER_CONFIG)}). "
@@ -181,6 +206,17 @@ class TopTagWPProcessor(processor.ProcessorABC):
         self._cfg = TAGGER_CONFIG[iov]
         self.match_gen_top = match_gen_top
         self.sample_metadata = dict(sample_metadata or {})
+
+        # --- recomb study config (all inert unless recomb_study=True) ---
+        # recomb_study   : turn on moment accumulation + score_vs_mtt + parity split
+        # recomb_weights : None  -> pass 1 (accumulate moments + baseline eval hists)
+        #                  path/dict -> pass 2 (fill recombination-s eval hists)
+        # recomb_transform : feature transform name in gr.VALID_TRANSFORMS
+        self.recomb_study = bool(recomb_study)
+        self.recomb_transform = recomb_transform
+        if isinstance(recomb_weights, str):
+            recomb_weights = gr.load_weights(recomb_weights)
+        self.recomb_weights = recomb_weights
 
     # -- helpers ------------------------------------------------------------
     def _should_match(self, dataset):
@@ -199,10 +235,31 @@ class TopTagWPProcessor(processor.ProcessorABC):
         min_dr = ak.fill_none(ak.min(dr, axis=2), 999.0)
         return min_dr < DR_MATCH
 
+    def _recomb_disc(self, fj):
+        """Pass-2 recombination score s (sigmoid-squashed to [0,1]) per jet.
+
+        Returns a jagged array aligned with ``fj`` so the existing fill helpers
+        work unchanged. Each jet is scored with the LDA weights of its own pT
+        bin (``gr.apply_per_pt``).
+        """
+        counts = ak.num(fj, axis=1)
+        cols = {h: ak.to_numpy(ak.flatten(fj["globalParT3_" + h])) for h in gr.RAW_HEADS}
+        X = gr.build_features(cols, transform=self.recomb_transform)
+        pt_flat = ak.to_numpy(ak.flatten(fj.pt))
+        s = gr.apply_per_pt(
+            X, pt_flat,
+            self.recomb_weights["pt_edges"],
+            self.recomb_weights["weights_per_bin"],
+            sigmoid=True,
+        )
+        return ak.unflatten(s, ak.to_numpy(counts))
+
     # -- coffea API ---------------------------------------------------------
     def process(self, events):
         dataset = events.metadata['dataset']
         cfg = self._cfg
+        recomb = self.recomb_study
+        apply_mode = recomb and self.recomb_weights is not None  # pass 2
 
         output = {
             'score': _make_score_hist(),
@@ -214,6 +271,10 @@ class TopTagWPProcessor(processor.ProcessorABC):
             'nevents_raw': processor.defaultdict_accumulator(int),
             'qcd_genweight_rejected': processor.defaultdict_accumulator(int),
         }
+        if recomb:
+            output['score_vs_mtt'] = _make_score_vs_mtt_hist()
+            # per-(jettype, pt_bin) packed moment vectors; merge by addition.
+            output['moments'] = processor.defaultdict_accumulator(gr.empty_moment_vec)
 
         n_raw = len(events)
         n_rejected = 0
@@ -223,7 +284,10 @@ class TopTagWPProcessor(processor.ProcessorABC):
             events = events[genweight_mask]
 
         fj = events.FatJet
-        missing = [f for f in cfg['required_fields'] if f not in fj.fields]
+        required = list(cfg['required_fields'])
+        if recomb:
+            required = required + RECOMB_EXTRA_HEADS
+        missing = [f for f in required if f not in fj.fields]
         if missing:
             raise RuntimeError(
                 f"FatJet missing {missing} for IOV {self.iov} (dataset {dataset}). "
@@ -241,7 +305,9 @@ class TopTagWPProcessor(processor.ProcessorABC):
         output['nevents_raw'][dataset] += int(n_raw)
         output['qcd_genweight_rejected'][dataset] += int(n_rejected)
 
-        disc = cfg['score'](fj)
+        # Discriminant filled into the eval histograms: baseline TopvsQCD in
+        # pass 1 (and the non-recomb WP path), recombination s in pass 2.
+        disc = self._recomb_disc(fj) if apply_mode else cfg['score'](fj)
         pt = fj.pt
         eta = fj.eta
         msd = fj.msoftdrop
@@ -251,6 +317,18 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
         # broadcast event weight to per-jet
         w_jet = ak.broadcast_arrays(w_evt, pt)[0]
+
+        # Event-parity gating (recomb only). Parity is per-event (uses the
+        # NanoAOD event number) so both jets of an event share it: no leakage.
+        # even -> moment fit; odd -> evaluation histograms.
+        gate = None
+        if recomb:
+            parity = ak.values_astype(events.event, np.int64) % 2
+            even_jet = ak.broadcast_arrays(parity == 0, pt)[0]
+            gate = ak.broadcast_arrays(parity == 1, pt)[0]  # odd = eval/test
+
+        def _g(mask):
+            return mask if gate is None else (mask & gate)
 
         def _fill(h, jettype, mask, extra_axes):
             sel_disc = ak.to_numpy(ak.flatten(disc[mask]))
@@ -266,19 +344,65 @@ class TopTagWPProcessor(processor.ProcessorABC):
                 weight=ak.to_numpy(ak.flatten(w_jet[mask])),
             )
 
-        # inclusive (background mis-tag denominator/numerator)
-        _fill(output['score'], 'incl', window, {'pt': pt})
-        _fill(output['score_full_msd'], 'incl', presel, {'pt': pt})
-        _fill(output['score_vs_msd'], 'incl', presel, {'msd': msd})
-        _fill_pt(output['jet_pt'], 'incl', presel)
+        if recomb:
+            # mtt = invariant mass of the two leading AK8 jets (NaN if <2 jets).
+            fj2 = ak.pad_none(fj, 2, clip=True)
+            mtt_evt = ak.fill_none((fj2[:, 0] + fj2[:, 1]).mass, np.nan)
+            mtt_jet = ak.broadcast_arrays(mtt_evt, pt)[0]
 
-        # gen-matched tops (signal efficiency) — only for signal/TTbar samples
-        if self._should_match(dataset) and 'GenPart' in events.fields:
-            is_matched = self._matched_to_gen_top(events)
-            _fill(output['score'], 'matched', window & is_matched, {'pt': pt})
-            _fill(output['score_full_msd'], 'matched', presel & is_matched, {'pt': pt})
-            _fill(output['score_vs_msd'], 'matched', presel & is_matched, {'msd': msd})
-            _fill_pt(output['jet_pt'], 'matched', presel & is_matched)
+            def _fill_mtt(jettype, mask):
+                d = ak.to_numpy(ak.flatten(disc[mask]))
+                m = ak.to_numpy(ak.flatten(mtt_jet[mask]))
+                wv = ak.to_numpy(ak.flatten(w_jet[mask]))
+                good = np.isfinite(m) & np.isfinite(d)
+                output['score_vs_mtt'].fill(
+                    dataset=dataset, jettype=jettype,
+                    mtt=m[good], disc=d[good], weight=wv[good],
+                )
+
+        def _accumulate_moments(jettype, mask):
+            cols = {h: ak.to_numpy(ak.flatten(fj["globalParT3_" + h][mask]))
+                    for h in gr.RAW_HEADS}
+            if len(cols['QCD']) == 0:
+                return
+            X = gr.build_features(cols, transform=self.recomb_transform)
+            pt_sel = ak.to_numpy(ak.flatten(pt[mask]))
+            w_sel = ak.to_numpy(ak.flatten(w_jet[mask]))
+            idx = gr.pt_bin_index(pt_sel, PT_BIN_EDGES)
+            for pb in range(len(PT_BIN_EDGES) - 1):
+                m = idx == pb
+                if np.any(m):
+                    output['moments'][gr.moment_key(jettype, pb)] += gr.moment_vec(X[m], w_sel[m])
+
+        is_signal = self._should_match(dataset)
+        do_match = is_signal and 'GenPart' in events.fields
+        is_matched = self._matched_to_gen_top(events) if do_match else None
+
+        # ---- evaluation histograms (odd/test parity in recomb mode) ----
+        _fill(output['score'], 'incl', _g(window), {'pt': pt})
+        _fill(output['score_full_msd'], 'incl', _g(presel), {'pt': pt})
+        _fill(output['score_vs_msd'], 'incl', _g(presel), {'msd': msd})
+        _fill_pt(output['jet_pt'], 'incl', _g(presel))
+        if recomb:
+            _fill_mtt('incl', _g(presel))
+
+        if do_match:
+            _fill(output['score'], 'matched', _g(window & is_matched), {'pt': pt})
+            _fill(output['score_full_msd'], 'matched', _g(presel & is_matched), {'pt': pt})
+            _fill(output['score_vs_msd'], 'matched', _g(presel & is_matched), {'msd': msd})
+            _fill_pt(output['jet_pt'], 'matched', _g(presel & is_matched))
+            if recomb:
+                _fill_mtt('matched', _g(presel & is_matched))
+
+        # ---- moment accumulation (even/fit parity; pass 1 only) ----
+        # Class gating avoids leakage: 'matched' moments come ONLY from signal
+        # (TTbar), 'incl' (background) moments come ONLY from non-signal (QCD),
+        # so summing across datasets never mixes signal into the background.
+        if recomb and not apply_mode:
+            if do_match:
+                _accumulate_moments('matched', (window & is_matched) & even_jet)
+            elif not is_signal:
+                _accumulate_moments('incl', window & even_jet)
 
         return output
 
