@@ -230,6 +230,25 @@ Check the output layout with:
 rootls -t outputs/twodalphabet/TTbarAllHad24_signalZPrime4000.root
 ```
 
+To make the six-panel background-estimate Data/MC projections from those ROOT
+inputs, run:
+
+```bash
+MPLCONFIGDIR=/tmp/mplconfig-ttbar .venv/bin/python plots/make_bgest_datamc_plots.py \
+  --year 2024 \
+  --region Fail \
+  --qcd-coffea-pattern "QCD*.coffea"
+```
+
+The script projects `MttvsMt*Cen/Fwd*Fail` into the low-mass sideband
+`25 < m_j < 105 GeV`, signal region `105 < m_j < 210 GeV`, and high-mass
+sideband `210 < m_j < 475 GeV`. Outputs are written under
+`outputs/plots/bgest_datamc/<year>/<region>/`. QCD is read from coffea files
+with the `mtt_vs_mt` histogram and is normalized separately in each projected
+panel to `Data - TTbar`. The 2024 luminosity label defaults to `109.95 fb^-1`.
+If no QCD coffea or ROOT input is available, the script stops; pass
+`--allow-missing-qcd` only for TTbar-only debugging plots.
+
 ## Cutflow Tables
 
 Use `make_cutflow_table.py` to turn a processor `.coffea` output into a

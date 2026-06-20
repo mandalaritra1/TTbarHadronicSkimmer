@@ -68,7 +68,7 @@ XSEC_PB = {
 # Integrated luminosity [pb^-1] per IOV (preliminary; matches ttbarprocessor).
 LUMI_PB = {
     '2023': 27000.0,
-    '2024': 112700.0,
+    '2024': 109950.0,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
 }
 
 QCD_MIN_SUBSAMPLE_PT = 300.0
