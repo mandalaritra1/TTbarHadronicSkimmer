@@ -101,7 +101,10 @@ if __name__ == "__main__":
     # analysis options
     parser.add_argument('--blind',    action='store_true', help='process 1/10th of the data')
     parser.add_argument('--bkgest',   choices=['2dalphabet', 'mistag'], default=None)
-    parser.add_argument('--toptagger',choices=['deepak8', 'cmsv2'], default='deepak8')
+    parser.add_argument('--toptagger',choices=['deepak8', 'cmsv2', 'recomb'], default='deepak8',
+                        help="'recomb' = learned per-pT GloParTv3 recombination top-tagger")
+    parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
+                        help='deploy JSON for --toptagger recomb (build_recomb_deploy.py)')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
@@ -128,7 +131,7 @@ if __name__ == "__main__":
     ##### parameters #####
     samples           = args.dataset
     IOV               = args.iov
-    useDeepAK8        = args.toptagger == 'deepak8'
+    useDeepAK8        = args.toptagger in ('deepak8', 'recomb')
     useDeepCSV        = args.btagger == 'deepcsv'
     htCut             = 1400.0 if args.ht == '1400' else 950.0
     dask_memory       = '5GB'
@@ -252,6 +255,8 @@ if __name__ == "__main__":
 
                 if args.toptagger == 'cmsv2':
                     savefilename = savefilename.replace('.coffea', '_cmsv2.coffea')
+                if args.toptagger == 'recomb':
+                    savefilename = savefilename.replace('.coffea', '_recomb.coffea')
                 if args.btagger == 'csvv2':
                     savefilename = savefilename.replace('.coffea', '_csvv2.coffea')
                 if args.ht == '950':
@@ -272,6 +277,8 @@ if __name__ == "__main__":
                     deepAK8Cut=args.ttagWP,
                     useDeepAK8=useDeepAK8,
                     useDeepCSV=useDeepCSV,
+                    topTagger=args.toptagger,
+                    recomb_weights=(args.recomb_weights if args.toptagger == 'recomb' else None),
                     htCut=htCut,
                     anacats=anacats,
                     systematics=systematics,

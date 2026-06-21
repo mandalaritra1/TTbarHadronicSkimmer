@@ -70,6 +70,7 @@ def _copy_to_xrootd(local_path, remote_path):
     subprocess.run(["xrdcp", "-f", local_path, remote_path], check=True)
 from hists import build_output_histograms, ntuple_columns_for_preset
 from weights import Run3WeightManager
+import glopart_recomb as gr
 from truthstudy import truthstudy_counts, build_gen_top_match_info, build_top_aligned_genjetak8_match_info
 
 
@@ -180,6 +181,8 @@ class TTbarResProcessor(processor.ProcessorABC):
         deepAK8Cut='medium',
         useDeepAK8=True,
         useDeepCSV=True,
+        topTagger='baseline',
+        recomb_weights=None,
         iov='2016',
         bkgEst=False,
         noSyst=False,
@@ -244,6 +247,36 @@ class TTbarResProcessor(processor.ProcessorABC):
         else:
             self.deepAK8low = 0.2
 
+        # --- GloParTv3 per-pT recombination tagger (opt-in) ---------------------
+        # topTagger='recomb' replaces the baseline TopvsQCD ratio with the learned
+        # per-pT logistic score. The deploy JSON (build_recomb_deploy.py) carries
+        # the per-pT logistic params + per-pT WP thresholds matched to the baseline
+        # per-pT QCD mis-tag, so the background per pT bin is unchanged and only the
+        # signal efficiency rises. Score and thresholds are both in sigmoid space.
+        self.topTagger = topTagger
+        self._recomb = (topTagger == 'recomb')
+        if self._recomb:
+            if not recomb_weights:
+                raise ValueError("topTagger='recomb' requires recomb_weights (deploy JSON path)")
+            with open(recomb_weights) as f:
+                dep = json.load(f)
+            self._recomb_eps = float(dep.get('eps', gr.EPS))
+            self._recomb_pt_edges = np.asarray(dep['pt_edges'], dtype=np.float64)
+            self._recomb_params = {
+                int(b): {k: np.asarray(v, dtype=np.float64) for k, v in p.items()}
+                for b, p in dep['params'].items()
+            }
+            nb = len(self._recomb_pt_edges) - 1
+            wp = dep['wp']
+            if deepAK8Cut not in wp:
+                raise KeyError(f"recomb deploy has no WP '{deepAK8Cut}' (have {list(wp)})")
+            low_map = {'tight': 'medium', 'medium': 'loose'}  # antitag low WP
+            self._recomb_disc_arr = np.array([wp[deepAK8Cut][str(b)] for b in range(nb)])
+            if deepAK8Cut in low_map:
+                self._recomb_low_arr = np.array([wp[low_map[deepAK8Cut]][str(b)] for b in range(nb)])
+            else:  # 'loose' has no lower WP table -> accept everything below disc
+                self._recomb_low_arr = np.zeros(nb)
+
         # tagger discriminant field name; 2024 uses a composite score (see _tscore)
         _tagger_fields = {
             '2023': 'particleNet_XttVsQCD',
@@ -274,14 +307,57 @@ class TTbarResProcessor(processor.ProcessorABC):
     def _tscore(self, jet):
         """Return the top-tagger discriminant for one or more jets.
 
-        2024: mass-decorrelated GloParTv3 TopvsQCD =
+        topTagger='recomb': learned per-pT GloParTv3 recombination score (sigmoid).
+        Else 2024: mass-decorrelated GloParTv3 TopvsQCD =
               (TopbWqq + TopbWq) / (TopbWqq + TopbWq + QCD)
         Other IOVs: single NanoAOD field stored in self.tagger_field.
+        Works on flat (one jet/event) or jagged (lists of jets) inputs.
         """
+        if self._recomb:
+            return self._recomb_tscore(jet)
         if self.iov == '2024':
             num = jet.globalParT3_TopbWqq + jet.globalParT3_TopbWq
             return num / (num + jet.globalParT3_QCD)
         return jet[self.tagger_field]
+
+    def _recomb_tscore(self, jet):
+        """Per-pT logistic recombination score (sigmoid in [0,1]) for ``jet``.
+
+        Handles both a flat per-event jet (e.g. jet0) and a jagged collection
+        (e.g. the two leading jets used for score-sorting).
+        """
+        pt = jet.pt
+        jagged = pt.ndim > 1
+        if jagged:
+            counts = ak.num(pt, axis=1)
+            ptn = ak.to_numpy(ak.flatten(pt))
+            heads = {h: ak.to_numpy(ak.flatten(jet["globalParT3_" + h])) for h in gr.RAW_HEADS}
+        else:
+            ptn = ak.to_numpy(pt)
+            heads = {h: ak.to_numpy(jet["globalParT3_" + h]) for h in gr.RAW_HEADS}
+        X = gr.build_features_eng(heads, eps=self._recomb_eps)
+        idx = gr.pt_bin_index(ptn, self._recomb_pt_edges)
+        logodds = np.zeros(len(X), dtype=np.float64)
+        for b, params in self._recomb_params.items():
+            m = idx == b
+            if np.any(m):
+                logodds[m] = gr.apply_logistic(X[m], params)
+        score = 1.0 / (1.0 + np.exp(-logodds))
+        return ak.unflatten(score, ak.to_numpy(counts)) if jagged else ak.Array(score)
+
+    def _disc_thr(self, jet):
+        """Tag (signal) threshold — scalar for baseline, per-pT for recomb."""
+        if not self._recomb:
+            return self.deepAK8disc
+        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._recomb_pt_edges)
+        return ak.Array(self._recomb_disc_arr[idx])
+
+    def _low_thr(self, jet):
+        """Antitag lower threshold — scalar for baseline, per-pT for recomb."""
+        if not self._recomb:
+            return self.deepAK8low
+        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._recomb_pt_edges)
+        return ak.Array(self._recomb_low_arr[idx])
 
     @staticmethod
     def _nearby_jet_label(jet, ak4s, ak8s):
@@ -746,14 +822,14 @@ class TTbarResProcessor(processor.ProcessorABC):
         mcut_s0 = (self.minMSD < jet0.msoftdrop) & (jet0.msoftdrop < self.maxMSD)
         mcut_s1 = (self.minMSD < jet1.msoftdrop) & (jet1.msoftdrop < self.maxMSD)
 
-        # signal region: both jets pass the tagger
-        ttag_s0 = self._tscore(jet0) > self.deepAK8disc
-        ttag_s1 = (self._tscore(jet1) > self.deepAK8disc) & mcut_s1
+        # signal region: both jets pass the tagger (per-pT thresholds in recomb mode)
+        ttag_s0 = self._tscore(jet0) > self._disc_thr(jet0)
+        ttag_s1 = (self._tscore(jet1) > self._disc_thr(jet1)) & mcut_s1
 
         # antitag (fail) region: leading passes, subleading in the fail-but-above-low window
         antitag_disc = (
-            (self._tscore(jet1) < self.deepAK8disc)
-            & (self._tscore(jet1) > self.deepAK8low)
+            (self._tscore(jet1) < self._disc_thr(jet1))
+            & (self._tscore(jet1) > self._low_thr(jet1))
         )
         antitag = antitag_disc & ttag_s0 & mcut_s1
 
