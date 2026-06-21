@@ -98,6 +98,10 @@ _LUMI_PB = {
 
 # Per-IOV top-tagger score thresholds.
 # Run-3 uses globalParT3; these keys are historically called "deepAK8" in the code.
+# WP names follow the standard CMS AK8 top-tagger targeted QCD mis-tag nomenclature:
+#   verytight 0.1% | tight 0.5% | medium 1.0% | loose 2.5% | veryloose 5.0%
+# (the recomb tagger hits these exactly per pT bin; the baseline scalar thresholds
+#  below approximate them inclusively.)
 _TAGGER_WPS = {
     'loose': {
         '2022': 0.435,
@@ -270,11 +274,15 @@ class TTbarResProcessor(processor.ProcessorABC):
             wp = dep['wp']
             if deepAK8Cut not in wp:
                 raise KeyError(f"recomb deploy has no WP '{deepAK8Cut}' (have {list(wp)})")
-            low_map = {'tight': 'medium', 'medium': 'loose'}  # antitag low WP
+            # antitag low WP = next-looser in the standard nomenclature
+            # (verytight>tight>medium>loose>veryloose, by targeted QCD mis-tag).
+            low_map = {'verytight': 'tight', 'tight': 'medium',
+                       'medium': 'loose', 'loose': 'veryloose'}
             self._recomb_disc_arr = np.array([wp[deepAK8Cut][str(b)] for b in range(nb)])
-            if deepAK8Cut in low_map:
-                self._recomb_low_arr = np.array([wp[low_map[deepAK8Cut]][str(b)] for b in range(nb)])
-            else:  # 'loose' has no lower WP table -> accept everything below disc
+            low_name = low_map.get(deepAK8Cut)
+            if low_name and low_name in wp:
+                self._recomb_low_arr = np.array([wp[low_name][str(b)] for b in range(nb)])
+            else:  # no looser WP available -> accept everything below disc
                 self._recomb_low_arr = np.zeros(nb)
 
         # tagger discriminant field name; 2024 uses a composite score (see _tscore)

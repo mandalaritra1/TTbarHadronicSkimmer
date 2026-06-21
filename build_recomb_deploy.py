@@ -2,11 +2,14 @@
 """Build the deployable GloParTv3-recombination tagger config for the analysis.
 
 Combines the production per-pT logistic fit (logistic_weights.json) with per-pT
-working-point thresholds derived so that, in each pT bin, the recombined score
-reproduces the **same QCD mis-tag as the baseline TopvsQCD WP** (loose/medium/
-tight). That means swapping the baseline tagger for the recomb one keeps the
-background identical per pT bin and only raises the signal efficiency — the +3-4%
-we measured. The thresholds are signal-independent (defined purely on QCD).
+working-point thresholds derived at the **standard CMS AK8 top-tagger targeted QCD
+mis-tag** for each WP name (consistent with the official nomenclature):
+
+    verytight 0.1% | tight 0.5% | medium 1.0% | loose 2.5% | veryloose 5.0%
+
+i.e. the recombined score is calibrated so that in EVERY pT bin the QCD mis-tag
+equals the WP's target (flat vs pT). Thresholds are signal-independent (defined
+purely on QCD). To run the analysis at 0.5% mis-tag, use --ttagWP tight.
 
 Output: data/recomb/recomb_deploy_<iov>.json  (small, tracked, shipped with code).
 Loaded by TTbarResProcessor(topTagger='recomb', recomb_weights=...).
@@ -28,9 +31,15 @@ LOGISTIC_WEIGHTS = "outputs/glopart_recomb/prod/logistic_weights.json"
 QCD_GLOB = "outputs/glopart_recomb/ntuples_night/ntuple_QCD_*.npz"
 OUT = f"data/recomb/recomb_deploy_{IOV}.json"
 
-# Baseline TopvsQCD global WP thresholds for this IOV (must match _TAGGER_WPS in
-# ttbarprocessor.py). The recomb per-pT thresholds are matched to these.
-BASELINE_WP = {"loose": 0.6488, "medium": 0.8571, "tight": 0.9284}
+# Standard CMS AK8 top-tagger WP nomenclature -> targeted QCD mis-tag efficiency.
+# The recomb per-pT thresholds are derived to hit these exactly, per pT bin.
+WP_MISTAG = {
+    "verytight": 0.001,
+    "tight":     0.005,
+    "medium":    0.010,
+    "loose":     0.025,
+    "veryloose": 0.050,
+}
 
 
 def main():
@@ -63,24 +72,22 @@ def main():
         if np.any(m):
             recomb[m] = 1.0 / (1.0 + np.exp(-gr.apply_logistic(Xeng[m], params[b])))
 
-    # per-WP, per-pT-bin recomb threshold matching the baseline per-pT mis-tag
+    # per-WP, per-pT-bin recomb threshold at the WP's TARGET QCD mis-tag
     wp_out = {}
-    print(f"\n{'WP':>7} {'ptbin':>13} {'base mistag':>11} {'recomb thr':>10}")
-    for name, bthr in BASELINE_WP.items():
+    print(f"\n{'WP':>10} {'ptbin':>13} {'target':>7} {'recomb thr':>10}")
+    for name, target in WP_MISTAG.items():
         per_bin = {}
         for b in range(nbins):
             m = idx == b
             wb = w[m]
-            denom = wb.sum()
-            if denom <= 0:
+            if wb.sum() <= 0:
                 per_bin[str(b)] = 1.0
                 continue
-            mistag = float(wb[base[m] > bthr].sum() / denom)
-            # recomb threshold giving the same tail fraction on QCD in this bin
-            thr = gr.weighted_quantile(recomb[m], 1.0 - mistag, wb)
+            # threshold s.t. weighted fraction of QCD above it = target mis-tag
+            thr = gr.weighted_quantile(recomb[m], 1.0 - target, wb)
             per_bin[str(b)] = float(thr)
-            print(f"{name:>7} {pt_edges[b]:5.0f}-{pt_edges[b+1]:<6.0f} "
-                  f"{100*mistag:10.3f}% {thr:10.4f}")
+            print(f"{name:>10} {pt_edges[b]:5.0f}-{pt_edges[b+1]:<6.0f} "
+                  f"{100*target:6.2f}% {thr:10.4f}")
         wp_out[name] = per_bin
 
     deploy = {
@@ -97,11 +104,12 @@ def main():
             for b in params
         },
         "wp": wp_out,
+        "wp_mistag": WP_MISTAG,
         "provenance": {
             "logistic_weights": LOGISTIC_WEIGHTS,
             "qcd_glob": QCD_GLOB,
-            "baseline_wp": BASELINE_WP,
-            "note": "per-pT thresholds matched to baseline TopvsQCD per-pT QCD mis-tag",
+            "note": "per-pT thresholds at the standard CMS targeted QCD mis-tag "
+                    "(verytight 0.1% / tight 0.5% / medium 1.0% / loose 2.5% / veryloose 5.0%)",
         },
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

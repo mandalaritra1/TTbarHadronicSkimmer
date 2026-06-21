@@ -190,11 +190,24 @@ s(jet) = sigmoid( B0(pT) + Σ_k A_k(pT) · log(head_k + ε) )
 
 i.e. a learned, pT-dependent weighted-geometric combination of the heads. Versus
 the baseline it keeps the top-vs-QCD core but adds weight on the X heads and an
-asymmetric `TopbWqq:TopbWq` split — that extra information is the gain. The
-per-pT WP thresholds are derived to **reproduce the baseline `TopvsQCD` per-pT QCD
-mis-tag** at each `--ttagWP` (loose/medium/tight), so the background per pT bin is
-preserved and only the signal efficiency rises. A `recomb` run is therefore
-directly comparable to a baseline run at the same `--ttagWP`.
+asymmetric `TopbWqq:TopbWq` split — that extra information is the gain.
+
+The per-pT WP thresholds are calibrated to the **standard CMS AK8 top-tagger
+targeted QCD mis-tag**, flat across pT (consistent with the official
+nomenclature):
+
+| `--ttagWP` | targeted QCD mis-tag |
+|---|---|
+| `verytight` | 0.1% |
+| `tight` | **0.5%** |
+| `medium` | 1.0% (default) |
+| `loose` | 2.5% |
+| `veryloose` | 5.0% |
+
+So to operate at **0.5% mis-tag, use `--ttagWP tight`**. (`verytight`/`veryloose`
+exist in the deploy JSON; the CLI exposes `loose`/`medium`/`tight`.) The mis-tag
+is held at the target in every pT bin, so a `recomb` run is directly comparable to
+a baseline run at the matching mis-tag.
 
 **Result (2024, full statistics).** On the search-relevant Z′ resonance tops vs
 the full xs-weighted QCD, the recombined tagger beats baseline by **+3–7%
