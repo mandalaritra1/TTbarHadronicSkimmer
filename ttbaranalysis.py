@@ -135,6 +135,10 @@ if __name__ == "__main__":
                         help='show coffea executor progress bars (tqdm); off by '
                              'default because the ASCII bars flicker in JupyterLab. '
                              'For Dask runs, watch the dashboard (:8787) instead.')
+    parser.add_argument('--outdir',    default='',
+                        help='save outputs under outputs/<OUTDIR>/ instead of the '
+                             'default outputs/dy/ (e.g. --outdir recomb_tagger). '
+                             'Use it to keep each run organised for CERNBox sync.')
 
     args = parser.parse_args()
 
@@ -157,6 +161,10 @@ if __name__ == "__main__":
     chunksize_futures = 200000
     nworkers          = 1 if args.test else 4
     maxchunks         = 1 if args.test else None
+
+    # optional custom output subfolder: outputs/<outdir>/  (default outputs/dy/)
+    if args.outdir:
+        savedir = 'outputs/' + args.outdir.strip('/') + '/'
 
     ##### systematics #####
     systematics = ['nominal', 'jes', 'jer', 'pileup', 'pdf', 'q2', 'ttag_pt1']
@@ -270,7 +278,7 @@ if __name__ == "__main__":
                 subString = f'_{output_subsection}' if output_subsection else ''
                 if args.bkgest:
                     subString += '_bkgest'
-                if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2'):
+                if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2') and not args.outdir:
                     savedir = 'outputs/oldanalysis/'
 
                 savefilename = f'{savedir}{sample}_{IOV}{subString}.coffea'
