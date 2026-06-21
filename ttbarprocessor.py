@@ -1190,7 +1190,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             if isNominal:
                 for syst in self.weights[correction].variations:
                     self._fill_kinematic_hists(
-                        output, syst, i, icat,
+                        output, ds_kw, syst, i, icat,
                         self.weights[correction].weight(syst),
                         jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
                         jetpt, jeteta, jetphi, jety,
