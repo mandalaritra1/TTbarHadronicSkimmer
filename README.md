@@ -88,6 +88,8 @@ Common options:
 | `--test` | Run on 1 chunk with 1 worker |
 | `--blind` | Process 1/10th of data |
 | `--ttagWP` | Top-tagger working point: `loose`, `medium` (default), `tight` |
+| `--toptagger` | Top-tagger: `deepak8` (default, baseline GloParTv3 `TopvsQCD`), `recomb` (learned per-pT recombination — see below), `cmsv2` (legacy) |
+| `--recomb-weights` | Deploy JSON for `--toptagger recomb` (default `data/recomb/recomb_deploy_2024.json`) |
 | `--ht` | HT cut: `1400` (default) or `950` |
 | `--dask` | Use Dask executor instead of futures |
 | `--env` | `lpc` (default), `casa`, `winterfell`, `local` |
@@ -163,6 +165,57 @@ MPLCONFIGDIR=/tmp/mplconfig python plot_toptag_wp.py \
   --plotdir plots/images/toptag_wp/2024 \
   --score-rebin 10
 ```
+
+## GloParTv3 recombination top-tagger (`--toptagger recomb`)
+
+An alternative top-tagger that replaces the hand-built baseline ratio
+`TopvsQCD = (TopbWqq+TopbWq)/(TopbWqq+TopbWq+QCD)` with a **learned per-pT
+recombination of the raw GloParTv3 class heads**. Run the analysis with it via:
+
+```bash
+python ttbaranalysis.py --iov 2024 --dataset TTbar --toptagger recomb --ttagWP medium
+```
+
+(or pick `recomb` in the toptagger dropdown in `ttbaranalysis.ipynb`). Output
+files are tagged `_recomb`. Baseline behaviour is unchanged when `--toptagger`
+is left at its default.
+
+**What it does.** Per pT bin, the score is a logistic combination of the 9-D
+engineered log-scores (the 7 heads + the hadronic-top sum + the heavy-flavour-X
+sum):
+
+```
+s(jet) = sigmoid( B0(pT) + Σ_k A_k(pT) · log(head_k + ε) )
+```
+
+i.e. a learned, pT-dependent weighted-geometric combination of the heads. Versus
+the baseline it keeps the top-vs-QCD core but adds weight on the X heads and an
+asymmetric `TopbWqq:TopbWq` split — that extra information is the gain. The
+per-pT WP thresholds are derived to **reproduce the baseline `TopvsQCD` per-pT QCD
+mis-tag** at each `--ttagWP` (loose/medium/tight), so the background per pT bin is
+preserved and only the signal efficiency rises. A `recomb` run is therefore
+directly comparable to a baseline run at the same `--ttagWP`.
+
+**Result (2024, full statistics).** On the search-relevant Z′ resonance tops vs
+the full xs-weighted QCD, the recombined tagger beats baseline by **+3–7%
+(mean +4.2%) signal efficiency at the same QCD mis-tag** across 400–3000 GeV, and
+passes the mass-decorrelation gate (mis-tag flat vs jet `m_SD`). See
+`glopart_recomb_SUMMARY.md` for the full study.
+
+**The deploy artifact** `data/recomb/recomb_deploy_2024.json` holds the per-pT
+logistic params + per-pT WP thresholds and is loaded by
+`TTbarResProcessor(topTagger='recomb', recomb_weights=...)`. It is tracked in git
+and uploaded to Dask workers automatically (it lives under `data/`, and
+`glopart_recomb` under `python/`, both already in the worker upload lists). To
+regenerate it after re-fitting:
+
+```bash
+python build_recomb_deploy.py        # reads the production fit + QCD ntuples
+```
+
+The end-to-end study pipeline that produced the fit is documented in
+`glopart_recomb_SUMMARY.md` (`run_toptag_wp.py --recomb-ntuple` →
+`run_glopart_recomb.py` → `plot_glopart_recomb.py`).
 
 ## Output
 
