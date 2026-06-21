@@ -131,6 +131,10 @@ if __name__ == "__main__":
     parser.add_argument('--env',       choices=['casa', 'lpc', 'winterfell', 'local', 'C', 'L', 'W'], default='lpc')
     parser.add_argument('--test',      action='store_true')
     parser.add_argument('-n', '--nocluster', action='store_true')
+    parser.add_argument('--progress',  action='store_true',
+                        help='show coffea executor progress bars (tqdm); off by '
+                             'default because the ASCII bars flicker in JupyterLab. '
+                             'For Dask runs, watch the dashboard (:8787) instead.')
 
     args = parser.parse_args()
 
@@ -330,7 +334,7 @@ if __name__ == "__main__":
 
                 if not args.dask:
                     runner = processor.Runner(
-                        executor=processor.FuturesExecutor(workers=nworkers),
+                        executor=processor.FuturesExecutor(workers=nworkers, status=args.progress),
                         schema=NanoAODSchema,
                         chunksize=chunksize_futures,
                         maxchunks=maxchunks,
@@ -358,7 +362,7 @@ if __name__ == "__main__":
                     with Client(cluster) as client:
                         run_instance = processor.Runner(
                             metadata_cache={},
-                            executor=processor.DaskExecutor(client=client, retries=12),
+                            executor=processor.DaskExecutor(client=client, retries=12, status=args.progress),
                             schema=NanoAODSchema,
                             savemetrics=True,
                             skipbadfiles=skipbadfiles,
