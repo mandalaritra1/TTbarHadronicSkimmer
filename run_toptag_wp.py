@@ -373,6 +373,13 @@ def main():
                          'weight/parity/label) per dataset — feeds the logistic fit.')
     ap.add_argument('--recomb-transform', default='logscore',
                     help='feature transform for the moment (LDA) path')
+    ap.add_argument('--ntuple-pt-min', type=float, default=None,
+                    help='drop ntuple jets below this pT (default = preselection floor). '
+                         'Set ~800 for full-stats runs: cuts the low-pT QCD bulk we never '
+                         'fit and shrinks worker memory ~10x.')
+    ap.add_argument('--ntuple-prescale', type=float, default=1.0,
+                    help='keep this fraction of ntuple jets (uniform, weight-compensated); '
+                         'extra memory dial for very large QCD samples')
     ap.add_argument('--ntuple-outdir', default=None,
                     help='dir for --recomb-ntuple npz (default outputs/glopart_recomb/ntuples_<iov>)')
     args = ap.parse_args()
@@ -426,6 +433,8 @@ def main():
         recomb_study=args.recomb,
         recomb_ntuple=args.recomb_ntuple,
         recomb_transform=args.recomb_transform,
+        recomb_ntuple_pt_min=args.ntuple_pt_min,
+        recomb_ntuple_prescale=args.ntuple_prescale,
     )
 
     tic = time.time()

@@ -213,7 +213,7 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
     def __init__(self, iov='2024', match_gen_top=None, sample_metadata=None,
                  recomb_study=False, recomb_weights=None, recomb_transform='logscore',
-                 recomb_ntuple=False):
+                 recomb_ntuple=False, recomb_ntuple_pt_min=None, recomb_ntuple_prescale=1.0):
         if iov not in TAGGER_CONFIG:
             raise KeyError(
                 f"IOV '{iov}' not in TAGGER_CONFIG (known: {list(TAGGER_CONFIG)}). "
@@ -231,6 +231,15 @@ class TopTagWPProcessor(processor.ProcessorABC):
         # recomb_transform : feature transform name in gr.VALID_TRANSFORMS
         self.recomb_study = bool(recomb_study)
         self.recomb_ntuple = bool(recomb_ntuple)
+        # Memory controls for the per-jet ntuple (the only growth-with-data output):
+        #   pt_min   : drop jets below this pT — QCD is bulk-dominated at low pT but
+        #              the recombination only helps pT>800, so a ~800 floor cuts the
+        #              stored jet count ~10x. Default = preselection floor (no cut).
+        #   prescale : keep this fraction of jets (uniform), reweighting by 1/frac,
+        #              an extra uniform memory dial for very large QCD samples.
+        self.recomb_ntuple_pt_min = (JET_PT_MIN if recomb_ntuple_pt_min is None
+                                     else float(recomb_ntuple_pt_min))
+        self.recomb_ntuple_prescale = float(recomb_ntuple_prescale)
         self.recomb_transform = recomb_transform
         if isinstance(recomb_weights, str):
             recomb_weights = gr.load_weights(recomb_weights)
@@ -414,7 +423,9 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
             Stores BOTH parities and NO mass window (preselection only) so the
             downstream fit owns the parity split and any m_SD window. ``genweight``
-            is raw; cross-section normalization happens at save time.
+            is raw (×1/prescale if prescaled); cross-section normalization happens
+            at save time. The pT floor + prescale keep this — the only output that
+            grows with data — within worker memory on full-stats runs.
             """
             flat = lambda arr: ak.to_numpy(ak.flatten(arr[mask]))
             cols = {h: flat(fj["globalParT3_" + h]).astype(np.float32) for h in gr.RAW_HEADS}
@@ -427,6 +438,14 @@ class TopTagWPProcessor(processor.ProcessorABC):
             cols['genweight'] = flat(w_jet).astype(np.float32)
             cols['parity'] = flat(parity_jet).astype(np.int8)
             cols['label'] = np.full(n, label_val, dtype=np.int8)
+            # uniform prescale: keep a fraction, compensate the weight by 1/frac.
+            p = self.recomb_ntuple_prescale
+            if p < 1.0:
+                keep = np.random.random(n) < p
+                if not np.any(keep):
+                    return
+                cols = {k: v[keep] for k, v in cols.items()}
+                cols['genweight'] = (cols['genweight'] / np.float32(p)).astype(np.float32)
             dest = output['ntuple'].setdefault(
                 dataset,
                 {f: processor.column_accumulator(np.empty(0, dtype=dt))
@@ -466,12 +485,16 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
         # ---- skinny ntuple (both parities, presel only; same class gating) ----
         # matched tops -> label 1 (from signal); inclusive QCD -> label 0. No mass
-        # window so the fit can apply its own; no parity gate so the fit splits.
+        # window so the fit can apply its own; no parity gate so the fit splits. A
+        # pT floor drops the low-pT bulk we never fit (key memory control).
         if ntuple:
+            nt_presel = presel
+            if self.recomb_ntuple_pt_min > JET_PT_MIN:
+                nt_presel = presel & (pt >= self.recomb_ntuple_pt_min)
             if do_match:
-                _accumulate_ntuple(1, presel & is_matched)
+                _accumulate_ntuple(1, nt_presel & is_matched)
             elif not is_signal:
-                _accumulate_ntuple(0, presel)
+                _accumulate_ntuple(0, nt_presel)
 
         return output
 
