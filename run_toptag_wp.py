@@ -300,7 +300,7 @@ def close_dask(client, cluster):
         cluster.close()
 
 
-def save_recomb_ntuples(output, fileset, lumi_pb, outdir):
+def save_recomb_ntuples(output, fileset, lumi_pb, outdir, suffix=''):
     """Write the skinny per-jet fit ntuples (one npz per dataset).
 
     The processor stores RAW genWeight; here each dataset's weight is normalized
@@ -328,7 +328,7 @@ def save_recomb_ntuples(output, fileset, lumi_pb, outdir):
         out = {h: arrs[h] for h in gr.RAW_HEADS}
         out.update(pt=arrs['pt'], msd=arrs['msd'], mtt=arrs['mtt'],
                    weight=weight, parity=arrs['parity'], label=arrs['label'])
-        path = os.path.join(outdir, f"ntuple_{ds}.npz")
+        path = os.path.join(outdir, f"ntuple_{ds}{suffix}.npz")
         np.savez_compressed(path, **out)
         saved.append((ds, n, wlabel))
     return saved
@@ -387,6 +387,10 @@ def main():
     ap.add_argument('--subsample', action='append', default=[],
                     help='only run datasets whose name contains this string (repeatable); '
                          'e.g. --subsample PT800to1000 to run one QCD pT-bin per job')
+    ap.add_argument('--file-slice', default=None,
+                    help='process only a strided slice of each dataset\'s files, "K/N" '
+                         '(0-indexed). Split one big sample into N bounded-memory jobs; '
+                         'each writes a distinct ntuple_<ds>__pKofN.npz the fit concatenates.')
     ap.add_argument('--ntuple-outdir', default=None,
                     help='dir for --recomb-ntuple npz (default outputs/glopart_recomb/ntuples_<iov>)')
     args = ap.parse_args()
@@ -430,6 +434,16 @@ def main():
     if args.subsample:
         fileset = {ds: spec for ds, spec in fileset.items()
                    if any(s in ds for s in args.subsample)}
+
+    slice_suffix = ''
+    if args.file_slice:
+        k, n = (int(x) for x in args.file_slice.split('/'))
+        if not (0 <= k < n):
+            sys.exit(f"--file-slice K/N needs 0<=K<N, got {args.file_slice}")
+        for spec in fileset.values():
+            spec['files'] = spec['files'][k::n]
+        fileset = {ds: spec for ds, spec in fileset.items() if spec['files']}
+        slice_suffix = f'__p{k}of{n}'
 
     if not fileset:
         sys.exit('No MC files found for the selected input mode')
@@ -497,7 +511,8 @@ def main():
 
     if args.recomb_ntuple:
         ntuple_outdir = args.ntuple_outdir or f'outputs/glopart_recomb/ntuples_{args.iov}'
-        saved = save_recomb_ntuples(output, fileset, LUMI_PB.get(args.iov), ntuple_outdir)
+        saved = save_recomb_ntuples(output, fileset, LUMI_PB.get(args.iov),
+                                    ntuple_outdir, suffix=slice_suffix)
         # drop the bulky column accumulators from the histogram .coffea file
         output.pop('ntuple', None)
         print(f"\nsaved {len(saved)} fit ntuple(s) to {ntuple_outdir}/")
