@@ -86,7 +86,7 @@ DEFAULTS = dict(
     mass="",
     blind=False,
     bkgest=None,
-    toptagger="deepak8",
+    toptagger="topvsqcd",
     redirector="rootfiles/",
     ttagWP="medium",
     btagger="deepcsv",
@@ -143,7 +143,7 @@ _redirector_vals = [v for _, v in _redirector_opts]
 _env_opts = ["casa", "lpc", "winterfell", "local"]
 _iov_opts = ["2022", "2023", "2024"]
 _bkgest_opts = [("None", None), "2dalphabet", "mistag"]
-_toptagger_opts = ["deepak8", "cmsv2"]
+_toptagger_opts = ["topvsqcd", "cmsv2"]
 _ttagWP_opts = ["loose", "medium", "tight"]
 _btagger_opts = ["deepcsv", "csvv2"]
 _ht_opts = ["1400", "950"]
@@ -813,7 +813,7 @@ def run_analysis(args):
 
     samples = args.dataset
     IOV = args.iov
-    useDeepAK8 = args.toptagger == "deepak8"
+    useDeepAK8 = args.toptagger == "topvsqcd"
     useDeepCSV = args.btagger == "deepcsv"
     htCut = 1400.0 if args.ht == "1400" else 950.0
     dask_memory = f"{int(args.daskMemory)}GB"

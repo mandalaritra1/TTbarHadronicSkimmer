@@ -51,8 +51,11 @@ def _parse_manifest_entry(sample, subsection, iov, entry):
     return list(files), _build_sample_metadata(sample, subsection, iov, metadata)
 
 
-def _collect_manifest_sections(sample, iov, manifest, subsections):
-    iov_entry = manifest[iov]
+def _collect_manifest_sections(sample, iov, manifest, subsections, source_iov=None):
+    # source_iov: read file lists from this manifest key while still labelling the
+    # sample with `iov` in its metadata (used to stand in 2024 signal MC for the
+    # 2022/2023 sub-eras, which have no v15 signal production).
+    iov_entry = manifest[source_iov or iov]
 
     if isinstance(iov_entry, dict) and 'files' not in iov_entry:
         requested_sections = subsections if subsections else list(iov_entry.keys())
@@ -85,7 +88,11 @@ if __name__ == "__main__":
                         choices=['data', 'QCD', 'TTbar', 'ZPrime1', 'ZPrime10',
                                  'ZPrime30', 'ZPrimeDM', 'RSGluon', 'ZPrimeLocal'],
                         default=default_datastets, action='append')
-    parser.add_argument('--iov', choices=['2022', '2023', '2024'], default='2024')
+    parser.add_argument('--iov',
+                        choices=['2022', '2023', '2024',
+                                 '2022preEE', '2022postEE',
+                                 '2023preBPix', '2023postBPix'],
+                        default='2024')
     parser.add_argument('--signals', action='store_true', help='run only signal samples')
 
     # subsections
@@ -101,8 +108,9 @@ if __name__ == "__main__":
     # analysis options
     parser.add_argument('--blind',    action='store_true', help='process 1/10th of the data')
     parser.add_argument('--bkgest',   choices=['2dalphabet', 'mistag'], default=None)
-    parser.add_argument('--toptagger',choices=['deepak8', 'cmsv2', 'recomb'], default='deepak8',
-                        help="'recomb' = learned per-pT GloParTv3 recombination top-tagger")
+    parser.add_argument('--toptagger',choices=['topvsqcd', 'cmsv2', 'recomb'], default='topvsqcd',
+                        help="'topvsqcd' = GloParTv3 TopvsQCD baseline (default); "
+                             "'recomb' = learned per-pT GloParTv3 recombination; 'cmsv2' = legacy")
     parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
                         help='deploy JSON for --toptagger recomb (build_recomb_deploy.py)')
     parser.add_argument('--ttag-ptbinned', action='store_true',
@@ -137,7 +145,7 @@ if __name__ == "__main__":
     ##### parameters #####
     samples           = args.dataset
     IOV               = args.iov
-    useDeepAK8        = args.toptagger in ('deepak8', 'recomb')
+    useDeepAK8        = args.toptagger in ('topvsqcd', 'recomb')
     useDeepCSV        = args.btagger == 'deepcsv'
     htCut             = 1400.0 if args.ht == '1400' else 950.0
     dask_memory       = '5GB'
@@ -222,11 +230,23 @@ if __name__ == "__main__":
         with open(inputfile) as json_file:
             subsections = args.era + args.mass + args.pt + args.subsample
             manifest = json.load(json_file)
+
+            # Signal MC (Z'/RSGluon) has no NanoAODv15 production for the 2022/2023
+            # sub-eras -> fall back to the 2024 signal files as a placeholder, while
+            # still labelling them with the requested IOV (so lumi normalization uses
+            # the right per-year value). Background/data are never substituted.
+            source_iov = None
+            is_signal = sample.startswith('ZPrime') or sample == 'RSGluon'
+            if is_signal and IOV not in manifest and '2024' in manifest:
+                source_iov = '2024'
+                print(f"[placeholder] {sample} {IOV}: no v15 signal -> using 2024 signal MC as stand-in")
+
             sections = _collect_manifest_sections(
                 sample=sample,
                 iov=IOV,
                 manifest=manifest,
                 subsections=subsections,
+                source_iov=source_iov,
             )
 
             for subsection, files, sample_metadata in sections:
@@ -259,12 +279,17 @@ if __name__ == "__main__":
 
                 print(f'running {IOV} {sample} {subsection}')
 
+                # always tag the output with the top-tagging method used
+                #   topvsqcd = GloParTv3 TopvsQCD baseline | recomb = per-pT recombination
+                #   cmsv2 = ParticleNet/CMS-v2 | topvsqcd+ptbinned = pT-binned baseline
                 if args.toptagger == 'cmsv2':
                     savefilename = savefilename.replace('.coffea', '_cmsv2.coffea')
                 if args.toptagger == 'recomb':
                     savefilename = savefilename.replace('.coffea', '_recomb.coffea')
-                if args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                if args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
                     savefilename = savefilename.replace('.coffea', '_ptbin.coffea')
+                if args.toptagger == 'topvsqcd' and not args.ttag_ptbinned:
+                    savefilename = savefilename.replace('.coffea', '_topvsqcd.coffea')
                 if args.btagger == 'csvv2':
                     savefilename = savefilename.replace('.coffea', '_csvv2.coffea')
                 if args.ht == '950':
@@ -281,7 +306,7 @@ if __name__ == "__main__":
                 # per-pT WP deploy: recomb always; baseline only with --ttag-ptbinned
                 if args.toptagger == 'recomb':
                     ttag_weights = args.recomb_weights
-                elif args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                elif args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
                     ttag_weights = args.baseline_weights
                 else:
                     ttag_weights = None

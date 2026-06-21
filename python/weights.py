@@ -77,6 +77,11 @@ class Run3WeightManager:
             }
         }
 
+        # 2022/2023 v15 sub-eras: reuse the 2024 placeholder top-tag SF (same
+        # GloParTv3 tagger) until per-year SFs are derived.
+        for _subera in ("2022preEE", "2022postEE", "2023preBPix", "2023postBPix"):
+            ttag_scale_factors[_subera] = ttag_scale_factors["2024"]
+
         nomsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["nominal"])
         upsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["up"])
         downsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["down"])

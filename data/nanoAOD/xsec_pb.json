@@ -45,5 +45,193 @@
         "QCD_PT-2500to3000": {
             "xsec_pb": 0.004454
         }
+    },
+    "2022preEE": {
+        "TTbar_inclusive": {
+            "xsec_pb": 350.6
+        },
+        "QCD_PT-15to30": {
+            "xsec_pb": 1301000000.0
+        },
+        "QCD_PT-30to50": {
+            "xsec_pb": 112300000.0
+        },
+        "QCD_PT-50to80": {
+            "xsec_pb": 16730000.0
+        },
+        "QCD_PT-80to120": {
+            "xsec_pb": 2506000.0
+        },
+        "QCD_PT-120to170": {
+            "xsec_pb": 439800.0
+        },
+        "QCD_PT-170to300": {
+            "xsec_pb": 113300.0
+        },
+        "QCD_PT-300to470": {
+            "xsec_pb": 7581.0
+        },
+        "QCD_PT-470to600": {
+            "xsec_pb": 623.3
+        },
+        "QCD_PT-600to800": {
+            "xsec_pb": 178.7
+        },
+        "QCD_PT-800to1000": {
+            "xsec_pb": 30.62
+        },
+        "QCD_PT-1000to1400": {
+            "xsec_pb": 8.92
+        },
+        "QCD_PT-1400to1800": {
+            "xsec_pb": 0.8103
+        },
+        "QCD_PT-1800to2400": {
+            "xsec_pb": 0.1148
+        },
+        "QCD_PT-2400to3200": {
+            "xsec_pb": 0.007542
+        }
+    },
+    "2022postEE": {
+        "TTbar_inclusive": {
+            "xsec_pb": 350.6
+        },
+        "QCD_PT-15to30": {
+            "xsec_pb": 1301000000.0
+        },
+        "QCD_PT-30to50": {
+            "xsec_pb": 112300000.0
+        },
+        "QCD_PT-50to80": {
+            "xsec_pb": 16730000.0
+        },
+        "QCD_PT-80to120": {
+            "xsec_pb": 2506000.0
+        },
+        "QCD_PT-120to170": {
+            "xsec_pb": 439800.0
+        },
+        "QCD_PT-170to300": {
+            "xsec_pb": 113300.0
+        },
+        "QCD_PT-300to470": {
+            "xsec_pb": 7581.0
+        },
+        "QCD_PT-470to600": {
+            "xsec_pb": 623.3
+        },
+        "QCD_PT-600to800": {
+            "xsec_pb": 178.7
+        },
+        "QCD_PT-800to1000": {
+            "xsec_pb": 30.62
+        },
+        "QCD_PT-1000to1400": {
+            "xsec_pb": 8.92
+        },
+        "QCD_PT-1400to1800": {
+            "xsec_pb": 0.8103
+        },
+        "QCD_PT-1800to2400": {
+            "xsec_pb": 0.1148
+        },
+        "QCD_PT-2400to3200": {
+            "xsec_pb": 0.007542
+        }
+    },
+    "2023preBPix": {
+        "TTbar_inclusive": {
+            "xsec_pb": 350.6
+        },
+        "QCD_PT-15to30": {
+            "xsec_pb": 1301000000.0
+        },
+        "QCD_PT-30to50": {
+            "xsec_pb": 112300000.0
+        },
+        "QCD_PT-50to80": {
+            "xsec_pb": 16730000.0
+        },
+        "QCD_PT-80to120": {
+            "xsec_pb": 2506000.0
+        },
+        "QCD_PT-120to170": {
+            "xsec_pb": 439800.0
+        },
+        "QCD_PT-170to300": {
+            "xsec_pb": 113300.0
+        },
+        "QCD_PT-300to470": {
+            "xsec_pb": 7581.0
+        },
+        "QCD_PT-470to600": {
+            "xsec_pb": 623.3
+        },
+        "QCD_PT-600to800": {
+            "xsec_pb": 178.7
+        },
+        "QCD_PT-800to1000": {
+            "xsec_pb": 30.62
+        },
+        "QCD_PT-1000to1400": {
+            "xsec_pb": 8.92
+        },
+        "QCD_PT-1400to1800": {
+            "xsec_pb": 0.8103
+        },
+        "QCD_PT-1800to2400": {
+            "xsec_pb": 0.1148
+        },
+        "QCD_PT-2400to3200": {
+            "xsec_pb": 0.007542
+        }
+    },
+    "2023postBPix": {
+        "TTbar_inclusive": {
+            "xsec_pb": 350.6
+        },
+        "QCD_PT-15to30": {
+            "xsec_pb": 1301000000.0
+        },
+        "QCD_PT-30to50": {
+            "xsec_pb": 112300000.0
+        },
+        "QCD_PT-50to80": {
+            "xsec_pb": 16730000.0
+        },
+        "QCD_PT-80to120": {
+            "xsec_pb": 2506000.0
+        },
+        "QCD_PT-120to170": {
+            "xsec_pb": 439800.0
+        },
+        "QCD_PT-170to300": {
+            "xsec_pb": 113300.0
+        },
+        "QCD_PT-300to470": {
+            "xsec_pb": 7581.0
+        },
+        "QCD_PT-470to600": {
+            "xsec_pb": 623.3
+        },
+        "QCD_PT-600to800": {
+            "xsec_pb": 178.7
+        },
+        "QCD_PT-800to1000": {
+            "xsec_pb": 30.62
+        },
+        "QCD_PT-1000to1400": {
+            "xsec_pb": 8.92
+        },
+        "QCD_PT-1400to1800": {
+            "xsec_pb": 0.8103
+        },
+        "QCD_PT-1800to2400": {
+            "xsec_pb": 0.1148
+        },
+        "QCD_PT-2400to3200": {
+            "xsec_pb": 0.007542
+        }
     }
 }

@@ -15,6 +15,11 @@ lumi = {
     "2018": 59740.,
     "2023": 27_000.,   # pb^-1  ~27 fb^-1 certified (preliminary, ±1.3%)
     "2024": 115_000.,  # pb^-1  ~115 fb^-1 certified (preliminary)
+    # Run-3 sub-era keys (NanoAODv15); preliminary, refine with brilcalc
+    "2022preEE":    7_980.,
+    "2022postEE":   26_670.,
+    "2023preBPix":  17_794.,
+    "2023postBPix": 9_451.,
     }
 
 t_BR = 0.6741

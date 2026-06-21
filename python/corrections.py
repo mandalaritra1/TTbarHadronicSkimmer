@@ -7,12 +7,133 @@ import correctionlib
 from coffea.jetmet_tools import JetResolutionScaleFactor
 from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
 from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
+from coffea.jetmet_tools import (
+    CorrectionLibJECStack, CorrectionLibJEC, CorrectionLibJUNC,
+    CorrectionLibJER, CorrectionLibJERSF,
+)
 from coffea.lookup_tools import extractor
 import copy
+import gzip
+import json as _json
 from pathlib import Path
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _base_year(iov):
+    """Strip Run-3 sub-era suffixes: 2022preEE->2022, 2023postBPix->2023."""
+    for suffix in ('preEE', 'postEE', 'preBPix', 'postBPix'):
+        if iov.endswith(suffix):
+            return iov[:-len(suffix)]
+    return iov
+
+
+# Run-3 v15 sub-eras: JEC/JER come from the JSON-POG correctionlib files (the
+# modern recommended path), not legacy txt. Map each IOV -> jsonpog JME subdir.
+_JSONPOG_JME_DIR = {
+    "2022preEE":    "2022_Summer22",
+    "2022postEE":   "2022_Summer22EE",
+    "2023preBPix":  "2023_Summer23",
+    "2023postBPix": "2023_Summer23BPix",
+    "2024":         "2024_Summer24",
+}
+
+
+class _SplitJERSF:
+    """JERSF adapter for the JRV2 'split' layout, where the nominal ScaleFactor
+    and a symmetric SFUncertainty live in separate corrections (neither has a
+    ``systematic`` input). Mirrors coffea's ``CorrectionLibJERSF`` duck-typed
+    interface, returning an ``(N, 3)`` array ordered ``[nom, up, down]`` with
+    up = SF + unc, down = SF - unc."""
+
+    def __init__(self, sf_correction, unc_correction):
+        self._sf = sf_correction
+        self._unc = unc_correction
+        self._signature = [inp.name for inp in sf_correction.inputs]
+
+    @property
+    def signature(self):
+        return self._signature
+
+    def getScaleFactor(self, **kwargs):
+        args = tuple(kwargs[name] for name in self._signature)
+        nom = self._sf.evaluate(*args)
+        unc = self._unc.evaluate(*args)
+        return ak.concatenate(
+            [nom[:, np.newaxis], (nom + unc)[:, np.newaxis], (nom - unc)[:, np.newaxis]],
+            axis=1,
+        )
+
+
+def _build_jersf(cset, jer_tag, jet_type):
+    """Return a JERSF adapter, handling both JER layouts: JRV1 (one ScaleFactor
+    correction with a ``systematic`` input) and JRV2 (split ScaleFactor +
+    SFUncertainty). Version-agnostic so a json.gz swap needs no code change."""
+    sf = cset[f"{jer_tag}_MC_ScaleFactor_{jet_type}"]
+    if any(inp.name == "systematic" for inp in sf.inputs):
+        return CorrectionLibJERSF(sf)
+    return _SplitJERSF(sf, cset[f"{jer_tag}_MC_SFUncertainty_{jet_type}"])
+
+
+def _discover_jme_tags(json_path, jet_type):
+    """Find the MC JEC and JER tags inside a JSON-POG JME file by pattern, so the
+    code is version-agnostic (drop in a newer V4/JRV2 json.gz, no code change).
+    Returns (jec_tag, jer_tag) with the trailing ``_MC...`` stripped, as expected
+    by ``CorrectionLibJECStack.from_file`` (which re-appends ``_{data_type}_...``)."""
+    with gzip.open(json_path, "rt") as f:
+        doc = _json.load(f)
+    names = [c["name"] for c in doc.get("corrections", [])]
+    cnames = [c["name"] for c in doc.get("compound_corrections", [])]
+    jec_suffix = f"_MC_L1L2L3Res_{jet_type}"
+    jer_suffix = f"_MC_ScaleFactor_{jet_type}"
+    jec = next((n[:-len(jec_suffix)] for n in cnames if n.endswith(jec_suffix)), None)
+    jer = next((n[:-len(jer_suffix)] for n in names if n.endswith(jer_suffix)), None)
+    if jec is None or jer is None:
+        raise ValueError(f"Could not find MC JEC/JER tags in {json_path} for {jet_type} "
+                         f"(jec={jec}, jer={jer})")
+    return jec, jer
+
+
+def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8"):
+    """Modern correctionlib (JSON-POG) jet correction + JES/JER variations for the
+    Run-3 v15 sub-eras. Returns a ``CorrectedJetsFactory`` output with the same
+    ``.JES_jes.{up,down}`` / ``.JER.{up,down}`` contract as the legacy txt path."""
+    jet_type = f"{R}PFPuppi"
+    subdir = _JSONPOG_JME_DIR[IOV]
+    fname = "fatJet_jerc.json.gz" if R == "AK8" else "jet_jerc.json.gz"
+    json_path = f"{_PROJECT_ROOT}/data/corrections/jsonpog/JME/{subdir}/{fname}"
+
+    jec_tag, jer_tag = _discover_jme_tags(json_path, jet_type)
+    cset = correctionlib.CorrectionSet.from_file(json_path)
+    # Build adapters by hand (not from_file) so the JES uncertainty field is named
+    # "JES_jes" -- matching the field jets.py reads (corrected_jets.JES_jes.up/down).
+    jec_stack = CorrectionLibJECStack(
+        jec=CorrectionLibJEC(cset.compound[f"{jec_tag}_MC_L1L2L3Res_{jet_type}"]),
+        junc=CorrectionLibJUNC([("jes", cset[f"{jec_tag}_MC_Total_{jet_type}"])]),
+        jer=CorrectionLibJER(cset[f"{jer_tag}_MC_PtResolution_{jet_type}"]),
+        jersf=_build_jersf(cset, jer_tag, jet_type),
+    )
+
+    FatJets["pt_raw"] = (1 - FatJets["rawFactor"]) * FatJets["pt"]
+    FatJets["mass_raw"] = (1 - FatJets["rawFactor"]) * FatJets["mass"]
+    FatJets["jec_rho"] = ak.broadcast_arrays(events.Rho.fixedGridRhoFastjetAll, FatJets.pt)[0]
+    if "pt_gen" not in FatJets.fields:
+        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.matched_gen.pt, 0), np.float32)
+
+    name_map = jec_stack.blank_name_map
+    name_map["JetPt"] = "pt"
+    name_map["JetMass"] = "mass"
+    name_map["JetEta"] = "eta"
+    name_map["JetA"] = "area"
+    name_map["JetPhi"] = "phi"
+    name_map["ptGenJet"] = "pt_gen"
+    name_map["ptRaw"] = "pt_raw"
+    name_map["massRaw"] = "mass_raw"
+    name_map["Rho"] = "jec_rho"
+
+    factory = CorrectedJetsFactory(name_map, jec_stack)
+    return factory.build(FatJets)
 
 def GetFlavorEfficiency(Subjet, Flavor, bdisc): # Return "Flavor" efficiency numerator and denominator
     '''
@@ -61,7 +182,13 @@ def GetFlavorEfficiency(Subjet, Flavor, bdisc): # Return "Flavor" efficiency num
 def GetJECUncertainties(FatJets, events, IOV, R='AK8', isData=False):
 
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
-    
+
+    # Run-3 MC (2022/2023 sub-eras + 2024) uses the modern correctionlib (JSON-POG)
+    # path; the legacy txt branches below are kept for Run-2 (and for data, which
+    # does not re-apply JEC in this analysis).
+    if (not isData) and IOV in _JSONPOG_JME_DIR:
+        return _GetJECUncertainties_jsonpog(FatJets, events, IOV, R=R)
+
     #chspuppi = 'Puppi' if 'AK8' in R else 'chs'
     chspuppi = "Puppi" # always puppi in run3
 
@@ -251,16 +378,29 @@ def GetPUSF(events, IOV):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L38
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
     
+    # map each IOV to its vendored puWeights.json.gz subdir + correction name
+    _pu_subdir = {
+        "2022preEE":    "2022_Summer22",
+        "2022postEE":   "2022_Summer22EE",
+        "2023preBPix":  "2023_Summer23",
+        "2023postBPix": "2023_Summer23BPix",
+    }
     if IOV.endswith("UL"):
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
     elif IOV == "2024":
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2023_Summer23BPix/puWeights.json.gz"
+    elif IOV in _pu_subdir:
+        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}/puWeights.json.gz".format(_pu_subdir[IOV])
     hname = {
         "2016APV": "Collisions16_UltraLegacy_goldenJSON",
         "2016"   : "Collisions16_UltraLegacy_goldenJSON",
         "2017"   : "Collisions17_UltraLegacy_goldenJSON",
         "2018"   : "Collisions18_UltraLegacy_goldenJSON",
-        "2024"   : "Collisions2023_369803_370790_eraD_GoldenJson"
+        "2024"   : "Collisions2023_369803_370790_eraD_GoldenJson",
+        "2022preEE":    "Collisions2022_355100_357900_eraBCD_GoldenJson",
+        "2022postEE":   "Collisions2022_359022_362760_eraEFG_GoldenJson",
+        "2023preBPix":  "Collisions2023_366403_369802_eraBC_GoldenJson",
+        "2023postBPix": "Collisions2023_369803_370790_eraD_GoldenJson",
     }
     evaluator = correctionlib.CorrectionSet.from_file(fname)
 
@@ -285,7 +425,8 @@ def getLumiMask(IOV):
              "2025":LumiMask(golden_json_path_2025),
             }
 
-    return masks[IOV]
+    # sub-era keys (2022preEE, 2023postBPix, ...) share the full-year golden JSON
+    return masks[_base_year(IOV)]
 
 
 def getMETFilter(IOV, events):
@@ -319,7 +460,7 @@ def getMETFilter(IOV, events):
                                   "ecalBadCalibFilter"]}
     
     metfilter = np.ones(len(events), dtype='bool')
-    for flag in MET_filters[IOV]:
+    for flag in MET_filters[_base_year(IOV)]:
             metfilter &= np.array(events.Flag[flag])
             
     return metfilter
