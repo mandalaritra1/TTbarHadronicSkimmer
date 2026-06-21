@@ -23,7 +23,7 @@ import signal_grouped as sg  # noqa: E402  (needs python/ on sys.path above)
 OUTDIR = os.path.join(REPO, "plots", "images", "reference")
 os.makedirs(OUTDIR, exist_ok=True)
 
-LUMI_FB = 112.7          # 2024 preliminary
+LUMI_FB = 109.95         # 2024 golden-JSON certified (109.95 fb^-1)
 ANACAT = 2               # 2tcen  (2-tag central signal region)
 
 
