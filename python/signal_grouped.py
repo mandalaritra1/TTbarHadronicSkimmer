@@ -55,3 +55,30 @@ def select_mass(output, mass_label):
 def load_mass(path, mass_label):
     """Load a grouped width-file from ``path`` and return the per-mass view."""
     return select_mass(util.load(path), mass_label)
+
+
+def stack_masses(mapping):
+    """Build a grouped output from ``{mass_label: per_mass_output}``.
+
+    Each histogram gains a leading ``dataset`` axis whose categories are the
+    mass labels; ``normalization``/``sample_metadata`` become dicts keyed by mass.
+    Inverse of :func:`select_mass`. Useful as a migration tool to fold existing
+    per-mass ``.coffea`` files into one grouped width-file.
+    """
+    masses = list(mapping)
+    if not masses:
+        raise ValueError("stack_masses: empty mapping")
+    first = mapping[masses[0]]
+    grouped = {}
+    for key, val in first.items():
+        if isinstance(val, hist.Hist):
+            ds_axis = hist.axis.StrCategory(masses, name="dataset", label="dataset")
+            g = hist.Hist(ds_axis, *val.axes, storage="weight")
+            for i, m in enumerate(masses):
+                g.view(flow=True)[i] = mapping[m][key].view(flow=True)
+            grouped[key] = g
+        elif key in ("normalization", "sample_metadata"):
+            grouped[key] = {m: mapping[m].get(key) for m in masses}
+        else:
+            grouped[key] = val  # passthrough (cutflow, analysisCategories, ...)
+    return grouped
