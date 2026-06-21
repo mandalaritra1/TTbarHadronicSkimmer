@@ -1,0 +1,57 @@
+<svg width="100%" viewBox="0 0 680 575" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>2024 data — hadronic cutflow</title><desc>Cutflow funnel.</desc>
+<rect x="0" y="0" width="680" height="575" fill="#ffffff"/>
+<text x="40" y="42" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="500" fill="#2C2C2A">2024 data — hadronic cutflow</text>
+<polygon points="35.0,96.0 395.0,96.0 356.4,124 73.6,124" fill="#85B7EB" opacity="0.5"/>
+<polygon points="73.6,148.0 356.4,148.0 337.4,176 92.6,176" fill="#85B7EB" opacity="0.5"/>
+<polygon points="92.6,200.0 337.4,200.0 337.3,228 92.7,228" fill="#85B7EB" opacity="0.5"/>
+<polygon points="92.7,252.0 337.3,252.0 337.3,280 92.7,280" fill="#85B7EB" opacity="0.5"/>
+<polygon points="92.7,304.0 337.3,304.0 336.4,332 93.6,332" fill="#85B7EB" opacity="0.5"/>
+<polygon points="93.6,356.0 336.4,356.0 335.8,384 94.2,384" fill="#85B7EB" opacity="0.5"/>
+<path d="M94.2,408.0 C94.2,439.0 46,439.0 46,470 L184,470 C184,439.0 154.6,439.0 154.6,408.0 Z" fill="#5DCAA5" opacity="0.4"/>
+<path d="M154.6,408.0 C154.6,439.0 196,439.0 196,470 L334,470 C334,439.0 215.0,439.0 215.0,408.0 Z" fill="#5DCAA5" opacity="0.4"/>
+<path d="M215.0,408.0 C215.0,439.0 346,439.0 346,470 L484,470 C484,439.0 275.4,439.0 275.4,408.0 Z" fill="#F0997B" opacity="0.4"/>
+<path d="M275.4,408.0 C275.4,439.0 496,439.0 496,470 L634,470 C634,439.0 335.8,439.0 335.8,408.0 Z" fill="#F0997B" opacity="0.4"/>
+<rect x="35.0" y="72" width="360.0" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="82" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">Total events</text>
+<text x="412" y="98" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">2.42B input · 2,417,304,572</text>
+<rect x="73.6" y="124" width="282.8" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="134" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">HLT PFHT1050</text>
+<text x="412" y="150" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">111.30M · 4.6% kept</text>
+<rect x="92.6" y="176" width="244.8" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="186" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">H_T &gt; 1400 GeV</text>
+<text x="412" y="202" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">24.40M · 21.9% kept</text>
+<rect x="92.7" y="228" width="244.6" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="238" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">MET filters</text>
+<text x="412" y="254" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">24.19M · 99.1% kept</text>
+<rect x="92.7" y="280" width="244.5" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="290" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">≥ 1 AK8 jet</text>
+<text x="412" y="306" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">24.10M · 99.7% kept</text>
+<rect x="93.6" y="332" width="242.8" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="342" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">≥ 2 AK8 jets</text>
+<text x="412" y="358" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">22.49M · 93.3% kept</text>
+<rect x="94.2" y="384" width="241.7" height="24.0" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+<text x="412" y="394" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">tt̄ candidate</text>
+<text x="412" y="410" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">21.55M · 95.8% kept</text>
+<rect x="46" y="470" width="138" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<text x="115.0" y="490" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#085041">Pass · central</text>
+<text x="115.0" y="508" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#085041">5,085</text>
+<text x="115.0" y="521" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#085041">0.024% of cand.</text>
+<rect x="196" y="470" width="138" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<text x="265.0" y="490" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#085041">Pass · forward</text>
+<text x="265.0" y="508" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#085041">3,512</text>
+<text x="265.0" y="521" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#085041">0.016% of cand.</text>
+<rect x="346" y="470" width="138" height="56" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<text x="415.0" y="490" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#712B13">Fail · central</text>
+<text x="415.0" y="508" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#712B13">4,822</text>
+<text x="415.0" y="521" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#712B13">0.022% of cand.</text>
+<rect x="496" y="470" width="138" height="56" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<text x="565.0" y="490" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#712B13">Fail · forward</text>
+<text x="565.0" y="508" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#712B13">4,010</text>
+<text x="565.0" y="521" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#712B13">0.019% of cand.</text>
+<rect x="46" y="548" width="12" height="12" rx="3" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<text x="63" y="558" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">Pass region (2 top-tags)</text>
+<rect x="240" y="548" width="12" height="12" rx="3" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<text x="257" y="558" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">Fail region (antitag)</text>
+<text x="430" y="558" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5F5E5A">Bar width ∝ log₁₀(events)</text>
+</svg>

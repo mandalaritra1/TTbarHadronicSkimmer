@@ -31,6 +31,12 @@ Coffea-casa smoke test over 1-2 files per dataset::
     python run_toptag_wp.py --env casa --test \
         --out outputs/toptag_wp_2024_casa_smoke.coffea
 
+Full coffea-casa run writing the skinny per-jet recombination-fit ntuples
+(one npz per dataset; feeds run_glopart_recomb.py --ntuple-dir)::
+
+    python run_toptag_wp.py --env casa --recomb-ntuple \
+        --out outputs/toptag_wp_2024_recomb.coffea
+
 The local layout expected under ``--rootdir``
 (default ``~/Projects/rootfiles/ttbar``) is::
 
@@ -52,10 +58,13 @@ import re
 
 sys.path.append(os.path.join(os.getcwd(), 'python'))
 
+import numpy as np
+
 from coffea import processor, util
 from coffea.nanoevents import NanoAODSchema
 
 from toptag_wp_processor import TopTagWPProcessor
+import glopart_recomb as gr
 
 # Per-sample cross sections [pb] for local directory scans. Manifest-backed
 # runs use the xsec_pb already stored in data/nanoAOD/*.json.
@@ -68,7 +77,7 @@ XSEC_PB = {
 # Integrated luminosity [pb^-1] per IOV (preliminary; matches ttbarprocessor).
 LUMI_PB = {
     '2023': 27000.0,
-    '2024': 112700.0,
+    '2024': 109950.0,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
 }
 
 QCD_MIN_SUBSAMPLE_PT = 300.0
@@ -169,13 +178,18 @@ def _load_manifest(path, iov, sample, redirector=None, maxfiles=None, is_mc=True
 
 
 def build_manifest_fileset(qcd_json, ttbar_json, iov, redirector=None, maxfiles=None,
-                           samples=None, data_json='data/nanoAOD/data.json'):
+                           samples=None, data_json='data/nanoAOD/data.json',
+                           signal_json='data/nanoAOD/ZPrime10.json'):
     samples = set(samples or ['QCD', 'TTbar'])
     fileset = {}
     if 'QCD' in samples:
         fileset.update(_load_manifest(qcd_json, iov, 'QCD', redirector, maxfiles, is_mc=True))
     if 'TTbar' in samples:
         fileset.update(_load_manifest(ttbar_json, iov, 'TTbar', redirector, maxfiles, is_mc=True))
+    if 'ZPrime' in samples:
+        # Z' -> tt resonance MC = boosted-top signal (sections are resonance masses);
+        # matched-top "signal" for the recomb fit. Sparse, so run at full prescale.
+        fileset.update(_load_manifest(signal_json, iov, 'ZPrime', redirector, maxfiles, is_mc=True))
     if 'Data' in samples:
         fileset.update(_load_manifest(data_json, iov, 'Data', redirector, maxfiles, is_mc=False))
     return fileset
@@ -291,6 +305,40 @@ def close_dask(client, cluster):
         cluster.close()
 
 
+def save_recomb_ntuples(output, fileset, lumi_pb, outdir, suffix=''):
+    """Write the skinny per-jet fit ntuples (one npz per dataset).
+
+    The processor stores RAW genWeight; here each dataset's weight is normalized
+    to ``xsec_pb * lumi_pb / sumw`` so QCD pT-binned samples combine into a
+    physical mixture (falls back to raw genWeight if xsec/sumw is unavailable,
+    e.g. in --test). Columns match data/skim/*.npz plus ``mtt`` and ``label``.
+    """
+    os.makedirs(outdir, exist_ok=True)
+    saved = []
+    for ds, cols in output.get('ntuple', {}).items():
+        arrs = {f: acc.value for f, acc in cols.items()}
+        n = len(arrs['label'])
+        meta = fileset.get(ds, {}).get('metadata', {})
+        xsec = meta.get('xsec_pb')
+        if xsec is None:
+            xsec = XSEC_PB.get(ds)
+        sumw = output.get('sumw', {}).get(ds)
+        if xsec and sumw and lumi_pb:
+            norm = float(xsec) * float(lumi_pb) / float(sumw)
+            wlabel = 'xsec*lumi/sumw'
+        else:
+            norm = 1.0
+            wlabel = 'raw_genweight'
+        weight = (arrs.pop('genweight') * np.float32(norm)).astype(np.float32)
+        out = {h: arrs[h] for h in gr.RAW_HEADS}
+        out.update(pt=arrs['pt'], msd=arrs['msd'], mtt=arrs['mtt'],
+                   weight=weight, parity=arrs['parity'], label=arrs['label'])
+        path = os.path.join(outdir, f"ntuple_{ds}{suffix}.npz")
+        np.savez_compressed(path, **out)
+        saved.append((ds, n, wlabel))
+    return saved
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -303,8 +351,11 @@ def main():
     ap.add_argument('--qcd-json', default='data/nanoAOD/QCD.json')
     ap.add_argument('--ttbar-json', default='data/nanoAOD/TTbar.json')
     ap.add_argument('--data-json', default='data/nanoAOD/data.json')
-    ap.add_argument('--sample', choices=['QCD', 'TTbar', 'Data'], action='append', default=[],
-                    help='sample group(s) to run; default is QCD and TTbar')
+    ap.add_argument('--sample', choices=['QCD', 'TTbar', 'ZPrime', 'Data'], action='append', default=[],
+                    help='sample group(s) to run; default is QCD and TTbar. ZPrime = '
+                         'boosted-top resonance signal (use --subsample to pick masses)')
+    ap.add_argument('--signal-json', default='data/nanoAOD/ZPrime10.json',
+                    help='manifest for --sample ZPrime (sections are resonance masses)')
     ap.add_argument('-r', '--redirector', default=None,
                     help='redirector for manifest /store paths; env default if omitted')
     ap.add_argument('--out', default=None, help='output .coffea path')
@@ -322,6 +373,34 @@ def main():
                     help='cap input files per dataset before running')
     ap.add_argument('--maxchunks', type=int, default=None,
                     help='cap chunks per dataset (use 1-2 for a smoke test)')
+    ap.add_argument('--recomb', action='store_true',
+                    help='recomb study mode: accumulate per-pT moments + score_vs_mtt '
+                         '(event-parity split). For the ntuple-free LDA path.')
+    ap.add_argument('--recomb-ntuple', action='store_true',
+                    help='write the skinny per-jet fit ntuple (7 heads + pt/msd/mtt/'
+                         'weight/parity/label) per dataset — feeds the logistic fit.')
+    ap.add_argument('--recomb-transform', default='logscore',
+                    help='feature transform for the moment (LDA) path')
+    ap.add_argument('--ntuple-pt-min', type=float, default=None,
+                    help='drop ntuple jets below this pT (default = preselection floor). '
+                         'Set ~800 for full-stats runs: cuts the low-pT QCD bulk we never '
+                         'fit and shrinks worker memory ~10x.')
+    ap.add_argument('--ntuple-prescale', type=float, default=1.0,
+                    help='keep this fraction of ntuple jets (weight-compensated); '
+                         'memory dial for very large QCD samples')
+    ap.add_argument('--ntuple-prescale-below', type=float, default=None,
+                    help='apply --ntuple-prescale ONLY to jets below this pT (keep all '
+                         'above). Thins the abundant low-pT QCD bulk while preserving the '
+                         'high-pT tail — keeps the full analysis pT range, memory-safe.')
+    ap.add_argument('--subsample', action='append', default=[],
+                    help='only run datasets whose name contains this string (repeatable); '
+                         'e.g. --subsample PT800to1000 to run one QCD pT-bin per job')
+    ap.add_argument('--file-slice', default=None,
+                    help='process only a strided slice of each dataset\'s files, "K/N" '
+                         '(0-indexed). Split one big sample into N bounded-memory jobs; '
+                         'each writes a distinct ntuple_<ds>__pKofN.npz the fit concatenates.')
+    ap.add_argument('--ntuple-outdir', default=None,
+                    help='dir for --recomb-ntuple npz (default outputs/glopart_recomb/ntuples_<iov>)')
     args = ap.parse_args()
 
     if args.test:
@@ -357,8 +436,23 @@ def main():
             maxfiles=args.maxfiles,
             samples=args.sample or ['QCD', 'TTbar'],
             data_json=args.data_json,
+            signal_json=args.signal_json,
         )
         input_label = f'manifest:{redirector}'
+
+    if args.subsample:
+        fileset = {ds: spec for ds, spec in fileset.items()
+                   if any(s in ds for s in args.subsample)}
+
+    slice_suffix = ''
+    if args.file_slice:
+        k, n = (int(x) for x in args.file_slice.split('/'))
+        if not (0 <= k < n):
+            sys.exit(f"--file-slice K/N needs 0<=K<N, got {args.file_slice}")
+        for spec in fileset.values():
+            spec['files'] = spec['files'][k::n]
+        fileset = {ds: spec for ds, spec in fileset.items() if spec['files']}
+        slice_suffix = f'__p{k}of{n}'
 
     if not fileset:
         sys.exit('No MC files found for the selected input mode')
@@ -368,7 +462,15 @@ def main():
         print(f"  {ds:22s} {len(spec['files']):4d} file(s)  "
               f"xsec={spec['metadata'].get('xsec_pb')}")
 
-    proc = TopTagWPProcessor(iov=args.iov)  # match auto-detected per dataset
+    proc = TopTagWPProcessor(
+        iov=args.iov,                       # gen-top matching auto-detected per dataset
+        recomb_study=args.recomb,
+        recomb_ntuple=args.recomb_ntuple,
+        recomb_transform=args.recomb_transform,
+        recomb_ntuple_pt_min=args.ntuple_pt_min,
+        recomb_ntuple_prescale=args.ntuple_prescale,
+        recomb_ntuple_prescale_below=args.ntuple_prescale_below,
+    )
 
     tic = time.time()
     use_dask = args.dask or args.env in ('lpc', 'casa')
@@ -415,6 +517,16 @@ def main():
         'maxfiles': args.maxfiles,
         'executor': 'dask' if use_dask else 'futures',
     }
+
+    if args.recomb_ntuple:
+        ntuple_outdir = args.ntuple_outdir or f'outputs/glopart_recomb/ntuples_{args.iov}'
+        saved = save_recomb_ntuples(output, fileset, LUMI_PB.get(args.iov),
+                                    ntuple_outdir, suffix=slice_suffix)
+        # drop the bulky column accumulators from the histogram .coffea file
+        output.pop('ntuple', None)
+        print(f"\nsaved {len(saved)} fit ntuple(s) to {ntuple_outdir}/")
+        for ds, n, wlabel in saved:
+            print(f"  ntuple_{ds:20s} {n:>10d} jets  weight={wlabel}")
 
     util.save(output, out)
     print(f"\nsaved {out}")
