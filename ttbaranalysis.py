@@ -366,6 +366,7 @@ if __name__ == "__main__":
                     produce_ntuple=args.ntuple,
                     sample_metadata=rep_meta,
                     dataset_metadata=dataset_metadata,
+                    group_by_dataset=is_signal,
                 )
 
                 if not args.dask:

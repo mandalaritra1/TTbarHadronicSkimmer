@@ -227,6 +227,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         ntuple_columns='full',
         sample_metadata=None,
         dataset_metadata=None,
+        group_by_dataset=False,
     ):
         self.iov = iov
         self.htCut = htCut
@@ -256,6 +257,9 @@ class TTbarResProcessor(processor.ProcessorABC):
         # so a grouped run (many datasets in one fileset) can normalize each one
         # by its own xsec. Falls back to sample_metadata for single-dataset runs.
         self.dataset_metadata = copy.deepcopy(dataset_metadata or {})
+        # when True, add a 'dataset' axis to every hist and normalize per dataset
+        # (used for signals grouped one-file-per-width). Off => unchanged schema.
+        self.group_by_dataset = bool(group_by_dataset)
 
         self.logger = Logger(mode='debug' if debug else 'info')
 
@@ -349,6 +353,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             produce_ntuple=self.store_ntuple_accumulator,
             produce_ntuple_chunks=self.write_ntuple_chunks,
             ntuple_columns=ntuple_columns,
+            group_by_dataset=self.group_by_dataset,
         )
 
     def _tscore(self, jet):
@@ -537,14 +542,14 @@ class TTbarResProcessor(processor.ProcessorABC):
         return chunk_path
 
     def _fill_kinematic_hists(
-        self, output, dataset, systematic, i, icat, weights,
+        self, output, ds_kw, systematic, i, icat, weights,
         jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
         jetpt, jeteta, jetphi, jety,
         jetpt1, jeteta1, jetphi1, jety1,
     ):
         """Fill all kinematic histograms for one analysis category and one systematic."""
         w  = weights[icat]
-        kw = dict(dataset=dataset, systematic=systematic, anacat=i)
+        kw = dict(systematic=systematic, anacat=i, **ds_kw)
         output['jetmsd'].fill(      **kw, jetmsd=jetmsd[icat],         weight=w)
         output['ttbarmass'].fill(   **kw, ttbarmass=ttbarmass[icat],   weight=w)
         output['mtt_vs_mt'].fill(   **kw, jetmass=jetmsd[icat], ttbarmass=ttbarmass[icat], weight=w)
@@ -686,6 +691,8 @@ class TTbarResProcessor(processor.ProcessorABC):
 
         isNominal = (correction == 'nominal')
         isData    = ('data' in dataset) or ('SingleMu' in dataset)
+        # only add the dataset coordinate to fills when running in grouped mode
+        ds_kw = {'dataset': dataset} if self.group_by_dataset else {}
 
         output = self.histo_dict
 
@@ -782,10 +789,11 @@ class TTbarResProcessor(processor.ProcessorABC):
             output['cutflow']['all events'] += len(FatJets)
             output['cutflow']['sumw']        += np.sum(evtweights)
             output['cutflow']['sumw2']       += np.sum(evtweights ** 2)
-            # per-dataset sumw so postprocess can normalize each dataset (e.g. each
-            # signal mass point) on the dataset axis by its own lumi*xsec/sumw.
-            output['sumw_by_dataset'][dataset]  += float(np.sum(evtweights))
-            output['sumw2_by_dataset'][dataset] += float(np.sum(evtweights ** 2))
+            # per-dataset sumw (grouped runs only) so postprocess can normalize each
+            # dataset (e.g. each signal mass point) by its own lumi*xsec/sumw.
+            if self.group_by_dataset:
+                output['sumw_by_dataset'][dataset]  += float(np.sum(evtweights))
+                output['sumw2_by_dataset'][dataset] += float(np.sum(evtweights ** 2))
             self._fill_cutflow_table_step(
                 output, 'analysis_events', count=len(events), weights=evtweights,
             )
@@ -1071,7 +1079,7 @@ class TTbarResProcessor(processor.ProcessorABC):
 
                 dR_min_jet2 = ak.where(dR_jet0_jet2 < dR_jet1_jet2, dR_jet0_jet2, dR_jet1_jet2)
                 output['dR_min_jet2'].fill(
-                    dataset=dataset,
+                    **ds_kw,
                     systematic=correction,
                     dr=dR_min_jet2,
                     ttbarmass=ttbarmass[third_jet_mask],
@@ -1080,7 +1088,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 )
 
             self._fill_kinematic_hists(
-                output, dataset, correction, i, icat,
+                output, ds_kw, correction, i, icat,
                 self.weights[correction].weight(),
                 jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
                 jetpt, jeteta, jetphi, jety,
@@ -1088,7 +1096,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             )
             if correction == "nominal":
                 output['mtt_vs_dy_vs_chi'].fill(
-                    dataset=dataset,
+                    **ds_kw,
                     ttbarmass=ttbarmass[icat],
                     jetdy=np.abs(rapidity[icat]),
                     chi=chi[icat],
@@ -1105,27 +1113,27 @@ class TTbarResProcessor(processor.ProcessorABC):
                     continue
 
                 output["gen_mt"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     gentopmass=gen_top_match_info["gen_top0"].mass[truth_cat_mask],
                     weight=truth_weights,
                 )
                 output["gen_mt"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     gentopmass=gen_top_match_info["gen_top1"].mass[truth_cat_mask],
                     weight=truth_weights,
                 )
                 output["gen_mttbar"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     ttbarmass=gen_top_match_info["top_pair_mass"][truth_cat_mask],
                     weight=truth_weights,
                 )
                 output["jet0_gen_dr"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     dr=gen_top_match_info["jet0_dr"][truth_cat_mask],
                     weight=truth_weights,
                 )
                 output["jet1_gen_dr"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     dr=gen_top_match_info["jet1_dr"][truth_cat_mask],
                     weight=truth_weights,
                 )
@@ -1136,7 +1144,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 genak8_truth_weights  = genak8_event_weights[genak8_truth_cat_mask]
 
                 output["gen_jetmsd_reco_jetmsd"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     abs_eta=jet0_abs_eta[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     jet_nearby=jet0_nearby_label[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     genjetmass=genjetak8_match_info["jet0_genjet"].mass[genak8_truth_cat_mask],
@@ -1144,7 +1152,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                     weight=genak8_truth_weights,
                 )
                 output["gen_jetmsd_reco_jetmsd"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     abs_eta=jet1_abs_eta[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     jet_nearby=jet1_nearby_label[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     genjetmass=genjetak8_match_info["jet1_genjet"].mass[genak8_truth_cat_mask],
@@ -1162,14 +1170,14 @@ class TTbarResProcessor(processor.ProcessorABC):
                 jet1_genak8_truth_cat_mask = genak8_truth_cat_mask & genjetak8_match_info["jet1_is_matched"]
 
                 output["jet_mass_resolution"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     abs_eta=jet0_abs_eta[genjetak8_match_info["event_mask"]][jet0_genak8_truth_cat_mask],
                     jet_nearby=jet0_nearby_label[genjetak8_match_info["event_mask"]][jet0_genak8_truth_cat_mask],
                     massres=jet0_genak8_massres[jet0_genak8_truth_cat_mask],
                     weight=genak8_event_weights[jet0_genak8_truth_cat_mask],
                 )
                 output["jet_mass_resolution"].fill(
-                    dataset=dataset, systematic=correction, anacat=i,
+                    **ds_kw, systematic=correction, anacat=i,
                     abs_eta=jet1_abs_eta[genjetak8_match_info["event_mask"]][jet1_genak8_truth_cat_mask],
                     jet_nearby=jet1_nearby_label[genjetak8_match_info["event_mask"]][jet1_genak8_truth_cat_mask],
                     massres=jet1_genak8_massres[jet1_genak8_truth_cat_mask],
@@ -1232,21 +1240,82 @@ class TTbarResProcessor(processor.ProcessorABC):
 
     def postprocess(self, accumulator):
         logger.debug('memory:%s: finish processor:%s', time.time(), get_memory_usage())
+        if self.group_by_dataset:
+            return self._postprocess_grouped(accumulator)
+        return self._postprocess_single(accumulator)
+
+    def _postprocess_single(self, accumulator):
+        """Original behaviour: one sample per run, one global lumi*xsec/sumw scale."""
+        sample_metadata = copy.deepcopy(self.sample_metadata)
+        cutflow = accumulator.get('cutflow', {})
+        sumw_raw = float(cutflow.get('sumw', 0.0))
+        sumw2_raw = float(cutflow.get('sumw2', 0.0))
+
+        scale_factor = 1.0
+        applied = False
+        reason = None
+
+        xsec_pb = sample_metadata.get('xsec_pb')
+        is_mc = bool(sample_metadata.get('is_mc', False))
+        year = str(sample_metadata.get('year', self.iov))
+        lumi_pb = _LUMI_PB.get(year)
+
+        if not sample_metadata:
+            reason = 'missing_sample_metadata'
+        elif not is_mc:
+            reason = 'data_sample'
+        elif xsec_pb is None:
+            reason = 'missing_xsec_pb'
+        elif lumi_pb is None:
+            reason = 'missing_lumi_pb'
+        elif sumw_raw == 0.0:
+            reason = 'zero_sumw'
+        else:
+            scale_factor = lumi_pb * float(xsec_pb) / sumw_raw
+            applied = True
+
+            for key, value in list(accumulator.items()):
+                if isinstance(value, hist.Hist):
+                    accumulator[key] = value * scale_factor
+
+            if 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
+                scaled_weight = (accumulator['ntuple']['weight'].value * scale_factor).astype(np.float32)
+                accumulator['ntuple']['weight'] = processor.column_accumulator(scaled_weight)
+
+        sample_metadata, normalization = self._build_normalization_metadata(
+            sumw_raw=sumw_raw,
+            sumw2_raw=sumw2_raw,
+            scale_factor=scale_factor,
+            applied=applied,
+            reason=reason,
+        )
+        accumulator['sample_metadata'] = sample_metadata
+        accumulator['normalization'] = normalization
+        accumulator['cutflow_scaled'] = self._build_scaled_cutflow(cutflow, scale_factor)
+        accumulator['cutflow_weighted_scaled'] = self._scale_mapping(
+            accumulator.get('cutflow_weighted', {}), scale_factor,
+        )
+        accumulator['cutflow_weighted2_scaled'] = self._scale_mapping(
+            accumulator.get('cutflow_weighted2', {}), scale_factor, power=2,
+        )
+        accumulator['cutflow_table_steps'] = cutflow_step_metadata(self.anacats)
+        return accumulator
+
+    def _postprocess_grouped(self, accumulator):
+        """Grouped run: each dataset on the dataset axis is normalized by its own
+        lumi*xsec/sumw. Histograms are scaled per slice; normalization and
+        sample_metadata become dicts keyed by dataset; the cutflow tables stay
+        aggregate (summed over datasets, not tracked per dataset)."""
         cutflow = accumulator.get('cutflow', {})
         sumw_by_dataset = dict(accumulator.get('sumw_by_dataset', {}))
         sumw2_by_dataset = dict(accumulator.get('sumw2_by_dataset', {}))
 
-        # datasets actually processed (each is one dataset-axis category, e.g. one
-        # signal mass point); fall back to the single configured sample if none.
         datasets = list(sumw_by_dataset.keys())
         if not datasets:
             fallback = self.sample_metadata.get('sample')
             datasets = [fallback] if fallback else []
 
-        # per-dataset scale factor + normalization record
-        factors = {}
-        norm_by_dataset = {}
-        meta_by_dataset = {}
+        factors, norm_by_dataset, meta_by_dataset = {}, {}, {}
         for ds in datasets:
             meta = self._meta_for_dataset(ds)
             sumw_raw = float(sumw_by_dataset.get(ds, 0.0))
@@ -1261,41 +1330,23 @@ class TTbarResProcessor(processor.ProcessorABC):
             meta_by_dataset[ds] = meta_out
             norm_by_dataset[ds] = norm
 
-        # scale each dataset's slice of every dataset-aware histogram by its own factor
+        # scale each dataset's slice of every dataset-aware hist by its own factor
         for value in accumulator.values():
             if isinstance(value, hist.Hist) and 'dataset' in value.axes.name:
                 for ds, sf in factors.items():
                     self._scale_hist_dataset_slice(value, ds, sf)
 
-        if len(datasets) <= 1:
-            # single-dataset run (TTbar/QCD/data or one mass point): keep the flat,
-            # back-compatible records + scaled cutflow tables + ntuple scaling.
-            ds0 = datasets[0] if datasets else None
-            sf0 = factors.get(ds0, 1.0)
-            if sf0 != 1.0 and 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
+        # ntuple weights can only be scaled for a single-dataset (one-mass) grouped run
+        if len(datasets) == 1 and 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
+            sf0 = factors.get(datasets[0], 1.0)
+            if sf0 != 1.0:
                 scaled_weight = (accumulator['ntuple']['weight'].value * sf0).astype(np.float32)
                 accumulator['ntuple']['weight'] = processor.column_accumulator(scaled_weight)
-            accumulator['sample_metadata'] = meta_by_dataset.get(ds0, copy.deepcopy(self.sample_metadata))
-            accumulator['normalization'] = norm_by_dataset.get(ds0) or self._build_normalization_metadata(
-                sumw_raw=float(cutflow.get('sumw', 0.0)), sumw2_raw=float(cutflow.get('sumw2', 0.0)),
-                scale_factor=1.0, applied=False, reason='missing_sample_metadata',
-            )[1]
-            accumulator['cutflow_scaled'] = self._build_scaled_cutflow(cutflow, sf0)
-            accumulator['cutflow_weighted_scaled'] = self._scale_mapping(
-                accumulator.get('cutflow_weighted', {}), sf0,
-            )
-            accumulator['cutflow_weighted2_scaled'] = self._scale_mapping(
-                accumulator.get('cutflow_weighted2', {}), sf0, power=2,
-            )
-        else:
-            # grouped (multi-dataset) run: histograms are normalized per dataset on
-            # the dataset axis. The cutflow tables are aggregate (summed across
-            # datasets, not tracked per dataset), so they are left raw/unscaled.
-            accumulator['sample_metadata'] = meta_by_dataset
-            accumulator['normalization'] = norm_by_dataset
-            accumulator['cutflow_scaled'] = dict(cutflow)
-            accumulator['cutflow_weighted_scaled'] = dict(accumulator.get('cutflow_weighted', {}))
-            accumulator['cutflow_weighted2_scaled'] = dict(accumulator.get('cutflow_weighted2', {}))
 
+        accumulator['sample_metadata'] = meta_by_dataset
+        accumulator['normalization'] = norm_by_dataset
+        accumulator['cutflow_scaled'] = dict(cutflow)
+        accumulator['cutflow_weighted_scaled'] = dict(accumulator.get('cutflow_weighted', {}))
+        accumulator['cutflow_weighted2_scaled'] = dict(accumulator.get('cutflow_weighted2', {}))
         accumulator['cutflow_table_steps'] = cutflow_step_metadata(self.anacats)
         return accumulator
