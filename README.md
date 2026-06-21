@@ -88,7 +88,7 @@ Common options:
 | `--test` | Run on 1 chunk with 1 worker |
 | `--blind` | Process 1/10th of data |
 | `--ttagWP` | Top-tagger working point: `loose`, `medium` (default), `tight` |
-| `--toptagger` | Top-tagger: `deepak8` (default, baseline GloParTv3 `TopvsQCD`), `recomb` (learned per-pT recombination — see below), `cmsv2` (legacy) |
+| `--toptagger` | Top-tagger: `topvsqcd` (default, baseline GloParTv3 `TopvsQCD`), `recomb` (learned per-pT recombination — see below), `cmsv2` (legacy) |
 | `--recomb-weights` | Deploy JSON for `--toptagger recomb` (default `data/recomb/recomb_deploy_2024.json`) |
 | `--ht` | HT cut: `1400` (default) or `950` |
 | `--dask` | Use Dask executor instead of futures |
@@ -216,7 +216,7 @@ to the same per-pT WP thresholds (for the `TopvsQCD` ratio) from
 
 ```bash
 # matched comparison at flat 0.5% mis-tag per pT bin:
-python ttbaranalysis.py --iov 2024 --dataset TTbar --ttagWP tight --toptagger deepak8 --ttag-ptbinned   # baseline, output _ptbin
+python ttbaranalysis.py --iov 2024 --dataset TTbar --ttagWP tight --toptagger topvsqcd --ttag-ptbinned   # baseline, output _ptbin
 python ttbaranalysis.py --iov 2024 --dataset TTbar --ttagWP tight --toptagger recomb                    # recomb,   output _recomb
 ```
 

@@ -108,8 +108,9 @@ if __name__ == "__main__":
     # analysis options
     parser.add_argument('--blind',    action='store_true', help='process 1/10th of the data')
     parser.add_argument('--bkgest',   choices=['2dalphabet', 'mistag'], default=None)
-    parser.add_argument('--toptagger',choices=['deepak8', 'cmsv2', 'recomb'], default='deepak8',
-                        help="'recomb' = learned per-pT GloParTv3 recombination top-tagger")
+    parser.add_argument('--toptagger',choices=['topvsqcd', 'cmsv2', 'recomb'], default='topvsqcd',
+                        help="'topvsqcd' = GloParTv3 TopvsQCD baseline (default); "
+                             "'recomb' = learned per-pT GloParTv3 recombination; 'cmsv2' = legacy")
     parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
                         help='deploy JSON for --toptagger recomb (build_recomb_deploy.py)')
     parser.add_argument('--ttag-ptbinned', action='store_true',
@@ -144,7 +145,7 @@ if __name__ == "__main__":
     ##### parameters #####
     samples           = args.dataset
     IOV               = args.iov
-    useDeepAK8        = args.toptagger in ('deepak8', 'recomb')
+    useDeepAK8        = args.toptagger in ('topvsqcd', 'recomb')
     useDeepCSV        = args.btagger == 'deepcsv'
     htCut             = 1400.0 if args.ht == '1400' else 950.0
     dask_memory       = '5GB'
@@ -278,12 +279,17 @@ if __name__ == "__main__":
 
                 print(f'running {IOV} {sample} {subsection}')
 
+                # always tag the output with the top-tagging method used
+                #   topvsqcd = GloParTv3 TopvsQCD baseline | recomb = per-pT recombination
+                #   cmsv2 = ParticleNet/CMS-v2 | topvsqcd+ptbinned = pT-binned baseline
                 if args.toptagger == 'cmsv2':
                     savefilename = savefilename.replace('.coffea', '_cmsv2.coffea')
                 if args.toptagger == 'recomb':
                     savefilename = savefilename.replace('.coffea', '_recomb.coffea')
-                if args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                if args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
                     savefilename = savefilename.replace('.coffea', '_ptbin.coffea')
+                if args.toptagger == 'topvsqcd' and not args.ttag_ptbinned:
+                    savefilename = savefilename.replace('.coffea', '_topvsqcd.coffea')
                 if args.btagger == 'csvv2':
                     savefilename = savefilename.replace('.coffea', '_csvv2.coffea')
                 if args.ht == '950':
@@ -300,7 +306,7 @@ if __name__ == "__main__":
                 # per-pT WP deploy: recomb always; baseline only with --ttag-ptbinned
                 if args.toptagger == 'recomb':
                     ttag_weights = args.recomb_weights
-                elif args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                elif args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
                     ttag_weights = args.baseline_weights
                 else:
                     ttag_weights = None
