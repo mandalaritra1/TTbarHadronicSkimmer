@@ -32,6 +32,11 @@ def build_output_histograms(
             else:
                 syst_category_strings.extend([s + "Down", s + "Up"])
 
+    # dataset axis (FIRST on every hist): lets one output file hold multiple
+    # datasets (e.g. all signal mass points of a width) on a growth StrCategory,
+    # each scaled by its own xsec in postprocess. For single-dataset runs it just
+    # carries one category, so behaviour is unchanged after integrating it out.
+    dataset_axis = hist.axis.StrCategory([], growth=True, name="dataset", label="dataset")
     syst_axis = hist.axis.StrCategory(syst_category_strings, name="systematic")
     cats_axis = hist.axis.IntCategory(range(len(anacats)), name="anacat", label="Analysis Category")
     ttbarmass2D_axis = hist.axis.Regular(92, 800, 10000, name="ttbarmass", label=r"$m_{t\bar{t}}$ [GeV]")
@@ -54,9 +59,10 @@ def build_output_histograms(
 
     hist_tree = {
         "mass": {
-            "ttbarmass": hist.Hist(syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
-            "mtt_unwgt": hist.Hist(syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
+            "ttbarmass": hist.Hist(dataset_axis, syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
+            "mtt_unwgt": hist.Hist(dataset_axis, syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "mtt_vs_dy_vs_chi": hist.Hist(
+                dataset_axis,
                 ttbarmass2D_axis,
                 jetdy_axis,
                 chi_axis,
@@ -64,39 +70,40 @@ def build_output_histograms(
                 name="Counts",
             ),
             "mtt_vs_mt": hist.Hist(
-                syst_axis, cats_axis, jetmass2D_axis, ttbarmass2D_axis, storage="weight", name="Counts"
+                dataset_axis, syst_axis, cats_axis, jetmass2D_axis, ttbarmass2D_axis, storage="weight", name="Counts"
             ),
         },
         "mistag": {
-            "numerator": hist.Hist(cats_axis, manual_axis, storage="weight", name="Counts"),
-            "denominator": hist.Hist(cats_axis, manual_axis, storage="weight", name="Counts"),
+            "numerator": hist.Hist(dataset_axis, cats_axis, manual_axis, storage="weight", name="Counts"),
+            "denominator": hist.Hist(dataset_axis, cats_axis, manual_axis, storage="weight", name="Counts"),
         },
         "jets": {
-            "jetmass": hist.Hist(syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"), # Selected jet mass
-            "jetmsd": hist.Hist(syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"), # Selected jet softdrop mass
-            "jetdy": hist.Hist(syst_axis, cats_axis, jetdy_axis, storage="weight", name="Counts"),
-            "chi":   hist.Hist(syst_axis, cats_axis, chi_axis,   storage="weight", name="Counts"),
-            "jetmass1": hist.Hist(syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"),
-            "jetmsd1": hist.Hist(syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"),
-            "dR_min_jet2": hist.Hist(syst_axis, cats_axis, jetdr_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
-            "jet0_pt": hist.Hist(syst_axis, cats_axis, jetpt_axis, storage="weight", name="Counts"),
-            "jet0_eta": hist.Hist(syst_axis, cats_axis, jeteta_axis, storage="weight", name="Counts"),
-            "jet0_phi": hist.Hist(syst_axis, cats_axis, jetphi_axis, storage="weight", name="Counts"),
-            "jet0_rapidity": hist.Hist(syst_axis, cats_axis, jety_axis, storage="weight", name="Counts"),
-            "jet1_pt": hist.Hist(syst_axis, cats_axis, jetpt_axis, storage="weight", name="Counts"),
-            "jet1_eta": hist.Hist(syst_axis, cats_axis, jeteta_axis, storage="weight", name="Counts"),
-            "jet1_phi": hist.Hist(syst_axis, cats_axis, jetphi_axis, storage="weight", name="Counts"),
-            "jet1_rapidity": hist.Hist(syst_axis, cats_axis, jety_axis, storage="weight", name="Counts"),
+            "jetmass": hist.Hist(dataset_axis, syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"), # Selected jet mass
+            "jetmsd": hist.Hist(dataset_axis, syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"), # Selected jet softdrop mass
+            "jetdy": hist.Hist(dataset_axis, syst_axis, cats_axis, jetdy_axis, storage="weight", name="Counts"),
+            "chi":   hist.Hist(dataset_axis, syst_axis, cats_axis, chi_axis,   storage="weight", name="Counts"),
+            "jetmass1": hist.Hist(dataset_axis, syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"),
+            "jetmsd1": hist.Hist(dataset_axis, syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"),
+            "dR_min_jet2": hist.Hist(dataset_axis, syst_axis, cats_axis, jetdr_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
+            "jet0_pt": hist.Hist(dataset_axis, syst_axis, cats_axis, jetpt_axis, storage="weight", name="Counts"),
+            "jet0_eta": hist.Hist(dataset_axis, syst_axis, cats_axis, jeteta_axis, storage="weight", name="Counts"),
+            "jet0_phi": hist.Hist(dataset_axis, syst_axis, cats_axis, jetphi_axis, storage="weight", name="Counts"),
+            "jet0_rapidity": hist.Hist(dataset_axis, syst_axis, cats_axis, jety_axis, storage="weight", name="Counts"),
+            "jet1_pt": hist.Hist(dataset_axis, syst_axis, cats_axis, jetpt_axis, storage="weight", name="Counts"),
+            "jet1_eta": hist.Hist(dataset_axis, syst_axis, cats_axis, jeteta_axis, storage="weight", name="Counts"),
+            "jet1_phi": hist.Hist(dataset_axis, syst_axis, cats_axis, jetphi_axis, storage="weight", name="Counts"),
+            "jet1_rapidity": hist.Hist(dataset_axis, syst_axis, cats_axis, jety_axis, storage="weight", name="Counts"),
         },
         "truth": {
-            "gen_mt": hist.Hist(syst_axis, cats_axis, gentopmass_axis, storage="weight", name="Counts"),
-            "gen_mttbar": hist.Hist(syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
-            "jet0_gen_dr": hist.Hist(syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
-            "jet1_gen_dr": hist.Hist(syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
+            "gen_mt": hist.Hist(dataset_axis, syst_axis, cats_axis, gentopmass_axis, storage="weight", name="Counts"),
+            "gen_mttbar": hist.Hist(dataset_axis, syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
+            "jet0_gen_dr": hist.Hist(dataset_axis, syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
+            "jet1_gen_dr": hist.Hist(dataset_axis, syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
             "jet_mass_resolution": hist.Hist(
-                syst_axis, cats_axis, abs_eta_axis, jet_nearby_axis, massres_axis, storage="weight", name="Counts"
+                dataset_axis, syst_axis, cats_axis, abs_eta_axis, jet_nearby_axis, massres_axis, storage="weight", name="Counts"
             ),
             "gen_jetmsd_reco_jetmsd": hist.Hist(
+                dataset_axis,
                 syst_axis,
                 cats_axis,
                 abs_eta_axis,
@@ -108,7 +115,7 @@ def build_output_histograms(
             ),
         },
         "event": {
-            "ht": hist.Hist(syst_axis, cats_axis, ht_axis, storage="weight", name="Counts"),
+            "ht": hist.Hist(dataset_axis, syst_axis, cats_axis, ht_axis, storage="weight", name="Counts"),
         },
     }
 
@@ -116,6 +123,10 @@ def build_output_histograms(
     output.update(
         {
             "cutflow": processor.defaultdict_accumulator(int),
+            # per-dataset generator-weight sums, keyed by the dataset axis label,
+            # so postprocess can normalize each dataset by its own lumi*xsec/sumw.
+            "sumw_by_dataset": processor.defaultdict_accumulator(float),
+            "sumw2_by_dataset": processor.defaultdict_accumulator(float),
             "cutflow_unweighted": processor.defaultdict_accumulator(float),
             "cutflow_weighted": processor.defaultdict_accumulator(float),
             "cutflow_weighted2": processor.defaultdict_accumulator(float),

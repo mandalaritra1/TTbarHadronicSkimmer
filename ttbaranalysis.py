@@ -40,6 +40,17 @@ def _output_subsection(sample, subsection):
     return subsection
 
 
+def _signal_dataset_key(sample, subsection):
+    """dataset-axis label for one signal mass point, matching the legacy per-mass
+    file stem (e.g. RSGluon3000, ZPrime4000_1) so the mass is recoverable from the
+    grouped output's dataset axis."""
+    if 'RSGluon' in sample:
+        return f'RSGluon{subsection}'
+    if 'ZPrime' in sample:
+        return f'ZPrime{subsection}_{sample.replace("ZPrime", "")}'
+    return subsection or sample
+
+
 def _parse_manifest_entry(sample, subsection, iov, entry):
     if isinstance(entry, dict) and 'files' in entry:
         files = entry['files']
@@ -261,36 +272,54 @@ if __name__ == "__main__":
                 source_iov=source_iov,
             )
 
-            for subsection, files, sample_metadata in sections:
-                files = [redirector + f for f in files]
-                if args.test:
-                    files = [files[int(len(files) / 2)]]
+            # ---- assemble run "jobs" ------------------------------------------
+            # Signals are grouped into ONE job per width: all mass points share a
+            # single fileset -> one output file, with the masses separated on the
+            # dataset axis and each normalized by its own xsec in postprocess.
+            # Everything else runs one job per subsection, exactly as before.
+            file_savedir = savedir
+            if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2') and not args.outdir:
+                file_savedir = 'outputs/oldanalysis/'
 
-                fileset = {
-                    sample: {
-                        'files': files,
-                        'metadata': sample_metadata,
-                    }
-                }
-                print(files[0])
+            jobs = []  # each: (fileset, dataset_metadata, base_savefilename)
+            if is_signal:
+                grouped_fileset = {}
+                grouped_meta = {}
+                for subsection, files, sample_metadata in sections:
+                    files = [redirector + f for f in files]
+                    if args.test:
+                        files = [files[int(len(files) / 2)]]
+                    ds_key = _signal_dataset_key(sample, subsection)
+                    grouped_fileset[ds_key] = {'files': files, 'metadata': sample_metadata}
+                    grouped_meta[ds_key] = sample_metadata
+                    print(f'{ds_key}: {files[0]}')
+                if grouped_fileset:
+                    jobs.append((grouped_fileset, grouped_meta, f'{file_savedir}{sample}_{IOV}.coffea'))
+            else:
+                for subsection, files, sample_metadata in sections:
+                    files = [redirector + f for f in files]
+                    if args.test:
+                        files = [files[int(len(files) / 2)]]
+                    print(files[0])
+                    output_subsection = _output_subsection(sample, subsection)
+                    subString = f'_{output_subsection}' if output_subsection else ''
+                    if args.bkgest:
+                        subString += '_bkgest'
+                    jobs.append((
+                        {sample: {'files': files, 'metadata': sample_metadata}},
+                        {sample: sample_metadata},
+                        f'{file_savedir}{sample}_{IOV}{subString}.coffea',
+                    ))
 
-                output_subsection = _output_subsection(sample, subsection)
-                subString = f'_{output_subsection}' if output_subsection else ''
-                if args.bkgest:
-                    subString += '_bkgest'
-                if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2') and not args.outdir:
-                    savedir = 'outputs/oldanalysis/'
+            # per-pT WP deploy: recomb always; baseline only with --ttag-ptbinned
+            if args.toptagger == 'recomb':
+                ttag_weights = args.recomb_weights
+            elif args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
+                ttag_weights = args.baseline_weights
+            else:
+                ttag_weights = None
 
-                savefilename = f'{savedir}{sample}_{IOV}{subString}.coffea'
-                if 'RSGluon' in sample:
-                    subString = subString.replace(output_subsection, '')
-                    savefilename = f'{savedir}{sample}{subsection}_{IOV}{subString}.coffea'
-                elif 'ZPrime' in sample:
-                    subString = subString.replace(output_subsection, '')
-                    savefilename = f'{savedir}ZPrime{subsection}_{sample.replace("ZPrime","")}_{IOV}{subString}.coffea'
-
-                print(f'running {IOV} {sample} {subsection}')
-
+            for fileset, dataset_metadata, savefilename in jobs:
                 # always tag the output with the top-tagging method used
                 #   topvsqcd = GloParTv3 TopvsQCD baseline | recomb = per-pT recombination
                 #   cmsv2 = ParticleNet/CMS-v2 | topvsqcd+ptbinned = pT-binned baseline
@@ -315,13 +344,11 @@ if __name__ == "__main__":
                 if args.test:
                     savefilename = savefilename.replace('.coffea', '_test.coffea')
 
-                # per-pT WP deploy: recomb always; baseline only with --ttag-ptbinned
-                if args.toptagger == 'recomb':
-                    ttag_weights = args.recomb_weights
-                elif args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
-                    ttag_weights = args.baseline_weights
-                else:
-                    ttag_weights = None
+                print(f'running {IOV} {sample}: {len(fileset)} dataset(s) -> {savefilename}')
+
+                # single-dataset runs keep passing sample_metadata (back-compat);
+                # grouped runs leave it empty and rely on dataset_metadata per mass.
+                rep_meta = next(iter(dataset_metadata.values())) if len(dataset_metadata) == 1 else {}
 
                 processor_instance = TTbarResProcessor(
                     iov=IOV,
@@ -337,7 +364,8 @@ if __name__ == "__main__":
                     systematics=systematics,
                     blinding=args.blind,
                     produce_ntuple=args.ntuple,
-                    sample_metadata=sample_metadata,
+                    sample_metadata=rep_meta,
+                    dataset_metadata=dataset_metadata,
                 )
 
                 if not args.dask:
