@@ -150,6 +150,37 @@ def build_features(heads, transform="logscore", eps=EPS):
     return _ELEMENTWISE_TRANSFORMS[transform](P, eps)
 
 
+# Engineered feature set for the data-space LOGISTIC fit (see fit_logistic). The
+# 7 raw per-head log-scores PLUS two physically-motivated aggregate log-scores.
+ENG_FEATURE_NAMES = [
+    "log_TopSum", "log_TopbWqq", "log_TopbWq", "log_QCD",
+    "log_Xqq", "log_Xcs", "log_Xbb", "log_Xcc", "log_XSum",
+]
+N_ENG = len(ENG_FEATURE_NAMES)  # 9
+
+
+def build_features_eng(heads, eps=EPS):
+    """Engineered (N, 9) log-score feature set used by the logistic fitter.
+
+    The 7 raw per-head log-scores PLUS two aggregate log-scores: the
+    hadronic-top sum ``log(TopbWqq + TopbWq)`` and the heavy-flavour-X sum
+    ``log(Xqq + Xcs + Xbb + Xcc)``. The aggregates hand the *linear* logistic
+    model the same "combined signal vs combined exotic" axes the baseline ratio
+    uses, but WITHOUT forcing the baseline's fixed 1:1 TopbWqq:TopbWq mix or its
+    QCD-only denominator — that freedom is where the boosted-tail gain comes from.
+
+    Unlike the 7-D moment features (which feed the ntuple-free LDA and must keep
+    a fixed length for the packed moment vector), this set is used only by the
+    data-space logistic fit, so there is no moment-vector length constraint.
+    """
+    g = lambda name: np.asarray(_get_head(heads, name), dtype=np.float64)
+    L = lambda name: np.log(g(name) + eps)
+    top_sum = np.log(g("TopbWqq") + g("TopbWq") + eps)
+    x_sum = np.log(g("Xqq") + g("Xcs") + g("Xbb") + g("Xcc") + eps)
+    return np.stack([top_sum, L("TopbWqq"), L("TopbWq"), L("QCD"),
+                     L("Xqq"), L("Xcs"), L("Xbb"), L("Xcc"), x_sum], axis=1)
+
+
 def baseline_topvsqcd(heads):
     """The score to beat: (TopbWqq + TopbWq) / (TopbWqq + TopbWq + QCD).
 
@@ -330,6 +361,59 @@ def apply_per_pt(X, pt_values, pt_edges, weights_per_bin, sigmoid=False):
 
 
 # ---------------------------------------------------------------------------
+# Logistic regression (data-space; the PRIMARY fitter)
+# ---------------------------------------------------------------------------
+# The LDA above is ntuple-free but assumes Gaussian per-class features, which the
+# log-score heads only roughly satisfy (it underperforms the baseline at low pT).
+# Logistic regression makes no Gaussian assumption and is consistently best; it
+# needs the actual per-jet feature rows (an ntuple), not just moments. This is
+# the verified winner for pT > 800 (+3-4% sig-eff at 0.5% mis-tag).
+def fit_logistic(X, y, w=None, n_iter=80, l2=1e-3, balance=True):
+    """Class-balanced, standardized logistic regression via IRLS (Newton steps).
+
+    X : (N, F) feature matrix (use :func:`build_features_eng`).
+    y : (N,) labels in {0 (bkg), 1 (sig)}.
+    w : optional per-row weight (length N); defaults to 1.
+
+    Returns a serialisable params dict ``{"mu","sd","beta"}`` such that the score
+        s(Xn) = [1, (Xn - mu)/sd] @ beta
+    is the log-odds (monotonic in probability) — all the ROC / fixed-mis-tag
+    inversion needs. Features are standardized for conditioning; ``balance``
+    reweights the two classes to equal total weight so the fit is prior-free (the
+    absolute mis-tag WP is imposed downstream, not by the training prior). The
+    ``l2`` ridge on the standardized coefficients stabilises collinear heads.
+    """
+    X = np.asarray(X, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    w = np.ones(len(X)) if w is None else np.asarray(w, dtype=np.float64).copy()
+    if balance:
+        for c in (0.0, 1.0):
+            m = y == c
+            s = w[m].sum()
+            if s > 0:
+                w[m] *= 0.5 / s
+    mu = X.mean(axis=0)
+    sd = X.std(axis=0) + 1e-9
+    Xs = np.c_[np.ones(len(X)), (X - mu) / sd]
+    beta = np.zeros(Xs.shape[1])
+    for _ in range(n_iter):
+        eta = np.clip(Xs @ beta, -30.0, 30.0)
+        p = 1.0 / (1.0 + np.exp(-eta))
+        Wd = w * p * (1.0 - p)
+        grad = Xs.T @ (w * (p - y)) + l2 * beta
+        H = Xs.T @ (Xs * Wd[:, None]) + l2 * np.eye(Xs.shape[1])
+        beta = beta - np.linalg.solve(H, grad)
+    return {"mu": mu, "sd": sd, "beta": beta}
+
+
+def apply_logistic(X, params):
+    """Log-odds score for the logistic ``params`` from :func:`fit_logistic`."""
+    X = np.asarray(X, dtype=np.float64)
+    Xs = np.c_[np.ones(len(X)), (X - params["mu"]) / params["sd"]]
+    return Xs @ params["beta"]
+
+
+# ---------------------------------------------------------------------------
 # Histogram-based metrics
 # ---------------------------------------------------------------------------
 def efficiency_curve(counts, edges):
@@ -375,6 +459,76 @@ def sigeff_at_fixed_mistag(sig_counts, bkg_counts, edges, target_mistag):
     """Signal efficiency at the threshold that yields ``target_mistag`` on bkg."""
     thr = threshold_for_target_eff(bkg_counts, edges, target_mistag)
     return eff_above_threshold(sig_counts, edges, thr), thr
+
+
+# --- exact (unbinned) ntuple-space metrics -------------------------------
+# The functions above invert a *histogram* (the coffea-accumulated path). For the
+# local per-jet study we have the raw score arrays, so we can invert exactly
+# without binning artefacts. These are the counterparts used by the driver.
+def weighted_quantile(x, q, w=None):
+    """Weighted quantile of ``x`` at probability ``q`` in [0, 1] (interpolated)."""
+    x = np.asarray(x, dtype=np.float64)
+    w = np.ones_like(x) if w is None else np.asarray(w, dtype=np.float64)
+    i = np.argsort(x)
+    x, w = x[i], w[i]
+    c = np.cumsum(w) - 0.5 * w
+    return float(np.interp(q * w.sum(), c, x))
+
+
+def threshold_for_mistag(s_bkg, target_mistag, w_bkg=None):
+    """Exact score threshold giving ``target_mistag`` tail efficiency on bkg."""
+    return weighted_quantile(s_bkg, 1.0 - target_mistag, w_bkg)
+
+
+def sigeff_at_mistag_unbinned(s_sig, s_bkg, target_mistag, w_sig=None, w_bkg=None):
+    """Signal tail eff at the exact threshold for ``target_mistag`` on bkg.
+
+    Returns (sig_eff, threshold).
+    """
+    thr = threshold_for_mistag(s_bkg, target_mistag, w_bkg)
+    s_sig = np.asarray(s_sig, dtype=np.float64)
+    w_sig = np.ones_like(s_sig) if w_sig is None else np.asarray(w_sig, dtype=np.float64)
+    eff = float(w_sig[s_sig >= thr].sum() / w_sig.sum())
+    return eff, thr
+
+
+def roc_unbinned(s_sig, s_bkg, w_sig=None, w_bkg=None, n_points=400):
+    """(mistag, sig_eff) ROC sampled at ``n_points`` thresholds (exact)."""
+    s_sig = np.asarray(s_sig, dtype=np.float64)
+    s_bkg = np.asarray(s_bkg, dtype=np.float64)
+    w_sig = np.ones_like(s_sig) if w_sig is None else np.asarray(w_sig, dtype=np.float64)
+    w_bkg = np.ones_like(s_bkg) if w_bkg is None else np.asarray(w_bkg, dtype=np.float64)
+    qs = np.linspace(0.0, 1.0, n_points)
+    thr = np.unique(np.quantile(np.concatenate([s_sig, s_bkg]), qs))[::-1]
+    tpr = np.array([w_sig[s_sig >= t].sum() for t in thr]) / w_sig.sum()
+    fpr = np.array([w_bkg[s_bkg >= t].sum() for t in thr]) / w_bkg.sum()
+    return fpr, tpr
+
+
+def mistag_vs_value(value, score, threshold, edges, weight=None):
+    """Tail mis-tag (fraction with score >= threshold) in bins of ``value``.
+
+    The unbinned-score counterpart of :func:`mistag_vs_axis`, used to test
+    mass-decorrelation directly from the per-jet arrays. Returns
+    (centers, mistag, mistag_err) with a binomial error per bin.
+    """
+    value = np.asarray(value, dtype=np.float64)
+    score = np.asarray(score, dtype=np.float64)
+    weight = np.ones_like(value) if weight is None else np.asarray(weight, dtype=np.float64)
+    edges = np.asarray(edges, dtype=np.float64)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    tagged = score >= threshold
+    mistag = np.full(len(centers), np.nan)
+    err = np.full(len(centers), np.nan)
+    for i in range(len(centers)):
+        m = (value >= edges[i]) & (value < edges[i + 1])
+        den = weight[m].sum()
+        if den > 0:
+            p = weight[m & tagged].sum() / den
+            mistag[i] = p
+            n_eff = den  # weights are ~1 here; n_eff = sum w is the effective count
+            err[i] = np.sqrt(max(p * (1.0 - p), 0.0) / n_eff) if n_eff > 0 else np.nan
+    return centers, mistag, err
 
 
 def mistag_vs_axis(counts2d, disc_edges, threshold):
@@ -451,6 +605,48 @@ def load_weights(path):
     data["weights_per_bin"] = {
         int(pb): (np.asarray(v["w"], dtype=np.float64), float(v["b"]))
         for pb, v in data["weights"].items()
+    }
+    data["pt_edges"] = np.asarray(data["pt_edges"], dtype=np.float64)
+    return data
+
+
+def save_logistic_weights(path, pt_edges, params_per_bin,
+                          feature_set="eng", metadata=None):
+    """Persist per-pT logistic params (mu, sd, beta) from :func:`fit_logistic`."""
+    data = {
+        "feature_set": feature_set,
+        "feature_names": list(ENG_FEATURE_NAMES) if feature_set == "eng" else None,
+        "pt_edges": [float(e) for e in pt_edges],
+        "eps": EPS,
+        "params": {
+            str(int(pb)): {
+                "mu": np.asarray(p["mu"]).tolist(),
+                "sd": np.asarray(p["sd"]).tolist(),
+                "beta": np.asarray(p["beta"]).tolist(),
+            }
+            for pb, p in params_per_bin.items()
+        },
+        "metadata": metadata or {},
+    }
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    return path
+
+
+def load_logistic_weights(path):
+    """Load logistic params saved by :func:`save_logistic_weights`.
+
+    Returns a dict with ``params_per_bin`` mapping int pt-bin -> {mu, sd, beta}.
+    """
+    with open(path) as f:
+        data = json.load(f)
+    data["params_per_bin"] = {
+        int(pb): {
+            "mu": np.asarray(v["mu"], dtype=np.float64),
+            "sd": np.asarray(v["sd"], dtype=np.float64),
+            "beta": np.asarray(v["beta"], dtype=np.float64),
+        }
+        for pb, v in data["params"].items()
     }
     data["pt_edges"] = np.asarray(data["pt_edges"], dtype=np.float64)
     return data

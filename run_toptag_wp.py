@@ -31,6 +31,12 @@ Coffea-casa smoke test over 1-2 files per dataset::
     python run_toptag_wp.py --env casa --test \
         --out outputs/toptag_wp_2024_casa_smoke.coffea
 
+Full coffea-casa run writing the skinny per-jet recombination-fit ntuples
+(one npz per dataset; feeds run_glopart_recomb.py --ntuple-dir)::
+
+    python run_toptag_wp.py --env casa --recomb-ntuple \
+        --out outputs/toptag_wp_2024_recomb.coffea
+
 The local layout expected under ``--rootdir``
 (default ``~/Projects/rootfiles/ttbar``) is::
 
@@ -52,10 +58,13 @@ import re
 
 sys.path.append(os.path.join(os.getcwd(), 'python'))
 
+import numpy as np
+
 from coffea import processor, util
 from coffea.nanoevents import NanoAODSchema
 
 from toptag_wp_processor import TopTagWPProcessor
+import glopart_recomb as gr
 
 # Per-sample cross sections [pb] for local directory scans. Manifest-backed
 # runs use the xsec_pb already stored in data/nanoAOD/*.json.
@@ -291,6 +300,40 @@ def close_dask(client, cluster):
         cluster.close()
 
 
+def save_recomb_ntuples(output, fileset, lumi_pb, outdir):
+    """Write the skinny per-jet fit ntuples (one npz per dataset).
+
+    The processor stores RAW genWeight; here each dataset's weight is normalized
+    to ``xsec_pb * lumi_pb / sumw`` so QCD pT-binned samples combine into a
+    physical mixture (falls back to raw genWeight if xsec/sumw is unavailable,
+    e.g. in --test). Columns match data/skim/*.npz plus ``mtt`` and ``label``.
+    """
+    os.makedirs(outdir, exist_ok=True)
+    saved = []
+    for ds, cols in output.get('ntuple', {}).items():
+        arrs = {f: acc.value for f, acc in cols.items()}
+        n = len(arrs['label'])
+        meta = fileset.get(ds, {}).get('metadata', {})
+        xsec = meta.get('xsec_pb')
+        if xsec is None:
+            xsec = XSEC_PB.get(ds)
+        sumw = output.get('sumw', {}).get(ds)
+        if xsec and sumw and lumi_pb:
+            norm = float(xsec) * float(lumi_pb) / float(sumw)
+            wlabel = 'xsec*lumi/sumw'
+        else:
+            norm = 1.0
+            wlabel = 'raw_genweight'
+        weight = (arrs.pop('genweight') * np.float32(norm)).astype(np.float32)
+        out = {h: arrs[h] for h in gr.RAW_HEADS}
+        out.update(pt=arrs['pt'], msd=arrs['msd'], mtt=arrs['mtt'],
+                   weight=weight, parity=arrs['parity'], label=arrs['label'])
+        path = os.path.join(outdir, f"ntuple_{ds}.npz")
+        np.savez_compressed(path, **out)
+        saved.append((ds, n, wlabel))
+    return saved
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -322,6 +365,16 @@ def main():
                     help='cap input files per dataset before running')
     ap.add_argument('--maxchunks', type=int, default=None,
                     help='cap chunks per dataset (use 1-2 for a smoke test)')
+    ap.add_argument('--recomb', action='store_true',
+                    help='recomb study mode: accumulate per-pT moments + score_vs_mtt '
+                         '(event-parity split). For the ntuple-free LDA path.')
+    ap.add_argument('--recomb-ntuple', action='store_true',
+                    help='write the skinny per-jet fit ntuple (7 heads + pt/msd/mtt/'
+                         'weight/parity/label) per dataset — feeds the logistic fit.')
+    ap.add_argument('--recomb-transform', default='logscore',
+                    help='feature transform for the moment (LDA) path')
+    ap.add_argument('--ntuple-outdir', default=None,
+                    help='dir for --recomb-ntuple npz (default outputs/glopart_recomb/ntuples_<iov>)')
     args = ap.parse_args()
 
     if args.test:
@@ -368,7 +421,12 @@ def main():
         print(f"  {ds:22s} {len(spec['files']):4d} file(s)  "
               f"xsec={spec['metadata'].get('xsec_pb')}")
 
-    proc = TopTagWPProcessor(iov=args.iov)  # match auto-detected per dataset
+    proc = TopTagWPProcessor(
+        iov=args.iov,                       # gen-top matching auto-detected per dataset
+        recomb_study=args.recomb,
+        recomb_ntuple=args.recomb_ntuple,
+        recomb_transform=args.recomb_transform,
+    )
 
     tic = time.time()
     use_dask = args.dask or args.env in ('lpc', 'casa')
@@ -415,6 +473,15 @@ def main():
         'maxfiles': args.maxfiles,
         'executor': 'dask' if use_dask else 'futures',
     }
+
+    if args.recomb_ntuple:
+        ntuple_outdir = args.ntuple_outdir or f'outputs/glopart_recomb/ntuples_{args.iov}'
+        saved = save_recomb_ntuples(output, fileset, LUMI_PB.get(args.iov), ntuple_outdir)
+        # drop the bulky column accumulators from the histogram .coffea file
+        output.pop('ntuple', None)
+        print(f"\nsaved {len(saved)} fit ntuple(s) to {ntuple_outdir}/")
+        for ds, n, wlabel in saved:
+            print(f"  ntuple_{ds:20s} {n:>10d} jets  weight={wlabel}")
 
     util.save(output, out)
     print(f"\nsaved {out}")

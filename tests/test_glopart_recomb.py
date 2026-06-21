@@ -223,5 +223,88 @@ class PersistenceTest(unittest.TestCase):
         np.testing.assert_array_equal(s1, s2)
 
 
+class EngFeatureTest(unittest.TestCase):
+    def test_eng_shape_and_aggregates(self):
+        rng = np.random.default_rng(1)
+        heads = {h: rng.uniform(0, 1.5, size=50) for h in gr.RAW_HEADS}
+        E = gr.build_features_eng(heads)
+        self.assertEqual(E.shape, (50, gr.N_ENG))
+        # column 0 == log(TopbWqq+TopbWq+eps); column -1 == log(sum X + eps)
+        np.testing.assert_allclose(
+            E[:, 0], np.log(heads["TopbWqq"] + heads["TopbWq"] + gr.EPS))
+        xsum = heads["Xqq"] + heads["Xcs"] + heads["Xbb"] + heads["Xcc"]
+        np.testing.assert_allclose(E[:, -1], np.log(xsum + gr.EPS))
+
+
+class LogisticTest(unittest.TestCase):
+    def test_logistic_separates(self):
+        rng = np.random.default_rng(3)
+        n = 4000
+        Xs = rng.normal(1.0, 1.0, size=(n, gr.N_ENG))
+        Xb = rng.normal(-1.0, 1.0, size=(n, gr.N_ENG))
+        X = np.r_[Xs, Xb]
+        y = np.r_[np.ones(n), np.zeros(n)]
+        params = gr.fit_logistic(X, y)
+        ss, sb = gr.apply_logistic(Xs, params), gr.apply_logistic(Xb, params)
+        # signal scores systematically above background
+        self.assertGreater(ss.mean(), sb.mean() + 2.0)
+        eff, _ = gr.sigeff_at_mistag_unbinned(ss, sb, 0.005)
+        self.assertGreater(eff, 0.3)  # well-separated -> strong tail eff
+
+    def test_class_balance_prior_free(self):
+        # heavily imbalanced counts must not change the decision direction
+        rng = np.random.default_rng(4)
+        Xs = rng.normal(1.0, 1.0, size=(200, gr.N_ENG))
+        Xb = rng.normal(-1.0, 1.0, size=(20000, gr.N_ENG))
+        params = gr.fit_logistic(np.r_[Xs, Xb],
+                                 np.r_[np.ones(200), np.zeros(20000)])
+        self.assertGreater(gr.apply_logistic(Xs, params).mean(),
+                           gr.apply_logistic(Xb, params).mean())
+
+
+class UnbinnedMetricsTest(unittest.TestCase):
+    def test_weighted_quantile_matches_numpy(self):
+        rng = np.random.default_rng(5)
+        x = rng.normal(size=10000)
+        self.assertAlmostEqual(gr.weighted_quantile(x, 0.9),
+                               np.quantile(x, 0.9), places=1)
+
+    def test_threshold_gives_target_mistag(self):
+        rng = np.random.default_rng(6)
+        sb = rng.normal(size=20000)
+        thr = gr.threshold_for_mistag(sb, 0.005)
+        self.assertAlmostEqual((sb >= thr).mean(), 0.005, places=2)
+
+    def test_mistag_vs_value_flat_for_independent_score(self):
+        # score independent of value -> mis-tag flat across value bins
+        rng = np.random.default_rng(8)
+        val = rng.uniform(0, 300, size=40000)
+        score = rng.normal(size=40000)
+        thr = gr.threshold_for_mistag(score, 0.05)
+        edges = np.linspace(0, 300, 7)
+        _, mis, err = gr.mistag_vs_value(val, score, thr, edges)
+        flat = gr.flatness(0.5 * (edges[:-1] + edges[1:]), mis, err)
+        self.assertLess(flat["chi2_per_ndf"], 5.0)
+        self.assertTrue(np.all(np.abs(mis - 0.05) < 0.02))
+
+
+class LogisticPersistenceTest(unittest.TestCase):
+    def test_logistic_weights_roundtrip(self):
+        rng = np.random.default_rng(9)
+        params = {0: {"mu": rng.normal(size=gr.N_ENG), "sd": rng.uniform(0.5, 2, gr.N_ENG),
+                      "beta": rng.normal(size=gr.N_ENG + 1)},
+                  1: {"mu": rng.normal(size=gr.N_ENG), "sd": rng.uniform(0.5, 2, gr.N_ENG),
+                      "beta": rng.normal(size=gr.N_ENG + 1)}}
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "log.json")
+            gr.save_logistic_weights(path, [800.0, 1000.0, 2000.0], params)
+            data = gr.load_logistic_weights(path)
+        self.assertEqual(data["feature_names"], gr.ENG_FEATURE_NAMES)
+        X = rng.normal(size=(15, gr.N_ENG))
+        s1 = gr.apply_logistic(X, params[0])
+        s2 = gr.apply_logistic(X, data["params_per_bin"][0])
+        np.testing.assert_allclose(s1, s2)
+
+
 if __name__ == "__main__":
     unittest.main()

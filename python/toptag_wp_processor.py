@@ -116,6 +116,22 @@ RECOMB_EXTRA_HEADS = [
 # mis-tag-vs-mtt decorrelation check.
 MTT_EDGES = (70, 0.0, 7000.0)
 
+# --- Ntuple mode (opt-in via TopTagWPProcessor(recomb_ntuple=True)) ---
+# A *skinny* per-jet ntuple holding ONLY the columns the recombination fit needs,
+# so a full-statistics Dask run (coffea.casa) can feed the data-space LOGISTIC fit
+# (moments only give LDA). Columns mirror data/skim/*.npz plus mtt + label.
+#   label: 1 = gen-matched hadronic top (signal), 0 = inclusive QCD (background)
+#   genweight stored RAW; xsec*lumi/sumw normalization is applied at save time.
+NTUPLE_FIELDS = {
+    **{h: np.float32 for h in gr.RAW_HEADS},   # 7 GloParTv3 heads
+    'pt': np.float32, 'msd': np.float32, 'mtt': np.float32,
+    'genweight': np.float32, 'parity': np.int8, 'label': np.int8,
+}
+
+# Dataset-name prefixes treated as SIGNAL (fill the gen-matched-top "matched"
+# class). TTbar for the bulk; resonance MC (Z'/RS graviton) for the boosted tail.
+SIGNAL_NAME_PREFIXES = ('TT', 'ZPRIME', 'ZPTOTT', 'RSG', 'RSGLUON')
+
 
 def _qcd_genweight_mask(gen_weight, nsigma=2.0):
     """Mirror TTbarResProcessor's QCD large-genWeight event rejection."""
@@ -196,7 +212,8 @@ class TopTagWPProcessor(processor.ProcessorABC):
     """
 
     def __init__(self, iov='2024', match_gen_top=None, sample_metadata=None,
-                 recomb_study=False, recomb_weights=None, recomb_transform='logscore'):
+                 recomb_study=False, recomb_weights=None, recomb_transform='logscore',
+                 recomb_ntuple=False):
         if iov not in TAGGER_CONFIG:
             raise KeyError(
                 f"IOV '{iov}' not in TAGGER_CONFIG (known: {list(TAGGER_CONFIG)}). "
@@ -213,6 +230,7 @@ class TopTagWPProcessor(processor.ProcessorABC):
         #                  path/dict -> pass 2 (fill recombination-s eval hists)
         # recomb_transform : feature transform name in gr.VALID_TRANSFORMS
         self.recomb_study = bool(recomb_study)
+        self.recomb_ntuple = bool(recomb_ntuple)
         self.recomb_transform = recomb_transform
         if isinstance(recomb_weights, str):
             recomb_weights = gr.load_weights(recomb_weights)
@@ -223,7 +241,10 @@ class TopTagWPProcessor(processor.ProcessorABC):
         if self.match_gen_top is not None:
             return bool(self.match_gen_top)
         sample = str(self.sample_metadata.get('sample', '')).upper()
-        return sample.startswith('TT') or 'TT' in str(dataset).upper()
+        ds = str(dataset).upper()
+        # Signal = TTbar OR resonance MC (Z'/RS graviton) -> has gen hadronic tops.
+        return (sample.startswith(SIGNAL_NAME_PREFIXES)
+                or ds.startswith(SIGNAL_NAME_PREFIXES))
 
     @staticmethod
     def _matched_to_gen_top(events):
@@ -259,6 +280,8 @@ class TopTagWPProcessor(processor.ProcessorABC):
         dataset = events.metadata['dataset']
         cfg = self._cfg
         recomb = self.recomb_study
+        ntuple = self.recomb_ntuple
+        need_ctx = recomb or ntuple              # need parity / mtt / extra heads
         apply_mode = recomb and self.recomb_weights is not None  # pass 2
 
         output = {
@@ -275,6 +298,11 @@ class TopTagWPProcessor(processor.ProcessorABC):
             output['score_vs_mtt'] = _make_score_vs_mtt_hist()
             # per-(jettype, pt_bin) packed moment vectors; merge by addition.
             output['moments'] = processor.defaultdict_accumulator(gr.empty_moment_vec)
+        if ntuple:
+            # nested {dataset -> {field -> column_accumulator}}; coffea merges by
+            # concatenation across chunks and keeps datasets separate for per-sample
+            # cross-section weighting at save time.
+            output['ntuple'] = {}
 
         n_raw = len(events)
         n_rejected = 0
@@ -285,7 +313,7 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
         fj = events.FatJet
         required = list(cfg['required_fields'])
-        if recomb:
+        if need_ctx:
             required = required + RECOMB_EXTRA_HEADS
         missing = [f for f in required if f not in fj.fields]
         if missing:
@@ -318,12 +346,16 @@ class TopTagWPProcessor(processor.ProcessorABC):
         # broadcast event weight to per-jet
         w_jet = ak.broadcast_arrays(w_evt, pt)[0]
 
-        # Event-parity gating (recomb only). Parity is per-event (uses the
-        # NanoAOD event number) so both jets of an event share it: no leakage.
-        # even -> moment fit; odd -> evaluation histograms.
+        # Event-parity gating. Parity is per-event (uses the NanoAOD event number)
+        # so both jets of an event share it: no leakage. even -> moment fit;
+        # odd -> evaluation histograms. The ntuple stores BOTH parities (as a
+        # column) so the downstream fit owns the split.
         gate = None
-        if recomb:
+        parity_jet = None
+        if need_ctx:
             parity = ak.values_astype(events.event, np.int64) % 2
+            parity_jet = ak.broadcast_arrays(parity, pt)[0]
+        if recomb:
             even_jet = ak.broadcast_arrays(parity == 0, pt)[0]
             gate = ak.broadcast_arrays(parity == 1, pt)[0]  # odd = eval/test
 
@@ -344,12 +376,15 @@ class TopTagWPProcessor(processor.ProcessorABC):
                 weight=ak.to_numpy(ak.flatten(w_jet[mask])),
             )
 
-        if recomb:
-            # mtt = invariant mass of the two leading AK8 jets (NaN if <2 jets).
+        # mtt = invariant mass of the two leading AK8 jets (NaN if <2 jets).
+        # Needed by both the score-vs-mtt hist (recomb) and the ntuple.
+        mtt_jet = None
+        if need_ctx:
             fj2 = ak.pad_none(fj, 2, clip=True)
             mtt_evt = ak.fill_none((fj2[:, 0] + fj2[:, 1]).mass, np.nan)
             mtt_jet = ak.broadcast_arrays(mtt_evt, pt)[0]
 
+        if recomb:
             def _fill_mtt(jettype, mask):
                 d = ak.to_numpy(ak.flatten(disc[mask]))
                 m = ak.to_numpy(ak.flatten(mtt_jet[mask]))
@@ -373,6 +408,31 @@ class TopTagWPProcessor(processor.ProcessorABC):
                 m = idx == pb
                 if np.any(m):
                     output['moments'][gr.moment_key(jettype, pb)] += gr.moment_vec(X[m], w_sel[m])
+
+        def _accumulate_ntuple(label_val, mask):
+            """Append the skinny per-jet fit columns for jets passing ``mask``.
+
+            Stores BOTH parities and NO mass window (preselection only) so the
+            downstream fit owns the parity split and any m_SD window. ``genweight``
+            is raw; cross-section normalization happens at save time.
+            """
+            flat = lambda arr: ak.to_numpy(ak.flatten(arr[mask]))
+            cols = {h: flat(fj["globalParT3_" + h]).astype(np.float32) for h in gr.RAW_HEADS}
+            n = len(cols['QCD'])
+            if n == 0:
+                return
+            cols['pt'] = flat(pt).astype(np.float32)
+            cols['msd'] = flat(msd).astype(np.float32)
+            cols['mtt'] = flat(mtt_jet).astype(np.float32)
+            cols['genweight'] = flat(w_jet).astype(np.float32)
+            cols['parity'] = flat(parity_jet).astype(np.int8)
+            cols['label'] = np.full(n, label_val, dtype=np.int8)
+            dest = output['ntuple'].setdefault(
+                dataset,
+                {f: processor.column_accumulator(np.empty(0, dtype=dt))
+                 for f, dt in NTUPLE_FIELDS.items()})
+            for f in NTUPLE_FIELDS:
+                dest[f] = dest[f] + processor.column_accumulator(cols[f])
 
         is_signal = self._should_match(dataset)
         do_match = is_signal and 'GenPart' in events.fields
@@ -403,6 +463,15 @@ class TopTagWPProcessor(processor.ProcessorABC):
                 _accumulate_moments('matched', (window & is_matched) & even_jet)
             elif not is_signal:
                 _accumulate_moments('incl', window & even_jet)
+
+        # ---- skinny ntuple (both parities, presel only; same class gating) ----
+        # matched tops -> label 1 (from signal); inclusive QCD -> label 0. No mass
+        # window so the fit can apply its own; no parity gate so the fit splits.
+        if ntuple:
+            if do_match:
+                _accumulate_ntuple(1, presel & is_matched)
+            elif not is_signal:
+                _accumulate_ntuple(0, presel)
 
         return output
 
