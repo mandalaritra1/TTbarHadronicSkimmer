@@ -14,11 +14,12 @@ venv/
 # Logs
 *.log
 
-# Outputs
+# Outputs (kept out of git; large analysis outputs live on CERNBox/EOS)
 outputs/
-
+*.coffea
 *.pkl
 *.root
+*.bak
 
 # Local configs
 local/
