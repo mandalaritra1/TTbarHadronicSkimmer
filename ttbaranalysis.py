@@ -20,7 +20,7 @@ default_datastets = ['data', 'TTbar', 'QCD']
 default_signals = ['RSGluon', 'ZPrime10', 'ZPrime30', 'ZPrimeDM', 'ZPrime1']
 
 from ttbarprocessor import TTbarResProcessor
-from python.functions import printTime, makeSaveDirectories
+from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
 
 
 def _build_sample_metadata(sample, subsection, iov, metadata):
@@ -49,6 +49,16 @@ def _signal_dataset_key(sample, subsection):
     if 'ZPrime' in sample:
         return f'ZPrime{subsection}_{sample.replace("ZPrime", "")}'
     return subsection or sample
+
+
+def _signal_xsec(sample, subsection):
+    """1 pb reference xsec (pb) for a signal mass point, from functions.xs; None if
+    absent. Signal manifests carry no xsec, so this normalizes each mass to 1 pb in
+    postprocess (lumi from the processor's _LUMI_PB, consistent with TTbar/QCD)."""
+    try:
+        return _XS_TABLE.get(sample, {}).get(str(subsection))
+    except Exception:
+        return None
 
 
 def _parse_manifest_entry(sample, subsection, iov, entry):
@@ -290,6 +300,12 @@ if __name__ == "__main__":
                     if args.test:
                         files = [files[int(len(files) / 2)]]
                     ds_key = _signal_dataset_key(sample, subsection)
+                    # signal manifests carry no xsec -> use the 1 pb reference so each
+                    # mass is normalized to 1 pb on the dataset axis in postprocess.
+                    if sample_metadata.get('xsec_pb') is None:
+                        xsec = _signal_xsec(sample, subsection)
+                        if xsec is not None:
+                            sample_metadata = {**sample_metadata, 'xsec_pb': xsec}
                     grouped_fileset[ds_key] = {'files': files, 'metadata': sample_metadata}
                     grouped_meta[ds_key] = sample_metadata
                     print(f'{ds_key}: {files[0]}')
