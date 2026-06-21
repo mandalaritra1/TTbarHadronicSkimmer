@@ -14,11 +14,16 @@ from __future__ import annotations
 import glob
 import math
 import subprocess
+import sys
 from pathlib import Path
 
 import coffea.util as cutil
 
 REPO = Path(__file__).resolve().parent.parent
+if str(REPO / "python") not in sys.path:
+    sys.path.insert(0, str(REPO / "python"))
+import signal_grouped as sg  # noqa: E402  (needs python/ on sys.path above)
+
 OUTDIR = REPO / "plots" / "images" / "cutflow"
 
 # step order: key -> (label, sub for "total")
@@ -215,9 +220,11 @@ def main():
     # selection (1 pb x 104 fb^-1 = 104,000 events) and yields read as eff x 1pb.
     SIG_XSEC_PB = 1.0
     SIG_LUMI_FB = 109.95
+    # NOTE: the cutflow tables are per-file. A grouped multi-mass width-file only
+    # carries an AGGREGATE cutflow, so per-mass Sankeys need either legacy per-mass
+    # files or a single-mass grouped file. find_signal_mass prefers per-mass files.
     for mass, tev in [(2000, "2 TeV"), (4000, "4 TeV")]:
-        zp = extract(cutil.load(
-            str(REPO / f"outputs/dy/ZPrime{mass}_1_2024_.coffea")))
+        zp = extract(sg.find_signal_mass(REPO / "outputs" / "dy", mass, width="1", year="2024"))
         ngen = zp["total"]
         scale = SIG_XSEC_PB * SIG_LUMI_FB * 1000.0 / ngen
         zp = {k: v * scale for k, v in zp.items()}

@@ -8,6 +8,7 @@
 Run:  .venv/bin/python plots/make_reference_plots.py
 """
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import mplhep as hep
@@ -16,6 +17,9 @@ import coffea.util as cu
 hep.style.use("CMS")
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if os.path.join(REPO, "python") not in sys.path:
+    sys.path.insert(0, os.path.join(REPO, "python"))
+import signal_grouped as sg  # noqa: E402  (needs python/ on sys.path above)
 OUTDIR = os.path.join(REPO, "plots", "images", "reference")
 os.makedirs(OUTDIR, exist_ok=True)
 
@@ -95,24 +99,19 @@ def plot_systematics():
 # Plot 2: Z' (1% width) signal shapes
 # ---------------------------------------------------------------------------
 def discover_masses():
-    import re
+    # works with legacy per-mass files and a grouped ZPrime1 width-file
     d = os.path.join(REPO, "outputs", "dy")
-    masses = []
-    for fn in os.listdir(d):
-        m = re.fullmatch(r"ZPrime(\d+)_1_2024_\.coffea", fn)
-        if m:
-            masses.append(int(m.group(1)))
-    return sorted(x for x in masses if x >= 1000)
+    return [x for x in sg.discover_signal_masses(d, width="1", year="2024") if x >= 1000]
 
 
 def plot_signals():
+    d = os.path.join(REPO, "outputs", "dy")
     masses = discover_masses()
     cmap = plt.cm.turbo
     fig, ax = plt.subplots(figsize=(10, 8))
     edges = None
     for j, m in enumerate(masses):
-        f = os.path.join(REPO, "outputs", "dy", f"ZPrime{m}_1_2024_.coffea")
-        o = cu.load(f)
+        o = sg.find_signal_mass(d, m, width="1", year="2024")
         h = o["ttbarmass"][{"systematic": "nominal"}][{"anacat": sum}]
         edges = h.axes["ttbarmass"].edges
         vals = h.values()

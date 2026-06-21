@@ -12,6 +12,10 @@ load site instead of a rewrite.
 """
 from __future__ import annotations
 
+import glob as _glob
+import os
+import re
+
 import hist
 from coffea import util
 
@@ -55,6 +59,42 @@ def select_mass(output, mass_label):
 def load_mass(path, mass_label):
     """Load a grouped width-file from ``path`` and return the per-mass view."""
     return select_mass(util.load(path), mass_label)
+
+
+def find_signal_mass(coffea_dir, mass, width="1", year="2024"):
+    """Per-mass output for one ZPrime point, from either a legacy per-mass file
+    (``ZPrime<mass>_<width>_<year>*.coffea``) or a grouped width-file
+    (``ZPrime<width>_<year>*.coffea``) selected on the dataset axis. Raises
+    FileNotFoundError if neither is present."""
+    coffea_dir = str(coffea_dir)
+    per_mass = sorted(_glob.glob(os.path.join(coffea_dir, f"ZPrime{mass}_{width}_{year}*.coffea")))
+    if per_mass:
+        return util.load(per_mass[0])
+    ds_label = f"ZPrime{mass}_{width}"
+    for path in sorted(_glob.glob(os.path.join(coffea_dir, f"ZPrime{width}_{year}*.coffea"))):
+        out = util.load(path)
+        if is_grouped(out) and ds_label in dataset_labels(out):
+            return select_mass(out, ds_label)
+    raise FileNotFoundError(
+        f"No coffea for ZPrime mass {mass} width {width} year {year} in {coffea_dir}"
+    )
+
+
+def discover_signal_masses(coffea_dir, width="1", year="2024"):
+    """Sorted int ZPrime masses available for a width, scanning both legacy
+    per-mass files and a grouped width-file's dataset axis."""
+    coffea_dir = str(coffea_dir)
+    masses = set()
+    for path in _glob.glob(os.path.join(coffea_dir, f"ZPrime*_{width}_{year}*.coffea")):
+        m = re.match(rf"ZPrime(\d+)_{width}_{year}", os.path.basename(path))
+        if m:
+            masses.add(int(m.group(1)))
+    for path in _glob.glob(os.path.join(coffea_dir, f"ZPrime{width}_{year}*.coffea")):
+        for lbl in dataset_labels(util.load(path)):
+            mm = re.match(rf"ZPrime(\d+)_{width}$", lbl)
+            if mm:
+                masses.add(int(mm.group(1)))
+    return sorted(masses)
 
 
 def stack_masses(mapping):
