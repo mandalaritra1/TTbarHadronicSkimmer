@@ -206,8 +206,22 @@ nomenclature):
 
 So to operate at **0.5% mis-tag, use `--ttagWP tight`**. (`verytight`/`veryloose`
 exist in the deploy JSON; the CLI exposes `loose`/`medium`/`tight`.) The mis-tag
-is held at the target in every pT bin, so a `recomb` run is directly comparable to
-a baseline run at the matching mis-tag.
+is held at the target in every pT bin.
+
+**Apples-to-apples baseline comparison.** The legacy baseline uses a single global
+score threshold (a pT-*varying* mis-tag). To compare baseline vs recomb at the
+*same* flat mis-tag, run the baseline with **`--ttag-ptbinned`**, which switches it
+to the same per-pT WP thresholds (for the `TopvsQCD` ratio) from
+`data/recomb/baseline_deploy_2024.json`:
+
+```bash
+# matched comparison at flat 0.5% mis-tag per pT bin:
+python ttbaranalysis.py --iov 2024 --dataset TTbar --ttagWP tight --toptagger deepak8 --ttag-ptbinned   # baseline, output _ptbin
+python ttbaranalysis.py --iov 2024 --dataset TTbar --ttagWP tight --toptagger recomb                    # recomb,   output _recomb
+```
+
+With both pT-binned at 0.5%, the recomb gain is **+3.9% mean** signal efficiency.
+Both deploy JSONs are produced together by `build_recomb_deploy.py`.
 
 **Result (2024, full statistics).** On the search-relevant Z′ resonance tops vs
 the full xs-weighted QCD, the recombined tagger beats baseline by **+3–7%

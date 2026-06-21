@@ -251,39 +251,45 @@ class TTbarResProcessor(processor.ProcessorABC):
         else:
             self.deepAK8low = 0.2
 
-        # --- GloParTv3 per-pT recombination tagger (opt-in) ---------------------
-        # topTagger='recomb' replaces the baseline TopvsQCD ratio with the learned
-        # per-pT logistic score. The deploy JSON (build_recomb_deploy.py) carries
-        # the per-pT logistic params + per-pT WP thresholds matched to the baseline
-        # per-pT QCD mis-tag, so the background per pT bin is unchanged and only the
-        # signal efficiency rises. Score and thresholds are both in sigmoid space.
+        # --- per-pT working points + GloParTv3 recombination tagger (opt-in) -----
+        # A deploy JSON (build_recomb_deploy.py) supplies per-pT WP thresholds at the
+        # standard CMS targeted QCD mis-tag (flat vs pT). It is used for BOTH taggers:
+        #   topTagger='recomb'   -> learned per-pT logistic score (needs 'params')
+        #   topTagger='baseline' -> the TopvsQCD ratio, but pT-binned WP thresholds
+        # so baseline and recomb are directly comparable at each --ttagWP. Without a
+        # deploy the baseline falls back to the legacy global scalar _TAGGER_WPS.
         self.topTagger = topTagger
         self._recomb = (topTagger == 'recomb')
-        if self._recomb:
-            if not recomb_weights:
-                raise ValueError("topTagger='recomb' requires recomb_weights (deploy JSON path)")
+        self._ptbinned_wp = False
+        if recomb_weights:
             with open(recomb_weights) as f:
                 dep = json.load(f)
-            self._recomb_eps = float(dep.get('eps', gr.EPS))
-            self._recomb_pt_edges = np.asarray(dep['pt_edges'], dtype=np.float64)
-            self._recomb_params = {
-                int(b): {k: np.asarray(v, dtype=np.float64) for k, v in p.items()}
-                for b, p in dep['params'].items()
-            }
-            nb = len(self._recomb_pt_edges) - 1
+            self._wp_eps = float(dep.get('eps', gr.EPS))
+            self._wp_pt_edges = np.asarray(dep['pt_edges'], dtype=np.float64)
+            nb = len(self._wp_pt_edges) - 1
             wp = dep['wp']
             if deepAK8Cut not in wp:
-                raise KeyError(f"recomb deploy has no WP '{deepAK8Cut}' (have {list(wp)})")
+                raise KeyError(f"deploy has no WP '{deepAK8Cut}' (have {list(wp)})")
             # antitag low WP = next-looser in the standard nomenclature
             # (verytight>tight>medium>loose>veryloose, by targeted QCD mis-tag).
             low_map = {'verytight': 'tight', 'tight': 'medium',
                        'medium': 'loose', 'loose': 'veryloose'}
-            self._recomb_disc_arr = np.array([wp[deepAK8Cut][str(b)] for b in range(nb)])
+            self._wp_disc_arr = np.array([wp[deepAK8Cut][str(b)] for b in range(nb)])
             low_name = low_map.get(deepAK8Cut)
             if low_name and low_name in wp:
-                self._recomb_low_arr = np.array([wp[low_name][str(b)] for b in range(nb)])
+                self._wp_low_arr = np.array([wp[low_name][str(b)] for b in range(nb)])
             else:  # no looser WP available -> accept everything below disc
-                self._recomb_low_arr = np.zeros(nb)
+                self._wp_low_arr = np.zeros(nb)
+            self._ptbinned_wp = True
+            if self._recomb:
+                if 'params' not in dep:
+                    raise ValueError("topTagger='recomb' needs a deploy JSON with logistic 'params'")
+                self._recomb_params = {
+                    int(b): {k: np.asarray(v, dtype=np.float64) for k, v in p.items()}
+                    for b, p in dep['params'].items()
+                }
+        if self._recomb and not self._ptbinned_wp:
+            raise ValueError("topTagger='recomb' requires recomb_weights (deploy JSON path)")
 
         # tagger discriminant field name; 2024 uses a composite score (see _tscore)
         _tagger_fields = {
@@ -343,8 +349,8 @@ class TTbarResProcessor(processor.ProcessorABC):
         else:
             ptn = ak.to_numpy(pt)
             heads = {h: ak.to_numpy(jet["globalParT3_" + h]) for h in gr.RAW_HEADS}
-        X = gr.build_features_eng(heads, eps=self._recomb_eps)
-        idx = gr.pt_bin_index(ptn, self._recomb_pt_edges)
+        X = gr.build_features_eng(heads, eps=self._wp_eps)
+        idx = gr.pt_bin_index(ptn, self._wp_pt_edges)
         logodds = np.zeros(len(X), dtype=np.float64)
         for b, params in self._recomb_params.items():
             m = idx == b
@@ -354,18 +360,18 @@ class TTbarResProcessor(processor.ProcessorABC):
         return ak.unflatten(score, ak.to_numpy(counts)) if jagged else ak.Array(score)
 
     def _disc_thr(self, jet):
-        """Tag (signal) threshold — scalar for baseline, per-pT for recomb."""
-        if not self._recomb:
+        """Tag (signal) threshold — global scalar, or per-pT if a deploy is loaded."""
+        if not self._ptbinned_wp:
             return self.deepAK8disc
-        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._recomb_pt_edges)
-        return ak.Array(self._recomb_disc_arr[idx])
+        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._wp_pt_edges)
+        return ak.Array(self._wp_disc_arr[idx])
 
     def _low_thr(self, jet):
-        """Antitag lower threshold — scalar for baseline, per-pT for recomb."""
-        if not self._recomb:
+        """Antitag lower threshold — global scalar, or per-pT if a deploy is loaded."""
+        if not self._ptbinned_wp:
             return self.deepAK8low
-        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._recomb_pt_edges)
-        return ak.Array(self._recomb_low_arr[idx])
+        idx = gr.pt_bin_index(ak.to_numpy(jet.pt), self._wp_pt_edges)
+        return ak.Array(self._wp_low_arr[idx])
 
     @staticmethod
     def _nearby_jet_label(jet, ak4s, ak8s):

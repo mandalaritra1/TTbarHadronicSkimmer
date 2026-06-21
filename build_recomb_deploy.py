@@ -11,8 +11,14 @@ i.e. the recombined score is calibrated so that in EVERY pT bin the QCD mis-tag
 equals the WP's target (flat vs pT). Thresholds are signal-independent (defined
 purely on QCD). To run the analysis at 0.5% mis-tag, use --ttagWP tight.
 
-Output: data/recomb/recomb_deploy_<iov>.json  (small, tracked, shipped with code).
-Loaded by TTbarResProcessor(topTagger='recomb', recomb_weights=...).
+Outputs (small, tracked, shipped with code):
+  data/recomb/recomb_deploy_<iov>.json   — logistic params + per-pT WP thresholds
+                                           (recomb tagger)
+  data/recomb/baseline_deploy_<iov>.json — per-pT WP thresholds for the baseline
+                                           TopvsQCD ratio, same target mis-tags, so
+                                           baseline and recomb are directly
+                                           comparable at each --ttagWP.
+Loaded by TTbarResProcessor(topTagger='recomb'|'baseline', recomb_weights=...).
 
 Run: .venv/bin/python build_recomb_deploy.py
 """
@@ -30,6 +36,7 @@ IOV = "2024"
 LOGISTIC_WEIGHTS = "outputs/glopart_recomb/prod/logistic_weights.json"
 QCD_GLOB = "outputs/glopart_recomb/ntuples_night/ntuple_QCD_*.npz"
 OUT = f"data/recomb/recomb_deploy_{IOV}.json"
+OUT_BASE = f"data/recomb/baseline_deploy_{IOV}.json"
 
 # Standard CMS AK8 top-tagger WP nomenclature -> targeted QCD mis-tag efficiency.
 # The recomb per-pT thresholds are derived to hit these exactly, per pT bin.
@@ -72,25 +79,30 @@ def main():
         if np.any(m):
             recomb[m] = 1.0 / (1.0 + np.exp(-gr.apply_logistic(Xeng[m], params[b])))
 
-    # per-WP, per-pT-bin recomb threshold at the WP's TARGET QCD mis-tag
-    wp_out = {}
-    print(f"\n{'WP':>10} {'ptbin':>13} {'target':>7} {'recomb thr':>10}")
-    for name, target in WP_MISTAG.items():
-        per_bin = {}
-        for b in range(nbins):
-            m = idx == b
-            wb = w[m]
-            if wb.sum() <= 0:
-                per_bin[str(b)] = 1.0
-                continue
-            # threshold s.t. weighted fraction of QCD above it = target mis-tag
-            thr = gr.weighted_quantile(recomb[m], 1.0 - target, wb)
-            per_bin[str(b)] = float(thr)
-            print(f"{name:>10} {pt_edges[b]:5.0f}-{pt_edges[b+1]:<6.0f} "
-                  f"{100*target:6.2f}% {thr:10.4f}")
-        wp_out[name] = per_bin
+    def derive_wp(score, label):
+        """Per-WP, per-pT-bin threshold giving each WP's TARGET QCD mis-tag."""
+        out = {}
+        print(f"\n{'WP':>10} {'ptbin':>13} {'target':>7} {label:>12}")
+        for name, target in WP_MISTAG.items():
+            per_bin = {}
+            for b in range(nbins):
+                m = idx == b
+                wb = w[m]
+                if wb.sum() <= 0:
+                    per_bin[str(b)] = 1.0
+                    continue
+                thr = gr.weighted_quantile(score[m], 1.0 - target, wb)
+                per_bin[str(b)] = float(thr)
+                print(f"{name:>10} {pt_edges[b]:5.0f}-{pt_edges[b+1]:<6.0f} "
+                      f"{100*target:6.2f}% {thr:12.4f}")
+            out[name] = per_bin
+        return out
 
-    deploy = {
+    note = ("per-pT thresholds at the standard CMS targeted QCD mis-tag "
+            "(verytight 0.1% / tight 0.5% / medium 1.0% / loose 2.5% / veryloose 5.0%)")
+
+    # --- recomb (logistic) deploy: per-pT logistic params + per-pT WP thresholds ---
+    recomb_deploy = {
         "tagger": "glopart_recomb_logistic",
         "iov": IOV,
         "transform": "eng",
@@ -103,19 +115,25 @@ def main():
                      "beta": params[b]["beta"].tolist()}
             for b in params
         },
-        "wp": wp_out,
+        "wp": derive_wp(recomb, "recomb thr"),
         "wp_mistag": WP_MISTAG,
-        "provenance": {
-            "logistic_weights": LOGISTIC_WEIGHTS,
-            "qcd_glob": QCD_GLOB,
-            "note": "per-pT thresholds at the standard CMS targeted QCD mis-tag "
-                    "(verytight 0.1% / tight 0.5% / medium 1.0% / loose 2.5% / veryloose 5.0%)",
-        },
+        "provenance": {"logistic_weights": LOGISTIC_WEIGHTS, "qcd_glob": QCD_GLOB, "note": note},
     }
+    # --- baseline (TopvsQCD ratio) deploy: per-pT WP thresholds only (no params) ---
+    baseline_deploy = {
+        "tagger": "glopart_TopvsQCD_baseline_ptbinned",
+        "iov": IOV,
+        "pt_edges": [float(e) for e in pt_edges],
+        "wp": derive_wp(base, "base thr"),
+        "wp_mistag": WP_MISTAG,
+        "provenance": {"qcd_glob": QCD_GLOB, "note": note},
+    }
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w") as f:
-        json.dump(deploy, f, indent=2)
-    print(f"\nwrote {OUT}")
+    for path, deploy in [(OUT, recomb_deploy), (OUT_BASE, baseline_deploy)]:
+        with open(path, "w") as f:
+            json.dump(deploy, f, indent=2)
+        print(f"wrote {path}")
 
 
 if __name__ == "__main__":

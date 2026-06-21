@@ -105,6 +105,12 @@ if __name__ == "__main__":
                         help="'recomb' = learned per-pT GloParTv3 recombination top-tagger")
     parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
                         help='deploy JSON for --toptagger recomb (build_recomb_deploy.py)')
+    parser.add_argument('--ttag-ptbinned', action='store_true',
+                        help='use per-pT WP thresholds for the baseline tagger too (flat '
+                             'target mis-tag per pT bin); recomb is always per-pT. Makes '
+                             'baseline directly comparable to recomb at the same --ttagWP.')
+    parser.add_argument('--baseline-weights', default='data/recomb/baseline_deploy_2024.json',
+                        help='per-pT baseline WP deploy JSON for --ttag-ptbinned')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
@@ -257,6 +263,8 @@ if __name__ == "__main__":
                     savefilename = savefilename.replace('.coffea', '_cmsv2.coffea')
                 if args.toptagger == 'recomb':
                     savefilename = savefilename.replace('.coffea', '_recomb.coffea')
+                if args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                    savefilename = savefilename.replace('.coffea', '_ptbin.coffea')
                 if args.btagger == 'csvv2':
                     savefilename = savefilename.replace('.coffea', '_csvv2.coffea')
                 if args.ht == '950':
@@ -270,6 +278,14 @@ if __name__ == "__main__":
                 if args.test:
                     savefilename = savefilename.replace('.coffea', '_test.coffea')
 
+                # per-pT WP deploy: recomb always; baseline only with --ttag-ptbinned
+                if args.toptagger == 'recomb':
+                    ttag_weights = args.recomb_weights
+                elif args.toptagger == 'deepak8' and args.ttag_ptbinned:
+                    ttag_weights = args.baseline_weights
+                else:
+                    ttag_weights = None
+
                 processor_instance = TTbarResProcessor(
                     iov=IOV,
                     bkgEst=args.bkgest,
@@ -278,7 +294,7 @@ if __name__ == "__main__":
                     useDeepAK8=useDeepAK8,
                     useDeepCSV=useDeepCSV,
                     topTagger=args.toptagger,
-                    recomb_weights=(args.recomb_weights if args.toptagger == 'recomb' else None),
+                    recomb_weights=ttag_weights,
                     htCut=htCut,
                     anacats=anacats,
                     systematics=systematics,
