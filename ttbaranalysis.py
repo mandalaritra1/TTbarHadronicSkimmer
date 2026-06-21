@@ -51,8 +51,11 @@ def _parse_manifest_entry(sample, subsection, iov, entry):
     return list(files), _build_sample_metadata(sample, subsection, iov, metadata)
 
 
-def _collect_manifest_sections(sample, iov, manifest, subsections):
-    iov_entry = manifest[iov]
+def _collect_manifest_sections(sample, iov, manifest, subsections, source_iov=None):
+    # source_iov: read file lists from this manifest key while still labelling the
+    # sample with `iov` in its metadata (used to stand in 2024 signal MC for the
+    # 2022/2023 sub-eras, which have no v15 signal production).
+    iov_entry = manifest[source_iov or iov]
 
     if isinstance(iov_entry, dict) and 'files' not in iov_entry:
         requested_sections = subsections if subsections else list(iov_entry.keys())
@@ -85,7 +88,11 @@ if __name__ == "__main__":
                         choices=['data', 'QCD', 'TTbar', 'ZPrime1', 'ZPrime10',
                                  'ZPrime30', 'ZPrimeDM', 'RSGluon', 'ZPrimeLocal'],
                         default=default_datastets, action='append')
-    parser.add_argument('--iov', choices=['2022', '2023', '2024'], default='2024')
+    parser.add_argument('--iov',
+                        choices=['2022', '2023', '2024',
+                                 '2022preEE', '2022postEE',
+                                 '2023preBPix', '2023postBPix'],
+                        default='2024')
     parser.add_argument('--signals', action='store_true', help='run only signal samples')
 
     # subsections
@@ -222,11 +229,23 @@ if __name__ == "__main__":
         with open(inputfile) as json_file:
             subsections = args.era + args.mass + args.pt + args.subsample
             manifest = json.load(json_file)
+
+            # Signal MC (Z'/RSGluon) has no NanoAODv15 production for the 2022/2023
+            # sub-eras -> fall back to the 2024 signal files as a placeholder, while
+            # still labelling them with the requested IOV (so lumi normalization uses
+            # the right per-year value). Background/data are never substituted.
+            source_iov = None
+            is_signal = sample.startswith('ZPrime') or sample == 'RSGluon'
+            if is_signal and IOV not in manifest and '2024' in manifest:
+                source_iov = '2024'
+                print(f"[placeholder] {sample} {IOV}: no v15 signal -> using 2024 signal MC as stand-in")
+
             sections = _collect_manifest_sections(
                 sample=sample,
                 iov=IOV,
                 manifest=manifest,
                 subsections=subsections,
+                source_iov=source_iov,
             )
 
             for subsection, files, sample_metadata in sections:

@@ -94,7 +94,25 @@ _LUMI_PB = {
     '2018':    59740.,
     '2023':    27000.,
     '2024':    109950.,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
+    # Run-3 sub-era keys (NanoAODv15). Preliminary golden-JSON values; refine
+    # with brilcalc on data/corrections/goldenJsons/.
+    '2022preEE':    7980.,   # Run2022 C,D
+    '2022postEE':   26670.,  # Run2022 E,F,G
+    '2023preBPix':  17794.,  # Run2023 B,C
+    '2023postBPix': 9451.,   # Run2023 D
 }
+
+# Run-3 sub-era IOV keys: all are NanoAODv15 and carry the GloParTv3 top tagger,
+# so they share the 2024 GloParTv3 scoring/WP path.
+_V15_IOVS = {'2022preEE', '2022postEE', '2023preBPix', '2023postBPix', '2024', '2025'}
+
+
+def _base_year(iov):
+    """Strip Run-3 sub-era suffixes: 2022preEE->2022, 2023postBPix->2023."""
+    for suffix in ('preEE', 'postEE', 'preBPix', 'postBPix'):
+        if iov.endswith(suffix):
+            return iov[:-len(suffix)]
+    return iov
 
 # Per-IOV top-tagger score thresholds.
 # Run-3 uses globalParT3; these keys are historically called "deepAK8" in the code.
@@ -103,17 +121,23 @@ _LUMI_PB = {
 # (the recomb tagger hits these exactly per pT bin; the baseline scalar thresholds
 #  below approximate them inclusively.)
 _TAGGER_WPS = {
+    # 2022/2023 sub-era WPs are placeholders set to the 2024 GloParTv3 values
+    # (same tagger); replace with per-year derivations when available.
     'loose': {
         '2022': 0.435,
         '2023': 0.435,
         '2024': 0.6488,
         '2025': 0.470,
+        '2022preEE': 0.6488, '2022postEE': 0.6488,
+        '2023preBPix': 0.6488, '2023postBPix': 0.6488,
     },
     'medium': {
         '2022': 0.632,
         '2023': 0.632,
         '2024': 0.8571,
         '2025': 0.685,
+        '2022preEE': 0.8571, '2022postEE': 0.8571,
+        '2023preBPix': 0.8571, '2023postBPix': 0.8571,
     },
     'tight': {
         '2016APV': 0.889,
@@ -121,6 +145,8 @@ _TAGGER_WPS = {
         '2017':    0.863,
         '2018':    0.920,
         '2024':    0.9284,
+        '2022preEE': 0.9284, '2022postEE': 0.9284,
+        '2023preBPix': 0.9284, '2023postBPix': 0.9284,
     },
 }
 
@@ -303,6 +329,8 @@ class TTbarResProcessor(processor.ProcessorABC):
             '2023': ['PFHT1050'],
             '2024': ['PFHT1050'],
             '2025': ['PFHT1050'],
+            '2022preEE': ['PFHT1050'], '2022postEE': ['PFHT1050'],
+            '2023preBPix': ['PFHT1050'], '2023postBPix': ['PFHT1050'],
         }
 
         self.anacats = anacats
@@ -329,7 +357,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         """
         if self._recomb:
             return self._recomb_tscore(jet)
-        if self.iov == '2024':
+        if self.iov in _V15_IOVS:
             num = jet.globalParT3_TopbWqq + jet.globalParT3_TopbWq
             return num / (num + jet.globalParT3_QCD)
         return jet[self.tagger_field]
