@@ -378,8 +378,15 @@ def main():
                          'Set ~800 for full-stats runs: cuts the low-pT QCD bulk we never '
                          'fit and shrinks worker memory ~10x.')
     ap.add_argument('--ntuple-prescale', type=float, default=1.0,
-                    help='keep this fraction of ntuple jets (uniform, weight-compensated); '
-                         'extra memory dial for very large QCD samples')
+                    help='keep this fraction of ntuple jets (weight-compensated); '
+                         'memory dial for very large QCD samples')
+    ap.add_argument('--ntuple-prescale-below', type=float, default=None,
+                    help='apply --ntuple-prescale ONLY to jets below this pT (keep all '
+                         'above). Thins the abundant low-pT QCD bulk while preserving the '
+                         'high-pT tail — keeps the full analysis pT range, memory-safe.')
+    ap.add_argument('--subsample', action='append', default=[],
+                    help='only run datasets whose name contains this string (repeatable); '
+                         'e.g. --subsample PT800to1000 to run one QCD pT-bin per job')
     ap.add_argument('--ntuple-outdir', default=None,
                     help='dir for --recomb-ntuple npz (default outputs/glopart_recomb/ntuples_<iov>)')
     args = ap.parse_args()
@@ -420,6 +427,10 @@ def main():
         )
         input_label = f'manifest:{redirector}'
 
+    if args.subsample:
+        fileset = {ds: spec for ds, spec in fileset.items()
+                   if any(s in ds for s in args.subsample)}
+
     if not fileset:
         sys.exit('No MC files found for the selected input mode')
 
@@ -435,6 +446,7 @@ def main():
         recomb_transform=args.recomb_transform,
         recomb_ntuple_pt_min=args.ntuple_pt_min,
         recomb_ntuple_prescale=args.ntuple_prescale,
+        recomb_ntuple_prescale_below=args.ntuple_prescale_below,
     )
 
     tic = time.time()

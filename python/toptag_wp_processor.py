@@ -213,7 +213,8 @@ class TopTagWPProcessor(processor.ProcessorABC):
 
     def __init__(self, iov='2024', match_gen_top=None, sample_metadata=None,
                  recomb_study=False, recomb_weights=None, recomb_transform='logscore',
-                 recomb_ntuple=False, recomb_ntuple_pt_min=None, recomb_ntuple_prescale=1.0):
+                 recomb_ntuple=False, recomb_ntuple_pt_min=None, recomb_ntuple_prescale=1.0,
+                 recomb_ntuple_prescale_below=None):
         if iov not in TAGGER_CONFIG:
             raise KeyError(
                 f"IOV '{iov}' not in TAGGER_CONFIG (known: {list(TAGGER_CONFIG)}). "
@@ -232,14 +233,19 @@ class TopTagWPProcessor(processor.ProcessorABC):
         self.recomb_study = bool(recomb_study)
         self.recomb_ntuple = bool(recomb_ntuple)
         # Memory controls for the per-jet ntuple (the only growth-with-data output):
-        #   pt_min   : drop jets below this pT — QCD is bulk-dominated at low pT but
-        #              the recombination only helps pT>800, so a ~800 floor cuts the
-        #              stored jet count ~10x. Default = preselection floor (no cut).
-        #   prescale : keep this fraction of jets (uniform), reweighting by 1/frac,
-        #              an extra uniform memory dial for very large QCD samples.
+        #   pt_min        : hard-drop jets below this pT (default = preselection
+        #                   floor, i.e. no cut — keeps the full analysis pT range).
+        #   prescale      : keep this fraction of jets, reweighting by 1/frac.
+        #   prescale_below: if set, the prescale applies ONLY to jets below this pT
+        #                   (all jets above are kept). This thins the abundant
+        #                   low-pT QCD bulk while preserving the sparse high-pT tail
+        #                   that drives the 0.5% mis-tag — the memory-safe way to
+        #                   keep the full pT range. None => prescale applies to all.
         self.recomb_ntuple_pt_min = (JET_PT_MIN if recomb_ntuple_pt_min is None
                                      else float(recomb_ntuple_pt_min))
         self.recomb_ntuple_prescale = float(recomb_ntuple_prescale)
+        self.recomb_ntuple_prescale_below = (None if recomb_ntuple_prescale_below is None
+                                             else float(recomb_ntuple_prescale_below))
         self.recomb_transform = recomb_transform
         if isinstance(recomb_weights, str):
             recomb_weights = gr.load_weights(recomb_weights)
@@ -438,14 +444,22 @@ class TopTagWPProcessor(processor.ProcessorABC):
             cols['genweight'] = flat(w_jet).astype(np.float32)
             cols['parity'] = flat(parity_jet).astype(np.int8)
             cols['label'] = np.full(n, label_val, dtype=np.int8)
-            # uniform prescale: keep a fraction, compensate the weight by 1/frac.
+            # prescale: keep each jet with prob keep_prob, compensate weight by
+            # 1/keep_prob (unbiased). If prescale_below is set, only jets under that
+            # pT are thinned (keep_prob=1 above) so the high-pT tail is untouched.
             p = self.recomb_ntuple_prescale
             if p < 1.0:
-                keep = np.random.random(n) < p
+                knee = self.recomb_ntuple_prescale_below
+                if knee is None:
+                    keep_prob = np.full(n, p, dtype=np.float64)
+                else:
+                    keep_prob = np.where(cols['pt'] < knee, p, 1.0)
+                keep = np.random.random(n) < keep_prob
                 if not np.any(keep):
                     return
+                comp = (1.0 / keep_prob[keep]).astype(np.float32)
                 cols = {k: v[keep] for k, v in cols.items()}
-                cols['genweight'] = (cols['genweight'] / np.float32(p)).astype(np.float32)
+                cols['genweight'] = (cols['genweight'] * comp).astype(np.float32)
             dest = output['ntuple'].setdefault(
                 dataset,
                 {f: processor.column_accumulator(np.empty(0, dtype=dt))
