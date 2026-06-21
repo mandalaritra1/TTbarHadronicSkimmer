@@ -511,6 +511,12 @@ def mistag_vs_value(value, score, threshold, edges, weight=None):
     The unbinned-score counterpart of :func:`mistag_vs_axis`, used to test
     mass-decorrelation directly from the per-jet arrays. Returns
     (centers, mistag, mistag_err) with a binomial error per bin.
+
+    The error uses the *Kish effective sample size* per bin,
+    ``n_eff = (Σw)^2 / Σw^2``, NOT Σw — essential once the jets carry real
+    cross-section weights (Σw is inflated by the per-event weight and would make
+    the error far too small, blowing up any flatness chi2). For unit weights
+    n_eff reduces to the raw count.
     """
     value = np.asarray(value, dtype=np.float64)
     score = np.asarray(score, dtype=np.float64)
@@ -522,12 +528,14 @@ def mistag_vs_value(value, score, threshold, edges, weight=None):
     err = np.full(len(centers), np.nan)
     for i in range(len(centers)):
         m = (value >= edges[i]) & (value < edges[i + 1])
-        den = weight[m].sum()
-        if den > 0:
+        wm = weight[m]
+        den = wm.sum()
+        sumw2 = float((wm * wm).sum())
+        if den > 0 and sumw2 > 0:
             p = weight[m & tagged].sum() / den
             mistag[i] = p
-            n_eff = den  # weights are ~1 here; n_eff = sum w is the effective count
-            err[i] = np.sqrt(max(p * (1.0 - p), 0.0) / n_eff) if n_eff > 0 else np.nan
+            n_eff = den * den / sumw2          # Kish effective sample size
+            err[i] = np.sqrt(max(p * (1.0 - p), 0.0) / n_eff)
     return centers, mistag, err
 
 

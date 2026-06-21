@@ -14,6 +14,7 @@ note embeds live PNGs.
 
 Run:  .venv/bin/python plot_glopart_recomb.py
 """
+import argparse
 import json
 import os
 
@@ -31,6 +32,7 @@ except Exception:
 METRICS = "outputs/glopart_recomb/recomb_metrics.json"
 OUT_DIR = "plots/images/glopart_recomb"
 VAULT_ATT = os.path.expanduser("~/Projects/research-notes/attachments")
+MIRROR_VAULT = False  # set by --vault; off by default so quick checks don't clobber the vault
 
 METHODS = {"baseline": ("Baseline TopvsQCD", "o-", "C0"),
            "lda": ("LDA (log-score)", "s--", "C1"),
@@ -41,7 +43,7 @@ def savefig(fig, name):
     """Save under plots/images and mirror into the vault attachments if present."""
     os.makedirs(OUT_DIR, exist_ok=True)
     paths = [os.path.join(OUT_DIR, name)]
-    if os.path.isdir(VAULT_ATT):
+    if MIRROR_VAULT and os.path.isdir(VAULT_ATT):
         paths.append(os.path.join(VAULT_ATT, name))
     for p in paths:
         fig.savefig(p, dpi=110, bbox_inches="tight")
@@ -120,6 +122,13 @@ def decorr_plot(M):
 
 
 def main():
+    global METRICS, OUT_DIR, MIRROR_VAULT
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--metrics", default=METRICS, help="recomb_metrics.json to plot")
+    ap.add_argument("--out-dir", default=OUT_DIR, help="dir for the PNGs")
+    ap.add_argument("--vault", action="store_true", help="also mirror PNGs into research-notes/attachments")
+    args = ap.parse_args()
+    METRICS, OUT_DIR, MIRROR_VAULT = args.metrics, args.out_dir, args.vault
     if not os.path.exists(METRICS):
         raise SystemExit(f"{METRICS} not found — run run_glopart_recomb.py first")
     with open(METRICS) as f:

@@ -178,13 +178,18 @@ def _load_manifest(path, iov, sample, redirector=None, maxfiles=None, is_mc=True
 
 
 def build_manifest_fileset(qcd_json, ttbar_json, iov, redirector=None, maxfiles=None,
-                           samples=None, data_json='data/nanoAOD/data.json'):
+                           samples=None, data_json='data/nanoAOD/data.json',
+                           signal_json='data/nanoAOD/ZPrime10.json'):
     samples = set(samples or ['QCD', 'TTbar'])
     fileset = {}
     if 'QCD' in samples:
         fileset.update(_load_manifest(qcd_json, iov, 'QCD', redirector, maxfiles, is_mc=True))
     if 'TTbar' in samples:
         fileset.update(_load_manifest(ttbar_json, iov, 'TTbar', redirector, maxfiles, is_mc=True))
+    if 'ZPrime' in samples:
+        # Z' -> tt resonance MC = boosted-top signal (sections are resonance masses);
+        # matched-top "signal" for the recomb fit. Sparse, so run at full prescale.
+        fileset.update(_load_manifest(signal_json, iov, 'ZPrime', redirector, maxfiles, is_mc=True))
     if 'Data' in samples:
         fileset.update(_load_manifest(data_json, iov, 'Data', redirector, maxfiles, is_mc=False))
     return fileset
@@ -346,8 +351,11 @@ def main():
     ap.add_argument('--qcd-json', default='data/nanoAOD/QCD.json')
     ap.add_argument('--ttbar-json', default='data/nanoAOD/TTbar.json')
     ap.add_argument('--data-json', default='data/nanoAOD/data.json')
-    ap.add_argument('--sample', choices=['QCD', 'TTbar', 'Data'], action='append', default=[],
-                    help='sample group(s) to run; default is QCD and TTbar')
+    ap.add_argument('--sample', choices=['QCD', 'TTbar', 'ZPrime', 'Data'], action='append', default=[],
+                    help='sample group(s) to run; default is QCD and TTbar. ZPrime = '
+                         'boosted-top resonance signal (use --subsample to pick masses)')
+    ap.add_argument('--signal-json', default='data/nanoAOD/ZPrime10.json',
+                    help='manifest for --sample ZPrime (sections are resonance masses)')
     ap.add_argument('-r', '--redirector', default=None,
                     help='redirector for manifest /store paths; env default if omitted')
     ap.add_argument('--out', default=None, help='output .coffea path')
@@ -428,6 +436,7 @@ def main():
             maxfiles=args.maxfiles,
             samples=args.sample or ['QCD', 'TTbar'],
             data_json=args.data_json,
+            signal_json=args.signal_json,
         )
         input_label = f'manifest:{redirector}'
 
