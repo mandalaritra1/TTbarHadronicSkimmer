@@ -415,7 +415,7 @@ if __name__ == "__main__":
                     with Client(cluster) as client:
                         run_instance = processor.Runner(
                             metadata_cache={},
-                            executor=processor.DaskExecutor(client=client, retries=12, status=args.progress),
+                            executor=processor.DaskExecutor(client=client, retries=12, treereduction=6, status=args.progress),
                             schema=NanoAODSchema,
                             savemetrics=True,
                             skipbadfiles=skipbadfiles,
