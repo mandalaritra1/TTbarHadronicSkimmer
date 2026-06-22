@@ -760,6 +760,15 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
         )
 
     client = Client(cluster)
+    try:
+        print(f"[dask] dashboard : {client.dashboard_link}")
+        print(f"[dask] scheduler : {client.scheduler.address}")
+        print("[dask] to retire a stuck worker, from ANOTHER notebook/kernel:")
+        print("       from dask_gateway import Gateway; g = Gateway()")
+        print("       c = g.connect(g.list_clusters()[0].name).get_client()")
+        print("       c.retire_workers(['tls://HOST:PORT'], close_workers=True)")
+    except Exception as _e:
+        print(f"[dask] could not report scheduler/dashboard: {_e}")
 
     if args.env == "casa" and not args.nocluster:
         from distributed.diagnostics.plugin import UploadDirectory
