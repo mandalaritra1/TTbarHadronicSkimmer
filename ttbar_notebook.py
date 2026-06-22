@@ -87,6 +87,7 @@ DEFAULTS = dict(
     nocluster=False,
     progress=False,
     outdir="",
+    signal_batch=4,
 )
 
 
@@ -348,6 +349,15 @@ w_outdir = widgets.Text(
     style=style,
     layout=layout_wide,
 )
+w_signal_batch = widgets.BoundedIntText(
+    value=int(cfg.get("signal_batch", DEFAULTS["signal_batch"])),
+    min=1,
+    max=100,
+    step=1,
+    description="Sig batch",
+    style=style,
+    layout=layout,
+)
 
 # ── Central widget registry ────────────────────────────────────────────────────
 # To add a new config field: add it to DEFAULTS above and WIDGETS below.
@@ -379,6 +389,7 @@ WIDGETS = {
     "nocluster": w_nocluster,
     "progress": w_progress,
     "outdir": w_outdir,
+    "signal_batch": w_signal_batch,
 }
 
 _MULTI = widgets.SelectMultiple
@@ -489,6 +500,15 @@ def _signal_xsec(sample, subsection):
         return _XS_TABLE.get(sample, {}).get(str(subsection))
     except Exception:
         return None
+
+
+def _batch_tag(subsections):
+    """Filename tag for a batch of signal masses: '_<lo>to<hi>' (or '_<mass>')."""
+    nums = [int(s) for s in subsections if str(s).isdigit()]
+    if nums:
+        lo, hi = min(nums), max(nums)
+        return f"_{lo}" if lo == hi else f"_{lo}to{hi}"
+    return "_" + "-".join(str(s) for s in subsections)[:40]
 
 
 def _parse_manifest_entry(sample, subsection, iov, entry):
@@ -952,8 +972,10 @@ def run_analysis(args):
             is_signal = sample.startswith("ZPrime") or sample == "RSGluon"
             run_units = []  # (fileset, dataset_metadata, group_flag, subsection, savefilename)
             if is_signal:
-                grouped_fileset = {}
-                grouped_meta = {}
+                # batch masses into groups of args.signal_batch -> one file per batch
+                # (middle ground: all-in-one OOMs the merge, per-mass is slow).
+                batch_size = max(1, int(getattr(args, "signal_batch", 4)))
+                built = []  # (subsection, ds_key, files, sample_metadata)
                 for subsection, files, sample_metadata in sections:
                     files = [redirector + f for f in files]
                     if args.test:
@@ -963,11 +985,14 @@ def run_analysis(args):
                         _x = _signal_xsec(sample, subsection)
                         if _x is not None:
                             sample_metadata = {**sample_metadata, "xsec_pb": _x}
-                    grouped_fileset[ds_key] = {"files": files, "metadata": sample_metadata}
-                    grouped_meta[ds_key] = sample_metadata
-                    print(f"{ds_key}: {files[0]}")
-                if grouped_fileset:
-                    run_units.append((grouped_fileset, grouped_meta, True, "all", f"{file_savedir}{sample}_{IOV}.coffea"))
+                    built.append((subsection, ds_key, files, sample_metadata))
+                for bi in range(0, len(built), batch_size):
+                    batch = built[bi:bi + batch_size]
+                    gfs = {dk: {"files": f, "metadata": m} for (_, dk, f, m) in batch}
+                    gm = {dk: m for (_, dk, f, m) in batch}
+                    tag = _batch_tag([s for (s, _, _, _) in batch])
+                    print(f"{sample} batch{tag}: {[dk for (_, dk, _, _) in batch]}")
+                    run_units.append((gfs, gm, True, tag.lstrip('_'), f"{file_savedir}{sample}_{IOV}{tag}.coffea"))
             else:
                 for subsection, files, sample_metadata in sections:
                     files = [redirector + f for f in files]
@@ -1252,6 +1277,6 @@ def show_widgets():
     ):
         display(_widget)
     print("Run options")
-    for _widget in (w_dask, w_daskMemory, w_env, w_test, w_nocluster, w_progress, w_outdir, btn_reset):
+    for _widget in (w_dask, w_daskMemory, w_env, w_test, w_nocluster, w_progress, w_outdir, w_signal_batch, btn_reset):
         display(_widget)
     print("Adjust widgets above, then run the next cell to apply settings.")

@@ -61,6 +61,17 @@ def _signal_xsec(sample, subsection):
         return None
 
 
+def _batch_tag(subsections):
+    """Filename tag for a batch of signal masses: '_<lo>to<hi>' (or '_<mass>' for a
+    single mass). The mass identity lives on the dataset axis, so this is only for
+    unique, human-readable filenames within a width."""
+    nums = [int(s) for s in subsections if str(s).isdigit()]
+    if nums:
+        lo, hi = min(nums), max(nums)
+        return f'_{lo}' if lo == hi else f'_{lo}to{hi}'
+    return '_' + '-'.join(str(s) for s in subsections)[:40]
+
+
 def _parse_manifest_entry(sample, subsection, iov, entry):
     if isinstance(entry, dict) and 'files' in entry:
         files = entry['files']
@@ -140,6 +151,11 @@ if __name__ == "__main__":
                              'baseline directly comparable to recomb at the same --ttagWP.')
     parser.add_argument('--baseline-weights', default='data/recomb/baseline_deploy_2024.json',
                         help='per-pT baseline WP deploy JSON for --ttag-ptbinned')
+    parser.add_argument('--signal-batch', type=int, default=4,
+                        help='masses per grouped signal file (default 4). 1 = one file '
+                             'per mass (slow, low memory); a large number = all masses '
+                             'in one file (fast, high merge memory -> can OOM workers). '
+                             'Middle values balance merge memory vs job count.')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
@@ -283,18 +299,18 @@ if __name__ == "__main__":
             )
 
             # ---- assemble run "jobs" ------------------------------------------
-            # Signals are grouped into ONE job per width: all mass points share a
-            # single fileset -> one output file, with the masses separated on the
-            # dataset axis and each normalized by its own xsec in postprocess.
-            # Everything else runs one job per subsection, exactly as before.
+            # Signals are grouped into batches of --signal-batch masses: one file per
+            # batch, masses on the dataset axis (each normalized to its own xsec).
+            # Batching is the middle ground between all-in-one (big merge -> OOM) and
+            # per-mass (many jobs). Everything else runs one job per subsection.
             file_savedir = savedir
             if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2') and not args.outdir:
                 file_savedir = 'outputs/oldanalysis/'
 
             jobs = []  # each: (fileset, dataset_metadata, base_savefilename)
             if is_signal:
-                grouped_fileset = {}
-                grouped_meta = {}
+                batch_size = max(1, int(getattr(args, 'signal_batch', 4)))
+                built = []  # (subsection, ds_key, files, sample_metadata)
                 for subsection, files, sample_metadata in sections:
                     files = [redirector + f for f in files]
                     if args.test:
@@ -306,11 +322,14 @@ if __name__ == "__main__":
                         xsec = _signal_xsec(sample, subsection)
                         if xsec is not None:
                             sample_metadata = {**sample_metadata, 'xsec_pb': xsec}
-                    grouped_fileset[ds_key] = {'files': files, 'metadata': sample_metadata}
-                    grouped_meta[ds_key] = sample_metadata
-                    print(f'{ds_key}: {files[0]}')
-                if grouped_fileset:
-                    jobs.append((grouped_fileset, grouped_meta, f'{file_savedir}{sample}_{IOV}.coffea'))
+                    built.append((subsection, ds_key, files, sample_metadata))
+                for bi in range(0, len(built), batch_size):
+                    batch = built[bi:bi + batch_size]
+                    gfs = {dk: {'files': f, 'metadata': m} for (_, dk, f, m) in batch}
+                    gm = {dk: m for (_, dk, f, m) in batch}
+                    tag = _batch_tag([s for (s, _, _, _) in batch])
+                    print(f'{sample} batch{tag}: {[dk for (_, dk, _, _) in batch]}')
+                    jobs.append((gfs, gm, f'{file_savedir}{sample}_{IOV}{tag}.coffea'))
             else:
                 for subsection, files, sample_metadata in sections:
                     files = [redirector + f for f in files]
