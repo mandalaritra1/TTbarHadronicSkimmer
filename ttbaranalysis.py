@@ -421,6 +421,7 @@ if __name__ == "__main__":
                             skipbadfiles=skipbadfiles,
                             chunksize=chunksize_dask,
                             maxchunks=maxchunks,
+                            xrootdtimeout=600,
                         )
                         worker_toc = time.time()
                         print("Waiting for at least one worker...")
