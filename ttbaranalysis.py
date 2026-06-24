@@ -30,7 +30,11 @@ def _build_sample_metadata(sample, subsection, iov, metadata):
         'year': iov,
         'is_mc': not (('data' in sample.lower()) or ('singlemu' in sample.lower())),
     }
-    sample_metadata.update(metadata)
+    # `iov` (the run year being processed) is authoritative for normalization lumi,
+    # so a manifest entry's own 'year' must NOT override it. This matters for the MC
+    # stand-in: 2024 Summer24 files served for --iov 2025 carry year='2024' in their
+    # metadata, but we want them normalized to the 2025 lumi (_LUMI_PB['2025']).
+    sample_metadata.update({k: v for k, v in metadata.items() if k != 'year'})
     return sample_metadata
 
 
@@ -121,7 +125,7 @@ if __name__ == "__main__":
                                  'ZPrime30', 'ZPrimeDM', 'RSGluon', 'ZPrimeLocal'],
                         default=default_datastets, action='append')
     parser.add_argument('--iov',
-                        choices=['2022', '2023', '2024',
+                        choices=['2022', '2023', '2024', '2025',
                                  '2022preEE', '2022postEE',
                                  '2023preBPix', '2023postBPix'],
                         default='2024')
@@ -280,15 +284,17 @@ if __name__ == "__main__":
             subsections = args.era + args.mass + args.pt + args.subsample
             manifest = json.load(json_file)
 
-            # Signal MC (Z'/RSGluon) has no NanoAODv15 production for the 2022/2023
-            # sub-eras -> fall back to the 2024 signal files as a placeholder, while
-            # still labelling them with the requested IOV (so lumi normalization uses
-            # the right per-year value). Background/data are never substituted.
+            # MC fallback: when an IOV has no v15 production for a given MC sample,
+            # stand in the 2024 Summer24 files while still labelling them with the
+            # requested IOV (so lumi normalization uses the right per-year value).
+            #  - 2022/2023 sub-eras: only signal (Z'/RSGluon) lacks v15 -> falls back.
+            #  - 2025: no analysis MC exists yet, so TTbar/QCD/signal ALL fall back to
+            #    Summer24 (the PPD-recommended MC for 2025 data). Data is never
+            #    substituted -- it must resolve to its real per-year files.
             source_iov = None
-            is_signal = sample.startswith('ZPrime') or sample == 'RSGluon'
-            if is_signal and IOV not in manifest and '2024' in manifest:
+            if sample != 'data' and IOV not in manifest and '2024' in manifest:
                 source_iov = '2024'
-                print(f"[placeholder] {sample} {IOV}: no v15 signal -> using 2024 signal MC as stand-in")
+                print(f"[placeholder] {sample} {IOV}: no v15 MC for this IOV -> using 2024 Summer24 MC as stand-in")
 
             sections = _collect_manifest_sections(
                 sample=sample,

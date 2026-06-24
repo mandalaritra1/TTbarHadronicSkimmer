@@ -127,7 +127,7 @@ _redirector_opts = [
 ]
 _redirector_vals = [v for _, v in _redirector_opts]
 _env_opts = ["casa", "lpc", "winterfell", "local"]
-_iov_opts = ["2022", "2023", "2024"]
+_iov_opts = ["2022", "2023", "2024", "2025"]
 _bkgest_opts = [("None", None), "2dalphabet", "mistag"]
 _toptagger_opts = ["topvsqcd", "cmsv2", "recomb"]
 _ttagWP_opts = ["loose", "medium", "tight"]
@@ -476,7 +476,11 @@ def _build_sample_metadata(sample, subsection, iov, metadata):
         "year": iov,
         "is_mc": not (("data" in sample.lower()) or ("singlemu" in sample.lower())),
     }
-    sample_metadata.update(metadata)
+    # `iov` (the run year being processed) is authoritative for normalization lumi,
+    # so a manifest entry's own 'year' must NOT override it. This matters for the MC
+    # stand-in: 2024 Summer24 files served for --iov 2025 carry year='2024' in their
+    # metadata, but we want them normalized to the 2025 lumi (_LUMI_PB['2025']).
+    sample_metadata.update({k: v for k, v in metadata.items() if k != "year"})
     return sample_metadata
 
 
@@ -522,8 +526,11 @@ def _parse_manifest_entry(sample, subsection, iov, entry):
     return list(files), _build_sample_metadata(sample, subsection, iov, metadata)
 
 
-def _collect_manifest_sections(sample, iov, manifest, subsections):
-    iov_entry = manifest[iov]
+def _collect_manifest_sections(sample, iov, manifest, subsections, source_iov=None):
+    # source_iov: read file lists from this manifest key while still labelling the
+    # sample with `iov` in its metadata (used to stand in 2024 Summer24 MC for an
+    # IOV that has no v15 production of its own, e.g. 2025 TTbar/QCD/signal).
+    iov_entry = manifest[source_iov or iov]
 
     if isinstance(iov_entry, dict) and "files" not in iov_entry:
         requested_sections = subsections if subsections else list(iov_entry.keys())
@@ -954,11 +961,19 @@ def run_analysis(args):
                 args.era + args.mass + args.pt + getattr(args, "subsample", [])
             )
             manifest = json.load(json_file)
+            # MC fallback: an IOV with no v15 production of its own (e.g. 2025, and
+            # signal for the 2022/2023 sub-eras) reads file lists from 2024 Summer24
+            # while keeping the requested IOV in metadata. Data is never substituted.
+            source_iov = None
+            if sample != "data" and IOV not in manifest and "2024" in manifest:
+                source_iov = "2024"
+                print(f"[placeholder] {sample} {IOV}: no v15 MC for this IOV -> using 2024 Summer24 MC as stand-in")
             sections = _collect_manifest_sections(
                 sample=sample,
                 iov=IOV,
                 manifest=manifest,
                 subsections=subsections,
+                source_iov=source_iov,
             )
 
             file_savedir = savedir

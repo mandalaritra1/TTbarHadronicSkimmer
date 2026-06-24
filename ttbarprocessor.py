@@ -94,6 +94,10 @@ _LUMI_PB = {
     '2018':    59740.,
     '2023':    27000.,
     '2024':    109950.,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
+    # 2025 prompt-reco (NanoAODv15), eras C-G. Preliminary ONLINE lumi (no normtag)
+    # from the PPD Run3-2025 summary: 21.63+25.52+14.15+26.89+22.40 fb^-1. Will be
+    # revised once LUMI POG converges on the new normtag; refine with brilcalc.
+    '2025':    110590.,
     # Run-3 sub-era keys (NanoAODv15). Preliminary golden-JSON values; refine
     # with brilcalc on data/corrections/goldenJsons/.
     '2022preEE':    7980.,   # Run2022 C,D
@@ -121,13 +125,15 @@ def _base_year(iov):
 # (the recomb tagger hits these exactly per pT bin; the baseline scalar thresholds
 #  below approximate them inclusively.)
 _TAGGER_WPS = {
-    # 2022/2023 sub-era WPs are placeholders set to the 2024 GloParTv3 values
-    # (same tagger); replace with per-year derivations when available.
+    # 2022/2023/2025 WPs are placeholders set to the 2024 GloParTv3 values (same
+    # tagger; 2025 MC is Summer24 per PPD); replace with per-year derivations when
+    # available. (The old stand-alone 2025 loose/medium values 0.470/0.685 predated
+    # the GloParTv3 WP work and were inconsistent with the 2024 placeholders.)
     'loose': {
         '2022': 0.435,
         '2023': 0.435,
         '2024': 0.6488,
-        '2025': 0.470,
+        '2025': 0.6488,
         '2022preEE': 0.6488, '2022postEE': 0.6488,
         '2023preBPix': 0.6488, '2023postBPix': 0.6488,
     },
@@ -135,7 +141,7 @@ _TAGGER_WPS = {
         '2022': 0.632,
         '2023': 0.632,
         '2024': 0.8571,
-        '2025': 0.685,
+        '2025': 0.8571,
         '2022preEE': 0.8571, '2022postEE': 0.8571,
         '2023preBPix': 0.8571, '2023postBPix': 0.8571,
     },
@@ -145,6 +151,7 @@ _TAGGER_WPS = {
         '2017':    0.863,
         '2018':    0.920,
         '2024':    0.9284,
+        '2025':    0.9284,
         '2022preEE': 0.9284, '2022postEE': 0.9284,
         '2023preBPix': 0.9284, '2023postBPix': 0.9284,
     },
