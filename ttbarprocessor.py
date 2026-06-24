@@ -227,6 +227,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1'],
         anacats=['2t0bcen'],
         debug=False,
+        cutflow_verbose=False,
         produce_ntuple=False,
         ntuple_mode='accumulator',
         ntuple_output_dir=None,
@@ -252,6 +253,10 @@ class TTbarResProcessor(processor.ProcessorABC):
         self.systematics = systematics
         self.blinding = blinding
         self.debug = debug
+        # per-chunk [CUTFLOW] stdout echo: useful for --test, but on a full Dask run
+        # it prints a block per chunk (thousands) and ships them back through the
+        # scheduler. Off by default; the cutflow dict is accumulated either way.
+        self.cutflow_verbose = cutflow_verbose
         self.produce_ntuple = produce_ntuple
         self.ntuple_mode = ntuple_mode
         self.ntuple_output_dir = ntuple_output_dir
@@ -718,7 +723,8 @@ class TTbarResProcessor(processor.ProcessorABC):
             events = events[lumi_mask]
             if isNominal:
                 output['cutflow']['after_lumimask'] += len(events)
-                print(f"[CUTFLOW] after lumimask: {len(events)}")
+                if self.cutflow_verbose:
+                    print(f"[CUTFLOW] after lumimask: {len(events)}")
 
         # --- blinding (data only, keep every 10th event) ---
         if self.blinding and isData:
@@ -826,7 +832,8 @@ class TTbarResProcessor(processor.ProcessorABC):
                 self._fill_cutflow_table_step(
                     output, cut, mask=cumulative_mask, weights=evtweights,
                 )
-                print(f"[CUTFLOW] after {cut} (cumulative): {n}")
+                if self.cutflow_verbose:
+                    print(f"[CUTFLOW] after {cut} (cumulative): {n}")
 
         eventCut = selection.all(*selection.names)
         self.logger.debug(
@@ -848,7 +855,8 @@ class TTbarResProcessor(processor.ProcessorABC):
             self._fill_cutflow_table_step(
                 output, 'preselection', count=len(events), weights=evtweights,
             )
-            print(f"[CUTFLOW] after all preselection (eventCut): {len(events)}")
+            if self.cutflow_verbose:
+                print(f"[CUTFLOW] after all preselection (eventCut): {len(events)}")
         logger.debug(f"Length of event {len(events)}")
         if len(events) < 10:
             self.logger.debug(
@@ -940,8 +948,9 @@ class TTbarResProcessor(processor.ProcessorABC):
             n_dPhi    = int(ak.sum(dPhiCut))
             n_subjets = int(ak.sum(GoodSubjets))
             n_both    = int(ak.sum(dPhiCut & GoodSubjets))
-            print(f"[CUTFLOW] after ttbarcandCuts: {len(events)}  "
-                  f"(dPhiCut alone: {n_dPhi}, GoodSubjets alone: {n_subjets}, both: {n_both})")
+            if self.cutflow_verbose:
+                print(f"[CUTFLOW] after ttbarcandCuts: {len(events)}  "
+                      f"(dPhiCut alone: {n_dPhi}, GoodSubjets alone: {n_subjets}, both: {n_both})")
 
         if isNominal:
             before = len(output["event_list"]["run"])
@@ -1041,13 +1050,15 @@ class TTbarResProcessor(processor.ProcessorABC):
             self._fill_cutflow_table_step(
                 output, 'antitag', mask=antitag, weights=evtweights,
             )
-            print(f"[CUTFLOW] antitag: {int(ak.sum(antitag))}, ttag_s0: {int(ak.sum(ttag_s0))}, "
-                  f"ttag_s1: {int(ak.sum(ttag_s1))}, 2tag: {int(ak.sum(ttag_s0 & ttag_s1))}")
+            if self.cutflow_verbose:
+                print(f"[CUTFLOW] antitag: {int(ak.sum(antitag))}, ttag_s0: {int(ak.sum(ttag_s0))}, "
+                      f"ttag_s1: {int(ak.sum(ttag_s1))}, 2tag: {int(ak.sum(ttag_s0 & ttag_s1))}")
             for lbl, cat in labels_and_categories.items():
                 self._fill_cutflow_table_step(
                     output, f'category_{lbl}', mask=cat, weights=evtweights,
                 )
-                print(f"[CUTFLOW] category '{lbl}': {int(ak.sum(cat))}")
+                if self.cutflow_verbose:
+                    print(f"[CUTFLOW] category '{lbl}': {int(ak.sum(cat))}")
 
         self.weights[correction] = self.weight_manager.build_weights(
             dataset=dataset,

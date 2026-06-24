@@ -409,6 +409,7 @@ if __name__ == "__main__":
                     sample_metadata=rep_meta,
                     dataset_metadata=dataset_metadata,
                     group_by_dataset=is_signal,
+                    cutflow_verbose=args.test,
                 )
 
                 if not args.dask:
