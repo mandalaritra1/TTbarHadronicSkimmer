@@ -291,6 +291,7 @@ if __name__ == "__main__":
             #  - 2025: no analysis MC exists yet, so TTbar/QCD/signal ALL fall back to
             #    Summer24 (the PPD-recommended MC for 2025 data). Data is never
             #    substituted -- it must resolve to its real per-year files.
+            is_signal = sample.startswith('ZPrime') or sample == 'RSGluon'
             source_iov = None
             if sample != 'data' and IOV not in manifest and '2024' in manifest:
                 source_iov = '2024'
