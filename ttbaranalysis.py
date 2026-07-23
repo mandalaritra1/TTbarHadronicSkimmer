@@ -436,10 +436,26 @@ if __name__ == "__main__":
                         )
                         if cluster:
                             cluster.adapt(minimum=1, maximum=100)
+                    elif args.env in ('casa', 'C') and not args.nocluster:
+                        # scalable coffea-casa gateway cluster. Without this the casa
+                        # path fell through to Client(None) = a LocalCluster bound to
+                        # the notebook pod's ~4 cores (hence "only 4 workers").
+                        from coffea_casa import CoffeaCasaCluster
+                        cluster = CoffeaCasaCluster(memory=dask_memory)
+                        cluster.adapt(minimum=4, maximum=400)
                     else:
                         cluster = None
 
                     with Client(cluster) as client:
+                        if args.env in ('casa', 'C') and not args.nocluster:
+                            # casa workers are separate pods -> ship code to them
+                            # (mirrors ttbar_notebook._start_dask_resources)
+                            from distributed.diagnostics.plugin import UploadDirectory
+                            client.register_worker_plugin(
+                                UploadDirectory('data', restart=True, update_path=True), nanny=True)
+                            client.register_worker_plugin(
+                                UploadDirectory('python', restart=True, update_path=True), nanny=True)
+                            client.upload_file('ttbarprocessor.py')
                         run_instance = processor.Runner(
                             metadata_cache={},
                             executor=processor.DaskExecutor(client=client, retries=12, treereduction=6, status=args.progress),
