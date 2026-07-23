@@ -20,3 +20,17 @@ Physics findings and results produced from work in this repository (tagging stud
 Log proactively. Whenever a session involves testing, code changes, debugging, or produces a result, record the durable outcome at natural checkpoints (a finding confirmed, a bug root-caused, a feature validated) — to `ai-wiki` for code/workflow/debugging knowledge and to `research-notes` for physics findings — not only when explicitly asked.
 
 Additional project documentation lives at `/Users/aritra/Projects/documentations/doc-ttbarhad`. Treat it as documentation context and follow its own `AGENTS.md` before editing it.
+
+## Downstream: 2DAlphabet fit stage (bgestimation)
+
+This repo is the **upstream** skimmer. Its outputs feed the **downstream**
+2DAlphabet background-estimation + Combine fit repo `mandalaritra1/bgestimation`
+(local `/Users/aritra/Projects/bg_ttbar/src/bgestimation`; card
+`/Users/aritra/Projects/ai-wiki/wiki/repos/ttbarhadronic_bgestimation.md`).
+
+Handoff: `plots/make2Drootfiles.py` (+ `plots/scaleCoffeaFiles.ipynb`) converts the
+coffea `mtt_vs_mt` outputs into 2DAlphabet TH2 inputs `MttvsMt{Cen,Fwd}24{Pass,Fail}`
+in `TTbarAllHad24_*.root`, staged on EOS at
+`/eos/user/a/amandal/ttbarhad_root_files/2dAlphabetInputs`. Those histogram names
+are the **interface contract** — if the region split or binning changes here, update
+the bgestimation 2024 configs too (and vice versa).

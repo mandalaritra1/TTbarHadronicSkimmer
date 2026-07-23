@@ -94,9 +94,9 @@ _LUMI_PB = {
     '2018':    59740.,
     '2023':    27000.,
     '2024':    109950.,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
-    # 2025 prompt-reco (NanoAODv15), eras C-G. Preliminary ONLINE lumi (no normtag)
-    # from the PPD Run3-2025 summary: 21.63+25.52+14.15+26.89+22.40 fb^-1. Will be
-    # revised once LUMI POG converges on the new normtag; refine with brilcalc.
+    # 2025 prompt-reco (NanoAODv15), eras C-G. PPD Golden-JSON certified lumi
+    # (preliminary offline) from the Run3-2025 summary table Golden-JSON column:
+    # 21.63+25.52+14.15+26.89+22.40 = 110.59 fb^-1. May tick as PPD finalizes; verify with brilcalc.
     '2025':    110590.,
     # Run-3 sub-era keys (NanoAODv15). Preliminary golden-JSON values; refine
     # with brilcalc on data/corrections/goldenJsons/.

@@ -15,7 +15,7 @@ lumi = {
     "2018": 59740.,
     "2023": 27_000.,   # pb^-1  ~27 fb^-1 certified (preliminary, ±1.3%)
     "2024": 109_950.,  # pb^-1  (109.95 fb^-1, golden-JSON certified)
-    "2025": 110_590.,  # pb^-1  eras C-G, preliminary ONLINE lumi (no normtag, PPD)
+    "2025": 110_590.,  # pb^-1  eras C-G, PPD Golden-JSON certified (preliminary offline)
     # Run-3 sub-era keys (NanoAODv15); preliminary, refine with brilcalc
     "2022preEE":    7_980.,
     "2022postEE":   26_670.,
