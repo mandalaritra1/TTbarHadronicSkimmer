@@ -19,7 +19,7 @@ class TopTagRunnerFilesetTest(unittest.TestCase):
 
         self.assertEqual(list(fileset), ["TTto4Q"])
         self.assertEqual(len(fileset["TTto4Q"]["files"]), 2)
-        self.assertEqual(fileset["TTto4Q"]["metadata"]["xsec_pb"], 350.6)
+        self.assertEqual(fileset["TTto4Q"]["metadata"]["xsec_pb"], 419.9)
 
     def test_manifest_fileset_uses_redirector_metadata_and_maxfiles(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -60,7 +60,7 @@ class TopTagRunnerFilesetTest(unittest.TestCase):
                             "subsample": "inclusive",
                             "year": "2024",
                             "is_mc": True,
-                            "xsec_pb": 350.6,
+                            "xsec_pb": 419.9,
                         },
                     }
                 }
@@ -84,7 +84,7 @@ class TopTagRunnerFilesetTest(unittest.TestCase):
         self.assertEqual(fileset["QCD_PT-600to800"]["files"], [
             "root://cmsxrootd.fnal.gov//store/qcd/a.root"
         ])
-        self.assertEqual(fileset["TTbar"]["metadata"]["xsec_pb"], 350.6)
+        self.assertEqual(fileset["TTbar"]["metadata"]["xsec_pb"], 419.9)
 
     def test_local_fileset_skips_low_qcd_pt_bins(self):
         with tempfile.TemporaryDirectory() as tmp:

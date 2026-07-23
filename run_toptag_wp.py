@@ -69,7 +69,7 @@ import glopart_recomb as gr
 # Per-sample cross sections [pb] for local directory scans. Manifest-backed
 # runs use the xsec_pb already stored in data/nanoAOD/*.json.
 XSEC_PB = {
-    'TTto4Q': 350.6,          # 2024 inclusive TTbar (data/nanoAOD/TTbar.json)
+    'TTto4Q': 419.9,          # all-hadronic TTbar = 924 pb (NNLO) * 0.4544 BR (data/nanoAOD/TTbar.json)
     'QCD_PT600to800': 178.7,  # local directory name without manifest hyphen
     'QCD_PT-600to800': 178.7,
 }

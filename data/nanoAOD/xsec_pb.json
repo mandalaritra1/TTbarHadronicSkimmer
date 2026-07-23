@@ -48,7 +48,7 @@
     },
     "2022preEE": {
         "TTbar_inclusive": {
-            "xsec_pb": 350.6
+            "xsec_pb": 419.9
         },
         "QCD_PT-15to30": {
             "xsec_pb": 1301000000.0
@@ -95,7 +95,7 @@
     },
     "2022postEE": {
         "TTbar_inclusive": {
-            "xsec_pb": 350.6
+            "xsec_pb": 419.9
         },
         "QCD_PT-15to30": {
             "xsec_pb": 1301000000.0
@@ -142,7 +142,7 @@
     },
     "2023preBPix": {
         "TTbar_inclusive": {
-            "xsec_pb": 350.6
+            "xsec_pb": 419.9
         },
         "QCD_PT-15to30": {
             "xsec_pb": 1301000000.0
@@ -189,7 +189,7 @@
     },
     "2023postBPix": {
         "TTbar_inclusive": {
-            "xsec_pb": 350.6
+            "xsec_pb": 419.9
         },
         "QCD_PT-15to30": {
             "xsec_pb": 1301000000.0

@@ -955,7 +955,7 @@
                 "subsample": "inclusive",
                 "year": "2024",
                 "is_mc": true,
-                "xsec_pb": 350.6
+                "xsec_pb": 419.9
             }
         }
     },
@@ -1038,7 +1038,7 @@
                 "subsample": "inclusive",
                 "year": "2022preEE",
                 "is_mc": true,
-                "xsec_pb": 350.6
+                "xsec_pb": 419.9
             }
         }
     },
@@ -1277,7 +1277,7 @@
                 "subsample": "inclusive",
                 "year": "2022postEE",
                 "is_mc": true,
-                "xsec_pb": 350.6
+                "xsec_pb": 419.9
             }
         }
     },
@@ -1427,7 +1427,7 @@
                 "subsample": "inclusive",
                 "year": "2023preBPix",
                 "is_mc": true,
-                "xsec_pb": 350.6
+                "xsec_pb": 419.9
             }
         }
     },
@@ -1513,7 +1513,7 @@
                 "subsample": "inclusive",
                 "year": "2023postBPix",
                 "is_mc": true,
-                "xsec_pb": 350.6
+                "xsec_pb": 419.9
             }
         }
     }
