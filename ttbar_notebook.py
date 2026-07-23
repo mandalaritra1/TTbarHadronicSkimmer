@@ -40,6 +40,33 @@ for name in [
 default_datastets = ["data", "TTbar", "QCD"]
 default_signals = ["RSGluon", "ZPrime10", "ZPrime30", "ZPrimeDM", "ZPrime1"]
 
+
+class _BroadcastHeavyClient:
+    """DaskExecutor ships the pickled processor (heavy_input) as a single future
+    on ONE worker via client.submit, and every chunk task depends on it -- the
+    scheduler then piles all chunks onto that worker (dependency locality) and
+    work stealing won't move the big object. Seen as "all tasks on one worker"
+    on a hot pool between consecutive runs (2026-07-23). Bare .submit is only
+    used for heavy_input inside DaskExecutor.__call__ (chunks go through .map),
+    so replicating every submitted future to the whole pool restores fan-out."""
+
+    def __init__(self, inner):
+        self._inner = inner
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def submit(self, func, *args, **kwargs):
+        future = self._inner.submit(func, *args, **kwargs)
+        try:
+            from distributed import wait as _dask_wait
+
+            _dask_wait(future, timeout=300)
+            self._inner.replicate(future)
+        except Exception:
+            pass
+        return future
+
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
 
@@ -1142,7 +1169,7 @@ def run_analysis(args):
                     else:
                         run_instance = processor.Runner(
                             metadata_cache={},
-                            executor=processor.DaskExecutor(client=client, retries=12, treereduction=6, status=args.progress),
+                            executor=processor.DaskExecutor(client=_BroadcastHeavyClient(client), retries=12, treereduction=6, status=args.progress),
                             schema=NanoAODSchema,
                             savemetrics=True,
                             skipbadfiles=skipbadfiles,

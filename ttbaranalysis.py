@@ -449,6 +449,29 @@ if __name__ == "__main__":
                         cluster = None
 
                     with Client(cluster) as client:
+                        # DaskExecutor ships the pickled processor (heavy_input) as a
+                        # single future on ONE worker via client.submit, and every chunk
+                        # depends on it -- the scheduler then piles all chunks onto that
+                        # worker (dep locality) and stealing won't move the big object.
+                        # Bare .submit is only used for heavy_input (chunks use .map),
+                        # so replicate every submitted future to the whole pool.
+                        class _BroadcastHeavyClient:
+                            def __init__(self, inner):
+                                self._inner = inner
+
+                            def __getattr__(self, name):
+                                return getattr(self._inner, name)
+
+                            def submit(self, func, *fargs, **fkwargs):
+                                future = self._inner.submit(func, *fargs, **fkwargs)
+                                try:
+                                    from distributed import wait as _dask_wait
+                                    _dask_wait(future, timeout=300)
+                                    self._inner.replicate(future)
+                                except Exception:
+                                    pass
+                                return future
+
                         if args.env in ('casa', 'C') and not args.nocluster:
                             # casa workers are separate pods -> ship code to them
                             # (mirrors ttbar_notebook._start_dask_resources)
@@ -460,7 +483,7 @@ if __name__ == "__main__":
                             client.upload_file('ttbarprocessor.py')
                         run_instance = processor.Runner(
                             metadata_cache={},
-                            executor=processor.DaskExecutor(client=client, retries=12, treereduction=6, status=args.progress),
+                            executor=processor.DaskExecutor(client=_BroadcastHeavyClient(client), retries=12, treereduction=6, status=args.progress),
                             schema=NanoAODSchema,
                             savemetrics=True,
                             skipbadfiles=skipbadfiles,
