@@ -787,6 +787,10 @@ def _close_dask_resources(client, cluster):
 
 
 def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers):
+    # must run before any cluster is constructed (scheduler builds the
+    # dashboard from this factory); no-ops with a warning if bokeh is absent
+    from python.dask_dark_dashboard import enable_dark_dashboard
+    enable_dark_dashboard()
     client = None
     cluster = None
 

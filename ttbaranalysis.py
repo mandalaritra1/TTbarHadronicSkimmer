@@ -431,6 +431,10 @@ if __name__ == "__main__":
                     )
 
                 else:
+                    # theme the dashboard before any cluster/scheduler exists;
+                    # no-ops with a warning if bokeh is absent
+                    from python.dask_dark_dashboard import enable_dark_dashboard
+                    enable_dark_dashboard()
                     if args.env in ('lpc', 'L'):
                         cluster = None if args.nocluster else LPCCondorCluster(
                             memory=dask_memory,
