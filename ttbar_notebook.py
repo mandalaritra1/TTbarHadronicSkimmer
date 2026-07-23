@@ -118,6 +118,7 @@ DEFAULTS = dict(
     progress=False,
     outdir="",
     signal_batch=4,
+    casa_workers=CASA_WORKERS,
 )
 
 
@@ -388,6 +389,15 @@ w_signal_batch = widgets.BoundedIntText(
     style=style,
     layout=layout,
 )
+w_casa_workers = widgets.BoundedIntText(
+    value=int(cfg.get("casa_workers", DEFAULTS["casa_workers"])),
+    min=4,
+    max=400,
+    step=4,
+    description="Casa workers",
+    style=style,
+    layout=layout,
+)
 
 # ── Central widget registry ────────────────────────────────────────────────────
 # To add a new config field: add it to DEFAULTS above and WIDGETS below.
@@ -420,6 +430,7 @@ WIDGETS = {
     "progress": w_progress,
     "outdir": w_outdir,
     "signal_batch": w_signal_batch,
+    "casa_workers": w_casa_workers,
 }
 
 _MULTI = widgets.SelectMultiple
@@ -810,7 +821,9 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
         # handle_request_refresh_who_has KeyError race fires continuously under
         # that churn and can crash the scheduler mid-run ("Client lost the
         # connection to the scheduler", 2026-07-23). A fixed-size pool is stable.
-        cluster.scale(CASA_WORKERS)
+        n_casa = int(getattr(args, "casa_workers", CASA_WORKERS))
+        print(f"[dask] requesting fixed pool of {n_casa} casa workers")
+        cluster.scale(n_casa)
     else:
         cluster = dask.distributed.LocalCluster(
             n_workers=nworkers,
@@ -1329,6 +1342,6 @@ def show_widgets():
     ):
         display(_widget)
     print("Run options")
-    for _widget in (w_dask, w_daskMemory, w_env, w_test, w_nocluster, w_progress, w_outdir, w_signal_batch, btn_reset):
+    for _widget in (w_dask, w_daskMemory, w_env, w_casa_workers, w_test, w_nocluster, w_progress, w_outdir, w_signal_batch, btn_reset):
         display(_widget)
     print("Adjust widgets above, then run the next cell to apply settings.")

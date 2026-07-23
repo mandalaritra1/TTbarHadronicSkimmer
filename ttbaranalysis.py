@@ -160,6 +160,9 @@ if __name__ == "__main__":
                              'per mass (slow, low memory); a large number = all masses '
                              'in one file (fast, high merge memory -> can OOM workers). '
                              'Middle values balance merge memory vs job count.')
+    parser.add_argument('--casa-workers', type=int, default=64,
+                        help='fixed casa worker pool size (default 64; adaptive scaling '
+                             'is avoided because worker churn can crash the scheduler)')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
@@ -444,7 +447,7 @@ if __name__ == "__main__":
                         cluster = CoffeaCasaCluster(memory=dask_memory)
                         # fixed pool: adaptive churn can crash the scheduler
                         # (see ttbar_notebook._start_dask_resources)
-                        cluster.scale(64)
+                        cluster.scale(args.casa_workers)
                     else:
                         cluster = None
 
