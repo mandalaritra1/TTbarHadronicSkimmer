@@ -294,6 +294,30 @@ def _sum_hists(outputs: list[dict], hist_name: str, anacat_ids: list[int], syst:
     return total
 
 
+def _clip_negative_bins(histo, label: str, name: str):
+    """Clip negative bins of an MC template to zero (variance kept).
+
+    NLO negative event weights leave slightly-negative bins in sparse corners of
+    the MC TH2s (e.g. TTbar at m_tt ~ 2-3 TeV inside the jet-mass SR window,
+    O(-0.1) events on a ~7000-event template). A binned-likelihood pdf cannot go
+    negative: Combine FASTEXITs on any channel evaluation that does, which broke
+    every unblinded fit/limit of the Pass regions. Clipping to zero is the
+    standard template-hygiene fix and changes integrals at the per-mille level.
+    Data is never clipped (and never negative).
+    """
+    import numpy as np
+
+    view = histo.view(flow=True)
+    values = view["value"] if view.dtype.names else view
+    neg = values < 0
+    nneg = int(neg.sum())
+    if nneg:
+        total = float(values[neg].sum())
+        values[neg] = 0.0
+        print(f"    clipped {nneg} negative bins (sum {total:.2f}) in {label} {name}")
+    return histo
+
+
 def _syst_suffix(syst: str) -> str:
     if syst == "nominal":
         return ""
@@ -413,8 +437,13 @@ def main() -> None:
                     suffix = _syst_suffix(syst)
                     pass_name = f"MttvsMt{root_cat}{year_label}Pass{suffix}"
                     fail_name = f"MttvsMt{root_cat}{year_label}Fail{suffix}"
-                    fout[pass_name] = _sum_hists(outputs, args.hist, pass_ids, syst)
-                    fout[fail_name] = _sum_hists(outputs, args.hist, fail_ids, syst)
+                    h_pass = _sum_hists(outputs, args.hist, pass_ids, syst)
+                    h_fail = _sum_hists(outputs, args.hist, fail_ids, syst)
+                    if label != "Data":
+                        h_pass = _clip_negative_bins(h_pass, label, pass_name)
+                        h_fail = _clip_negative_bins(h_fail, label, fail_name)
+                    fout[pass_name] = h_pass
+                    fout[fail_name] = h_fail
         written.append(out_path)
         print(f"Saved {out_path}")
 
