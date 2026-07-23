@@ -48,6 +48,11 @@ def select_mass(output, mass_label):
     result = {}
     for key, value in output.items():
         if isinstance(value, hist.Hist) and "dataset" in value.axes.name:
+            # unfilled hists have an empty grown dataset axis -> indexing
+            # them with mass_label raises; pass them through untouched
+            if mass_label not in value.axes["dataset"]:
+                result[key] = value
+                continue
             result[key] = value[{"dataset": mass_label}]
         elif key in ("normalization", "sample_metadata") and isinstance(value, dict) and mass_label in value:
             result[key] = value[mass_label]
