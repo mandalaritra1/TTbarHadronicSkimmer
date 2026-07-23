@@ -60,6 +60,9 @@ for _old_widget in list(globals().get("WIDGETS", {}).values()) + [
             pass
 clear_output(wait=True)
 
+# casa Dask pool size (fixed; see _start_dask_resources for why not adaptive)
+CASA_WORKERS = 64
+
 DEFAULTS = dict(
     dataset=["ZPrimeLocal"],
     signals=False,
@@ -71,7 +74,7 @@ DEFAULTS = dict(
     toptagger="topvsqcd",
     ttag_ptbinned=False,
     redirector="rootfiles/",
-    ttagWP="medium",
+    ttagWP="tight",   # 0.5% QCD-mistag WP (2026-06-25 meeting decision)
     btagger="deepcsv",
     ht="1400",
     noSyst=False,
@@ -775,7 +778,12 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
         from coffea_casa import CoffeaCasaCluster
 
         cluster = CoffeaCasaCluster(memory=dask_memory)
-        cluster.adapt(minimum=4, maximum=400)
+        # Fixed pool instead of adapt(4, 400): adaptive scaling on a free condor
+        # pool mass-spawns then churns workers; the distributed scheduler's
+        # handle_request_refresh_who_has KeyError race fires continuously under
+        # that churn and can crash the scheduler mid-run ("Client lost the
+        # connection to the scheduler", 2026-07-23). A fixed-size pool is stable.
+        cluster.scale(CASA_WORKERS)
     else:
         cluster = dask.distributed.LocalCluster(
             n_workers=nworkers,

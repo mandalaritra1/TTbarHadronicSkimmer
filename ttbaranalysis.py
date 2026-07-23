@@ -442,7 +442,9 @@ if __name__ == "__main__":
                         # the notebook pod's ~4 cores (hence "only 4 workers").
                         from coffea_casa import CoffeaCasaCluster
                         cluster = CoffeaCasaCluster(memory=dask_memory)
-                        cluster.adapt(minimum=4, maximum=400)
+                        # fixed pool: adaptive churn can crash the scheduler
+                        # (see ttbar_notebook._start_dask_resources)
+                        cluster.scale(64)
                     else:
                         cluster = None
 
