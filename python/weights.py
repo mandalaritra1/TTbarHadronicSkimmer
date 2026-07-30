@@ -67,18 +67,30 @@ class Run3WeightManager:
                 "medium": {"nominal": [0.90, 0.97, 0.98, 0.95], "up": [0.95, 1.0, 1.01, 0.98], "down": [0.85, 0.94, 0.95, 0.92]},
                 "loose": {"nominal": [0.96, 1.00, 0.98, 0.99], "up": [1.0, 1.03, 1.0, 1.02], "down": [0.92, 0.97, 0.96, 0.96]},
             },
-            ## 2024 top-tag SF: assumed FLAT 0.90 per tag (medium WP) for testing.
-            ## NOT a measured value -- placeholder until the real 2024 GloParT-v3
-            ## efficiency SF is derived. up/down = 0.90 +/- 0.10.
+            ## 2024 GloParTv3 top-tag SF -- MEASURED (2026-07-31, final P1).
+            ## Semileptonic ttbar tag-and-probe (mu), full 2024 (109.95 fb^-1,
+            ## 29065 data probes). Simultaneous pass/fail mSD template fit in
+            ## Combine v10 (composition floated from data, jet mass scale
+            ## profiled in-situ), full-statistics per-pT WP thresholds.
+            ## up/down = nominal +/- TOTAL (fit stat(+)jms (+) exact JES/JER
+            ## (+) JMR 2% (+) PU (+) model). Bin 0 (<400 GeV) is a filler.
+            ## Applies to FULLY-MERGED top jets in ttbar/signal MC only (the
+            ## analysis tags exactly these); QCD mistag stays data-driven.
+            ## Docs: AN-toptag-sf-2024 (github, private); numbers:
+            ## toptag-sf-derivation/results/outputs/p1_final_profiled.json;
+            ## ntuples: /eos/user/a/amandal/toptag_sf_ntuples/2024/.
             "2024": {
-                "tight": {"nominal": [0.90, 0.90, 0.90, 0.90], "up": [1.00, 1.00, 1.00, 1.00], "down": [0.80, 0.80, 0.80, 0.80]},
-                "medium": {"nominal": [0.90, 0.90, 0.90, 0.90], "up": [1.00, 1.00, 1.00, 1.00], "down": [0.80, 0.80, 0.80, 0.80]},
-                "loose": {"nominal": [0.96, 1.00, 0.98, 0.99], "up": [1.0, 1.03, 1.0, 1.02], "down": [0.92, 0.97, 0.96, 0.96]},
+                "very_tight": {"nominal": [1.0, 0.792, 0.701, 0.752], "up": [1.0, 0.8391, 0.7531, 0.8000], "down": [1.0, 0.7449, 0.6489, 0.7040]},
+                "tight": {"nominal": [1.0, 0.945, 0.818, 0.880], "up": [1.0, 1.0003, 0.8803, 0.9516], "down": [1.0, 0.8897, 0.7557, 0.8084]},
+                "medium": {"nominal": [1.0, 0.985, 0.872, 0.950], "up": [1.0, 1.0590, 0.9271, 1.0224], "down": [1.0, 0.9110, 0.8169, 0.8776]},
+                "loose": {"nominal": [1.0, 1.046, 0.926, 0.947], "up": [1.0, 1.0942, 0.9758, 1.0316], "down": [1.0, 0.9978, 0.8762, 0.8624]},
+                "very_loose": {"nominal": [1.0, 1.065, 0.964, 0.979], "up": [1.0, 1.1180, 1.0342, 1.0330], "down": [1.0, 1.0120, 0.8938, 0.9250]},
             }
         }
 
-        # 2022/2023 v15 sub-eras + 2025: reuse the 2024 placeholder top-tag SF (same
-        # GloParTv3 tagger; 2025 MC is Summer24) until per-year SFs are derived.
+        # 2022/2023 v15 sub-eras + 2025: reuse the MEASURED 2024 top-tag SF as a
+        # proxy (same GloParTv3 tagger; 2025 MC is Summer24) until per-year SFs
+        # are derived. 2025 is the first planned extension.
         for _subera in ("2022preEE", "2022postEE", "2023preBPix", "2023postBPix", "2025"):
             ttag_scale_factors[_subera] = ttag_scale_factors["2024"]
 
