@@ -419,7 +419,38 @@ def GetPUSF(events, IOV):
     puDown = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "down")
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
+    _check_pu_mean(IOV, puNom)
+
     return [puNom, puUp, puDown]
+
+
+# IOVs already warned about, so the message appears once per worker, not per chunk.
+_pu_mean_warned = set()
+
+
+def _check_pu_mean(IOV, puNom, tol=0.10, min_events=500):
+    """Warn if <puNom> is far from 1.
+
+    A pileup weight built from the matching MC campaign is normalization
+    preserving by construction, so the sample mean sits at 1 to within a
+    percent.  A mean far off 1 means the weight file does not match the MC --
+    which is exactly how the 2024/2025 IOVs silently ran on a 2023 proxy that
+    inflated every MC template by 40% (<puNom> was 1.40).  Nothing errors in
+    that situation, so without this check the only symptom is MC overshooting
+    data in the final fit.
+
+    Per chunk, not per sample, so the threshold is loose and small chunks are
+    skipped -- this is a blown-fuse indicator, not a precision test.
+    """
+    if len(puNom) < min_events or str(IOV) in _pu_mean_warned:
+        return
+    mean = float(np.mean(puNom))
+    if not np.isfinite(mean) or abs(mean - 1.0) > tol:
+        _pu_mean_warned.add(str(IOV))
+        print(f"[corrections] WARNING: mean pileup weight for IOV {IOV} is "
+              f"{mean:.3f}, not ~1. The weight file is probably wrong for this "
+              f"MC campaign -- check GetPUSF's fname/hname mapping. Every MC "
+              f"template will be scaled by roughly this factor.", flush=True)
 
 
 def getLumiMask(IOV):
