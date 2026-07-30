@@ -392,8 +392,13 @@ def GetPUSF(events, IOV):
     if IOV.endswith("UL"):
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
     elif IOV in ("2024", "2025"):
-        # 2025 MC is Summer24 (PPD); reuse the 2024 PU-weight proxy.
-        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2023_Summer23BPix/puWeights.json.gz"
+        # Real 2024 PU weights: CAT/LUM Run3-24CDEReprocessingFGHIPrompt-Summer24
+        # -NanoAODv15 @2026-04-15, file puWeights_CDEFGHI.json.gz, vendored from
+        # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . Replaces the former
+        # 2023_Summer23BPix proxy, which was NOT a small correction: the Summer24
+        # MC pileup profile is far off 2024 data (weight 0.44 at nTrueInt=20,
+        # 19.7 at 70). 2025 MC is Summer24 (PPD) so it reuses the same file.
+        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2024_Summer24/puWeights.json.gz"
     elif IOV in _pu_subdir:
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}/puWeights.json.gz".format(_pu_subdir[IOV])
     hname = {
@@ -401,8 +406,8 @@ def GetPUSF(events, IOV):
         "2016"   : "Collisions16_UltraLegacy_goldenJSON",
         "2017"   : "Collisions17_UltraLegacy_goldenJSON",
         "2018"   : "Collisions18_UltraLegacy_goldenJSON",
-        "2024"   : "Collisions2023_369803_370790_eraD_GoldenJson",
-        "2025"   : "Collisions2023_369803_370790_eraD_GoldenJson",  # Summer24 MC proxy
+        "2024"   : "Collisions24_CDEFGHI_goldenJSON",
+        "2025"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file
         "2022preEE":    "Collisions2022_355100_357900_eraBCD_GoldenJson",
         "2022postEE":   "Collisions2022_359022_362760_eraEFG_GoldenJson",
         "2023preBPix":  "Collisions2023_366403_369802_eraBC_GoldenJson",
