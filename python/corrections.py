@@ -80,7 +80,7 @@ def _build_jersf(cset, jer_tag, jet_type):
     return _SplitJERSF(sf, cset[f"{jer_tag}_MC_SFUncertainty_{jet_type}"])
 
 
-def _discover_jme_tags(json_path, jet_type):
+def _discover_jme_tags(json_path, jet_type, data_type="MC"):
     """Find the MC JEC and JER tags inside a JSON-POG JME file by pattern, so the
     code is version-agnostic (drop in a newer V4/JRV2 json.gz, no code change).
     Returns (jec_tag, jer_tag) with the trailing ``_MC...`` stripped, as expected
@@ -89,17 +89,17 @@ def _discover_jme_tags(json_path, jet_type):
         doc = _json.load(f)
     names = [c["name"] for c in doc.get("corrections", [])]
     cnames = [c["name"] for c in doc.get("compound_corrections", [])]
-    jec_suffix = f"_MC_L1L2L3Res_{jet_type}"
-    jer_suffix = f"_MC_ScaleFactor_{jet_type}"
+    jec_suffix = f"_{data_type}_L1L2L3Res_{jet_type}"
+    jer_suffix = f"_MC_ScaleFactor_{jet_type}"   # JER is MC-only by construction
     jec = next((n[:-len(jec_suffix)] for n in cnames if n.endswith(jec_suffix)), None)
     jer = next((n[:-len(jer_suffix)] for n in names if n.endswith(jer_suffix)), None)
-    if jec is None or jer is None:
-        raise ValueError(f"Could not find MC JEC/JER tags in {json_path} for {jet_type} "
-                         f"(jec={jec}, jer={jer})")
+    if jec is None or (jer is None and data_type == "MC"):
+        raise ValueError(f"Could not find {data_type} JEC/JER tags in {json_path} for "
+                         f"{jet_type} (jec={jec}, jer={jer})")
     return jec, jer
 
 
-def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8"):
+def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8", isData=False):
     """Modern correctionlib (JSON-POG) jet correction + JES/JER variations for the
     Run-3 v15 sub-eras. Returns a ``CorrectedJetsFactory`` output with the same
     ``.JES_jes.{up,down}`` / ``.JER.{up,down}`` contract as the legacy txt path."""
@@ -108,21 +108,35 @@ def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8"):
     fname = "fatJet_jerc.json.gz" if R == "AK8" else "jet_jerc.json.gz"
     json_path = f"{_PROJECT_ROOT}/data/corrections/jsonpog/JME/{subdir}/{fname}"
 
-    jec_tag, jer_tag = _discover_jme_tags(json_path, jet_type)
+    data_type = "DATA" if isData else "MC"
+    jec_tag, jer_tag = _discover_jme_tags(json_path, jet_type, data_type=data_type)
     cset = correctionlib.CorrectionSet.from_file(json_path)
     # Build adapters by hand (not from_file) so the JES uncertainty field is named
     # "JES_jes" -- matching the field jets.py reads (corrected_jets.JES_jes.up/down).
-    jec_stack = CorrectionLibJECStack(
-        jec=CorrectionLibJEC(cset.compound[f"{jec_tag}_MC_L1L2L3Res_{jet_type}"]),
-        junc=CorrectionLibJUNC([("jes", cset[f"{jec_tag}_MC_Total_{jet_type}"])]),
-        jer=CorrectionLibJER(cset[f"{jer_tag}_MC_PtResolution_{jet_type}"]),
-        jersf=_build_jersf(cset, jer_tag, jet_type),
-    )
+    if isData:
+        # Data gets the JEC chain only -- it carries the run-dependent
+        # L2L3Residual, and there is deliberately NO JER smearing for data (CMS
+        # smears simulation to match the data resolution; the JSON ships no
+        # DATA PtResolution). No JES uncertainty either: the JES nuisance is
+        # evaluated on MC.
+        jec_stack = CorrectionLibJECStack(
+            jec=CorrectionLibJEC(cset.compound[f"{jec_tag}_DATA_L1L2L3Res_{jet_type}"]),
+        )
+    else:
+        jec_stack = CorrectionLibJECStack(
+            jec=CorrectionLibJEC(cset.compound[f"{jec_tag}_MC_L1L2L3Res_{jet_type}"]),
+            junc=CorrectionLibJUNC([("jes", cset[f"{jec_tag}_MC_Total_{jet_type}"])]),
+            jer=CorrectionLibJER(cset[f"{jer_tag}_MC_PtResolution_{jet_type}"]),
+            jersf=_build_jersf(cset, jer_tag, jet_type),
+        )
 
     FatJets["pt_raw"] = (1 - FatJets["rawFactor"]) * FatJets["pt"]
     FatJets["mass_raw"] = (1 - FatJets["rawFactor"]) * FatJets["mass"]
     FatJets["jec_rho"] = ak.broadcast_arrays(events.Rho.fixedGridRhoFastjetAll, FatJets.pt)[0]
-    if "pt_gen" not in FatJets.fields:
+    if isData:
+        # the DATA L1L2L3Res compound takes `run` (residuals vary across the year)
+        FatJets["run"] = ak.broadcast_arrays(events.run, FatJets.pt)[0]
+    elif "pt_gen" not in FatJets.fields:
         FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.matched_gen.pt, 0), np.float32)
 
     name_map = jec_stack.blank_name_map
@@ -135,6 +149,10 @@ def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8"):
     name_map["ptRaw"] = "pt_raw"
     name_map["massRaw"] = "mass_raw"
     name_map["Rho"] = "jec_rho"
+    if isData:
+        name_map["run"] = "run"
+    else:
+        name_map["ptGenJet"] = "pt_gen"
 
     factory = CorrectedJetsFactory(name_map, jec_stack)
     return factory.build(FatJets)
@@ -190,8 +208,10 @@ def GetJECUncertainties(FatJets, events, IOV, R='AK8', isData=False):
     # Run-3 MC (2022/2023 sub-eras + 2024) uses the modern correctionlib (JSON-POG)
     # path; the legacy txt branches below are kept for Run-2 (and for data, which
     # does not re-apply JEC in this analysis).
-    if (not isData) and IOV in _JSONPOG_JME_DIR:
-        return _GetJECUncertainties_jsonpog(FatJets, events, IOV, R=R)
+    if IOV in _JSONPOG_JME_DIR:
+        # CMS recommendation is JEC on BOTH data and MC (data carries the
+        # run-dependent L2L3Residual); JER smearing stays MC-only inside.
+        return _GetJECUncertainties_jsonpog(FatJets, events, IOV, R=R, isData=isData)
 
     #chspuppi = 'Puppi' if 'AK8' in R else 'chs'
     chspuppi = "Puppi" # always puppi in run3

@@ -274,7 +274,12 @@ def start_dask_client(args, repo_root):
         from coffea_casa import CoffeaCasaCluster
 
         cluster = CoffeaCasaCluster(memory=args.dask_memory)
-        cluster.adapt(minimum=4, maximum=args.maxworkers)
+        # Fixed pool, NOT adapt(): adaptive churn can crash the casa scheduler --
+        # the same lesson already encoded in ttbaranalysis.py's casa branch (see
+        # ttbar_notebook._start_dask_resources). Worker pods join and leave faster
+        # than the scheduler reconciles them, and the larger the pool the worse it
+        # gets, so a big --maxworkers under adapt() is exactly the wrong shape.
+        cluster.scale(args.maxworkers)
     else:
         cluster = dask.distributed.LocalCluster(
             n_workers=args.workers,
@@ -292,6 +297,15 @@ def start_dask_client(args, repo_root):
 
         client.register_worker_plugin(
             UploadDirectory(os.path.join(repo_root, 'python'), restart=True, update_path=True),
+            nanny=True,
+        )
+        # ...and 'data', because corrections.py resolves correction files at
+        # PROCESS time on the worker: _PROJECT_ROOT = <python/>.parent, so
+        # getLumiMask() opens <cwd>/data/corrections/goldenJsons/... . Without
+        # this the golden-JSON mask fails on every data chunk while MC sails
+        # through -- a silent, data-only failure. Mirrors ttbaranalysis.py.
+        client.register_worker_plugin(
+            UploadDirectory(os.path.join(repo_root, 'data'), restart=True, update_path=True),
             nanny=True,
         )
 

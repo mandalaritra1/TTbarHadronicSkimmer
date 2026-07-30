@@ -100,12 +100,17 @@ WP_NAMES = ['very_tight', 'tight', 'medium', 'loose', 'very_loose']
 # absent). Edges [400,500,600,800,1200,3000]; last edge stands in for infinity.
 _WP_THRESHOLDS_2024 = {
     'pt_bin_edges': [400.0, 500.0, 600.0, 800.0, 1200.0, 3000.0],
+    # Full-statistics derivation (outputs/toptag_wp_2024_full.json, swapped in
+    # 2026-07-30). The previous table came from a single-QCD-bin local run and
+    # carried spurious pT structure (up to +-50% off in per-pT MC closure; its
+    # 1200-3000 thresholds were badly off) -- see research-notes
+    # glopartv3_toptag_wp_data_mistag_2024.
     'thresholds': {
-        'very_tight': [0.98714, 0.98903, 0.97579, 0.98551, 0.88496],
-        'tight':      [0.95969, 0.94027, 0.91548, 0.92627, 0.88481],
-        'medium':     [0.92470, 0.87792, 0.82634, 0.86304, 0.88462],
-        'loose':      [0.79283, 0.69600, 0.59556, 0.62772, 0.88405],
-        'very_loose': [0.57647, 0.44935, 0.34285, 0.36122, 0.74510],
+        'very_tight': [0.98162, 0.98090, 0.98084, 0.98110, 0.98055],
+        'tight':      [0.92639, 0.92298, 0.91898, 0.91718, 0.91653],
+        'medium':     [0.85537, 0.84771, 0.83933, 0.83672, 0.83743],
+        'loose':      [0.64701, 0.62889, 0.61470, 0.61178, 0.62450],
+        'very_loose': [0.39126, 0.37074, 0.35817, 0.36084, 0.38415],
     },
 }
 
@@ -197,6 +202,7 @@ SF_NTUPLE_FIELDS = {
     'mu_pt': np.float32, 'mu_eta': np.float32, 'met': np.float32,
     'dphi_mu_probe': np.float32, 'dr_probe_blep': np.float32, 'n_bjet': np.int8,
     'genweight': np.float32, 'pu_weight': np.float32,
+    'jec_factor': np.float32,
 }
 
 SIGNAL_NAME_PREFIXES = ('TT', 'ZPRIME', 'ZPTOTT', 'RSG', 'RSGLUON')
@@ -237,7 +243,8 @@ class TopTagSFProcessor(processor.ProcessorABC):
     """
 
     def __init__(self, iov='2024', channel='mu', wp_thresholds=None,
-                 apply_pu=False, apply_lumimask=True):
+                 apply_pu=False, apply_jec=False, apply_jec_syst=False,
+                 apply_lumimask=True):
         if channel != 'mu':
             raise NotImplementedError(
                 f"channel '{channel}' not implemented; P0 is mu-only.")
@@ -252,6 +259,8 @@ class TopTagSFProcessor(processor.ProcessorABC):
         self._wp_thr = np.asarray(
             [wp['thresholds'][w] for w in self._wp_names], dtype=np.float64)
         self.apply_pu = bool(apply_pu)
+        self.apply_jec = bool(apply_jec)
+        self.jec_syst = bool(apply_jec_syst)
         self.apply_lumimask = bool(apply_lumimask) and _HAVE_CORRECTIONS
 
     # -- gen-level helpers --------------------------------------------------
@@ -425,8 +434,60 @@ class TopTagSFProcessor(processor.ProcessorABC):
         mu_eta = lead_mu.eta
         mu_phi = lead_mu.phi
 
+        variations = [('', None, None)]
+        if is_mc and self.jec_syst and _HAVE_CORRECTIONS:
+            # Exact JES/JER propagation: the FULL selection (lep-side b jet,
+            # probe, thresholds) is re-run under each varied jet collection.
+            # Fractional shifts from the official factory (V3 Total, JRV1
+            # hybrid smearing with gen matching) are applied around the NanoAOD
+            # pT so the nominal stays at the analysis jet scale. MET is left
+            # nominal (no Type-1 recompute in this analysis); msoftdrop is
+            # never scaled by jet-level factors (subjet-corrected quantity).
+            try:
+                from corrections import GetJECUncertainties
+                fjc = GetJECUncertainties(ev.FatJet, ev, self.iov, R='AK8',
+                                          isData=False)
+                jc = GetJECUncertainties(ev.Jet, ev, self.iov, R='AK4',
+                                         isData=False)
+                fj0 = ev.FatJet.pt
+                j0 = ev.Jet.pt
+                for lbl, fv, jv in (
+                        ('__jesUp', fjc.JES_jes.up.pt / fjc.pt,
+                         jc.JES_jes.up.pt / jc.pt),
+                        ('__jesDown', fjc.JES_jes.down.pt / fjc.pt,
+                         jc.JES_jes.down.pt / jc.pt),
+                        ('__jerUp', fjc.JER.up.pt / fjc.pt,
+                         jc.JER.up.pt / jc.pt),
+                        ('__jerDown', fjc.JER.down.pt / fjc.pt,
+                         jc.JER.down.pt / jc.pt)):
+                    variations.append((lbl, fj0 * fv, j0 * jv))
+            except Exception as exc:
+                print(f"[toptag_sf] WARNING: JEC-syst variations FAILED for "
+                      f"{dataset} ({type(exc).__name__}: {exc}) -- writing "
+                      f"NOMINAL ONLY", flush=True)
+                variations = [('', None, None)]
+
+        met_sel = met[keep]
+        for lbl, fpt, jpt in variations:
+            self._select_and_fill(ev, w_evt, met_sel, lead_mu, mu_eta, mu_phi,
+                                  dataset, is_mc, output, suffix=lbl,
+                                  fj_pt=fpt, jet_pt=jpt)
+        return output
+
+    def _select_and_fill(self, ev, w_evt, met_sel, lead_mu, mu_eta, mu_phi,
+                         dataset, is_mc, output, suffix='', fj_pt=None,
+                         jet_pt=None):
+        """Object selection + per-probe fill for ONE jet-energy variation.
+
+        ``fj_pt`` / ``jet_pt`` optionally replace the AK8/AK4 pT (same jagged
+        layout); everything else (muon, MET, mSD, D) stays nominal. Output keys
+        are suffixed (``<dataset>__jesUp`` etc.); ``suffix=''`` is the nominal
+        path and byte-identical to the pre-refactor behavior.
+        """
         # leptonic-side b-tagged AK4
         jets = ev.Jet
+        if jet_pt is not None:
+            jets = ak.with_field(jets, jet_pt, 'pt')
         jet_ok = (jets.pt > AK4_PT_MIN) & (abs(jets.eta) < AK4_ETA_MAX)
         if 'jetId' in jets.fields:
             jet_ok = jet_ok & (jets.jetId >= 2)
@@ -440,6 +501,40 @@ class TopTagSFProcessor(processor.ProcessorABC):
 
         # probe AK8 candidates
         fj = ev.FatJet
+        if fj_pt is not None:
+            fj = ak.with_field(fj, fj_pt, 'pt')
+        fj0 = fj
+        if self.apply_jec and _HAVE_CORRECTIONS:
+            try:
+                from corrections import GetJECUncertainties
+                pt_before = fj.pt
+                # CMS recommendation: JEC on BOTH data and MC (data gets its own
+                # run-dependent L2L3Residual chain); JER smearing on MC ONLY --
+                # you smear simulation to match the data resolution, and the
+                # JSON-POG file ships no DATA PtResolution to smear data with.
+                # Raw pT/mass come from rawFactor inside GetJECUncertainties.
+                fj = GetJECUncertainties(fj, ev, self.iov, R='AK8',
+                                         isData=not is_mc)
+                f = fj.pt / pt_before
+                # msoftdrop is deliberately LEFT ALONE. It is not the AK8 mass
+                # scaled by the AK8 JEC: NanoAOD builds it from subjets carrying
+                # their own AK4 PUPPI corrections (JMAR: "subjets must be
+                # corrected using AK4 PUPPI corrections"). Scaling it by the
+                # jet-level JEC ratio was tried (v4) and is measurably WRONG --
+                # it dragged the data top-mass peak from 175 to 167 GeV while MC
+                # went 181 -> 183, i.e. the data/MC peak offset went -6 -> -16
+                # GeV. The top mass is the same object in both, so that is
+                # unphysical, and it faked an SF near 1 by changing which probes
+                # survive the mSD window. Correcting mSD properly needs JMS/JMR
+                # (unavailable), so it stays on the NanoAOD value.
+                fj = ak.with_field(fj, f, 'jec_factor')
+            except Exception as exc:
+                print(f"[toptag_sf] WARNING: JEC/JER FAILED for {dataset} "
+                      f"(is_mc={is_mc}, {type(exc).__name__}: {exc}) -- running "
+                      f"with UNCORRECTED jets", flush=True)
+                fj = ak.with_field(fj0, ak.ones_like(fj0.pt), 'jec_factor')
+        else:
+            fj = ak.with_field(fj, ak.ones_like(fj.pt), 'jec_factor')
         dphi_mu_fj = np.abs(_delta_phi(mu_phi, fj.phi))
         dr_fj_blep = _delta_r_flat_jagged(blep_eta, blep_phi, fj.eta, fj.phi)
         probe_ok = ((fj.pt > PROBE_PT_MIN) & (abs(fj.eta) < PROBE_ETA_MAX)
@@ -450,10 +545,10 @@ class TopTagSFProcessor(processor.ProcessorABC):
         n_probe = ak.to_numpy(ak.num(probes, axis=1))
 
         final = (n_lepb >= 1) & (n_probe >= 1)
-        output['cutflow'][f'{dataset}/final'] += int(np.sum(final))
-        output['nevents'][dataset] += int(np.sum(final))
+        output['cutflow'][f'{dataset}{suffix}/final'] += int(np.sum(final))
+        output['nevents'][dataset + suffix] += int(np.sum(final))
         if not np.any(final):
-            return output
+            return
 
         # ---- gather the single probe (leading passing AK8) per final event ---
         ev = ev[final]
@@ -471,7 +566,7 @@ class TopTagSFProcessor(processor.ProcessorABC):
         mu_pt_np = ak.to_numpy(lead_mu.pt[final])
         mu_eta_np = ak.to_numpy(mu_eta[final])
         mu_phi_np = ak.to_numpy(mu_phi[final])
-        met_f = met[keep][final]
+        met_f = met_sel[final]
         dphi_mu_probe = np.abs(_delta_phi(mu_phi_np, probe_phi_np))
         blep_eta_f = ak.to_numpy(blep_eta[final])
         blep_phi_f = ak.to_numpy(blep_phi[final])
@@ -524,19 +619,21 @@ class TopTagSFProcessor(processor.ProcessorABC):
             # 1.0 when pileup reweighting was not applied -- lets the
             # ntuple prove whether --apply-pu actually took effect.
             'pu_weight': pu_w.astype(np.float32),
+            # corrected/uncorrected probe pT; 1.0 when JEC/JER off.
+            'jec_factor': ak.to_numpy(probe.jec_factor).astype(np.float32),
         }
         cols.update({k: v for k, v in self._passwp_columns(
             probe_pt_np, D).items()})
 
         dest = output['ntuple'].setdefault(
-            dataset,
+            dataset + suffix,
             {f: column_accumulator(np.empty(0, dtype=dt))
              for f, dt in SF_NTUPLE_FIELDS.items()})
         for f in SF_NTUPLE_FIELDS:
             dest[f] = dest[f] + column_accumulator(
                 np.asarray(cols[f], dtype=SF_NTUPLE_FIELDS[f]))
 
-        return output
+        return
 
     def postprocess(self, accumulator):
         return accumulator
