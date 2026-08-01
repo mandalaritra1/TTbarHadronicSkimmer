@@ -60,9 +60,19 @@ def _signal_xsec(sample, subsection):
     absent. Signal manifests carry no xsec, so this normalizes each mass to 1 pb in
     postprocess (lumi from the processor's _LUMI_PB, consistent with TTbar/QCD)."""
     try:
-        return _XS_TABLE.get(sample, {}).get(str(subsection))
+        val = _XS_TABLE.get(sample, {}).get(str(subsection))
     except Exception:
-        return None
+        val = None
+    if val is None:
+        # The functions.xs table only spans the legacy mass grid (e.g. ZPrime1
+        # 1000-4500). Masses outside it silently fell through to scale_factor=1
+        # (RAW weighted counts, not the 1 pb reference) -- this produced the
+        # spurious "1 TeV spike" in every limit scan: 400-900 GeV templates were
+        # inflated, M=1000 was the first honestly-normalized point. ALL signal
+        # masses use the same 1 pb reference by construction, so default to it.
+        print(f"[signal-xsec] {sample} {subsection}: not in functions.xs table -> using 1 pb reference")
+        val = 1.0
+    return val
 
 
 def _batch_tag(subsections):
