@@ -158,6 +158,8 @@ def build_output_histograms(
         # postprocess can normalize each dataset by its own lumi*xsec/sumw.
         output["sumw_by_dataset"] = processor.defaultdict_accumulator(float)
         output["sumw2_by_dataset"] = processor.defaultdict_accumulator(float)
+    # generator-level sums of the Q2/PDF-varied weights, before any selection
+    output["sumw_theory"] = processor.defaultdict_accumulator(float)
     if produce_ntuple:
         output["ntuple"] = build_ntuple_accumulators(ntuple_columns)
     if produce_ntuple_chunks:

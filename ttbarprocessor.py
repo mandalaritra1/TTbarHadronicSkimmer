@@ -38,6 +38,8 @@ sys.path.append(os.getcwd() + '/python/')
 
 from corrections import (
     GetFlavorEfficiency,
+    GetPDFWeights,
+    GetQ2weights,
     getLumiMask,
     getMETFilter,
 )
@@ -810,6 +812,8 @@ class TTbarResProcessor(processor.ProcessorABC):
             if self.group_by_dataset:
                 output['sumw_by_dataset'][dataset]  += float(np.sum(evtweights))
                 output['sumw2_by_dataset'][dataset] += float(np.sum(evtweights ** 2))
+            if not isData and not self.noSyst:
+                self._accumulate_theory_sumw(output, dataset, events, evtweights)
             self._fill_cutflow_table_step(
                 output, 'analysis_events', count=len(events), weights=evtweights,
             )
@@ -1265,6 +1269,55 @@ class TTbarResProcessor(processor.ProcessorABC):
             return 1.0, False, 'zero_sumw'
         return lumi_pb * float(xsec_pb) / sumw_raw, True, None
 
+    def _theory_key(self, dataset):
+        return dataset if self.group_by_dataset else 'all'
+
+    def _accumulate_theory_sumw(self, output, dataset, events, evtweights):
+        """Generator-level sums of the Q2/PDF-varied weights over all events, before
+        any selection. postprocess rescales those templates by sumw_nominal /
+        sumw_varied: the inclusive cross-section change is removed (the signal
+        limit is on sigma; ttbar's rate has its own prior) and only the acceptance
+        and shape effect stays."""
+        key = self._theory_key(dataset)
+        weights = np.asarray(evtweights, dtype=np.float64)
+        output['sumw_theory'][f"{key}|nominal"] += float(np.sum(weights))
+        for name, getter in (("q2", GetQ2weights), ("pdf", GetPDFWeights)):
+            if name not in self.systematics:
+                continue
+            _, up, down = getter(events)
+            output['sumw_theory'][f"{key}|{name}Up"]   += float(np.sum(weights * np.asarray(up, dtype=np.float64)))
+            output['sumw_theory'][f"{key}|{name}Down"] += float(np.sum(weights * np.asarray(down, dtype=np.float64)))
+
+    def _theory_norm_factors(self, accumulator, key):
+        sums = accumulator.get('sumw_theory', {})
+        nominal = float(sums.get(f"{key}|nominal", 0.0))
+        factors = {}
+        for syst in ("q2Up", "q2Down", "pdfUp", "pdfDown"):
+            varied = float(sums.get(f"{key}|{syst}", 0.0))
+            if nominal and varied:
+                factors[syst] = nominal / varied
+        return factors
+
+    def _apply_theory_norm(self, accumulator, key, factors, dataset=None):
+        """Scale the systematic=<syst> slice (and dataset slice, if given) of every
+        weight-storage hist by the theory normalization factor."""
+        for value in accumulator.values():
+            if not isinstance(value, hist.Hist) or 'systematic' not in value.axes.name:
+                continue
+            names = list(value.axes.name)
+            index = [slice(None)] * len(names)
+            if dataset is not None:
+                if 'dataset' not in names or dataset not in list(value.axes['dataset']):
+                    continue
+                index[names.index('dataset')] = value.axes['dataset'].index(dataset)
+            for syst, factor in factors.items():
+                if syst not in list(value.axes['systematic']):
+                    continue
+                index[names.index('systematic')] = value.axes['systematic'].index(syst)
+                view = value.view(flow=True)
+                view['value'][tuple(index)] *= factor
+                view['variance'][tuple(index)] *= factor * factor
+
     def _scale_hist_dataset_slice(self, h, ds, sf):
         """Multiply one dataset slice of a weight-storage hist by sf (value*sf, var*sf^2)."""
         if sf == 1.0:
@@ -1321,6 +1374,10 @@ class TTbarResProcessor(processor.ProcessorABC):
                 scaled_weight = (accumulator['ntuple']['weight'].value * scale_factor).astype(np.float32)
                 accumulator['ntuple']['weight'] = processor.column_accumulator(scaled_weight)
 
+        theory_factors = self._theory_norm_factors(accumulator, 'all') if is_mc else {}
+        self._apply_theory_norm(accumulator, 'all', theory_factors)
+        accumulator['theory_norm'] = theory_factors
+
         sample_metadata, normalization = self._build_normalization_metadata(
             sumw_raw=sumw_raw,
             sumw2_raw=sumw2_raw,
@@ -1374,6 +1431,12 @@ class TTbarResProcessor(processor.ProcessorABC):
             if isinstance(value, hist.Hist) and 'dataset' in value.axes.name:
                 for ds, sf in factors.items():
                     self._scale_hist_dataset_slice(value, ds, sf)
+
+        theory_by_dataset = {}
+        for ds in datasets:
+            theory_by_dataset[ds] = self._theory_norm_factors(accumulator, ds)
+            self._apply_theory_norm(accumulator, ds, theory_by_dataset[ds], dataset=ds)
+        accumulator['theory_norm'] = theory_by_dataset
 
         # ntuple weights can only be scaled for a single-dataset (one-mass) grouped run
         if len(datasets) == 1 and 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
