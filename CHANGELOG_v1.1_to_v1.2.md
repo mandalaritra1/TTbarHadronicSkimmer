@@ -16,7 +16,7 @@ Last updated: 2026-09-24 (round 2)
 |---|---|---|---|---|---|
 | 1 | `ttag_pt2`/`ttag_pt3` variations actually filled | Done | `d664e04` | MC | Adds the top-tag SF uncertainty for jets with pT > 480 GeV (±15–17% on a 4 TeV Z') |
 | 2 | Run-3 jet-veto map as a preselection cut | Done | `9e405c1` | Data + MC | Removes ~17–18% of high-HT signal events after MET filters; ~2% of 2025C JetMET events |
-| 3 | 2025 → JME `Run3-25Prompt-Summer24` campaign | Done | `3c47f7c` | 2025 MC JER; jet ID + veto map for 2025 data | 2025 jet ID works; 2025 data residuals only take effect if item 16 re-applies data JEC (then AK8 pT −3.1% vs NanoAOD) |
+| 3 | 2025 → JME `Run3-25Prompt-Summer24` campaign | Done | `3c47f7c` | 2025 data JEC + MC JER, jet ID, veto map | 2025 data residuals now applied (item 16) |
 | 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Done | `a694078` | 2024 data + MC | New η-dependent residuals and JER SFs |
 | 5 | GloParTv3 score histograms `jet0/1_tdisc` | Done | `28c02a9` | Output only | None (new diagnostics for CR/VR data/MC) |
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
@@ -31,7 +31,7 @@ Last updated: 2026-09-24 (round 2)
 | 14b | 2022/2023/2024 golden JSONs → DC re-issue after the 2026 tracker-ML review | Done | `f6ff4c1` | Data | LS: 2022 +0.07%, 2023 −0.43%, 2024 −0.04% |
 | 14c | 2022/2023/2024 lumi values from the current PPD tables | Open | — | MC norm | Waiting on the PPD table numbers |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
-| 16 | JEC is never re-applied to data (or to `--noSyst` MC) in the analysis processor | Open | — | Data | Data keeps the NanoAOD-embedded JEC while MC gets V5 / Summer24Prompt25_V3 |
+| 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −3.4% (2025)** vs NanoAOD JEC, pT > 400 GeV |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -168,12 +168,29 @@ Smoke test (Z' 4 TeV): ⟨mSD⟩ jes ±0.7%, jms ±1%; jmr widens/narrows; overf
 Downstream: add `jms`, `jmr` to the six bgestimation configs (templates
 `JMSup/down`, `JMRup/down`).
 
-### 16. No JEC on data in the analysis processor (open)
+### 16. JEC re-applied to data — `77fa52e`
 `build_corrections` returns `None` for data and for `--noSyst`, so those events keep
 the JEC embedded in NanoAOD, while MC with systematics gets the re-applied payloads
 (2024 V5, 2025 Summer24Prompt25_V3). CMS recommends the same JEC version on data and
-MC. Options: re-apply JEC to data (nominal pass only), or keep the NanoAOD JEC on
-both. Needs a decision before v1.2.
+MC.
+
+**Fix:** Run-3 IOVs always run the correctionlib JEC. Data: DATA L1L2L3Res chain with
+run-dependent residuals, nominal pass only, no JER smearing. `--noSyst` MC: nominal
+JEC + JER. Run 2 unchanged (legacy data-JEC path unusable). `msoftdrop` untouched.
+
+**Size (data, AK8 pT > 400 GeV, new / NanoAOD JEC):** 2024 **0.954**, 2025 **0.966**;
+AK4 (pT > 100) 0.993 / 0.985. Checked: AK8 and AK4 L2L3Residual are identical at every
+η/run/pT; V5 re-derived residuals vs η (central ≈ 0.99–1.00). The difference is the JEC
+version embedded in the NanoAOD data vs V5. The top-tag SF measurement already applied
+this data JEC, so the SFs are consistent with it.
+
+**Expect in v1.2:** data mtt, jet pT and HT shift down by ~4–5% (2024) relative to
+v1.1; fewer data events pass HT > 1400 GeV. Validate with data/MC jet pT and HT
+comparisons on the first v1.2 outputs.
+
+Note (pre-existing): `--noSyst` MC skips all event weights after `weights.py:15`
+(pileup, top-tag SF, ...), so its nominal yield is ~11% above the full-syst nominal
+for Z' 4 TeV. Fit inputs always come from full-syst runs.
 
 ### 10. Q2/PDF normalization (open)
 `q2`/`pdf` Up/Down are applied as raw event weights, so templates carry both a rate
