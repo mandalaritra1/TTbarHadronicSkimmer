@@ -32,9 +32,10 @@ Last updated: 2026-09-24 (round 2)
 | 14c | 2022/2023/2024 lumi values | Decided: unchanged | — | — | PPD values not updated since; keep |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
 | 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −2.9% (2025)** vs NanoAOD JEC, pT > 400 GeV |
+| 17 | ISR/FSR parton-shower variations (`isr`, `fsr`), normalized like Q2/PDF | Done | `13dc1e3` | MC | Z′ 4 TeV (W10, local): ISR ±0.3%, FSR ±2.1% on the selected yield; none in v1.1 or Run 2 |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
-in the six Run-3 configs, add `jms`/`jmr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
+in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
 (110.59 → 110.37, 220.54 → 220.32) in `ttbar.py`, `plot_limits*.py`, `combine_cards25/2425.sh`,
 `preunblind/plot_masked_postfit_2d_projections.py`, `docs/plotting_reference.md`; they are
 correct for v1.1 results, so change them only with v1.2.
@@ -58,8 +59,9 @@ correct for v1.1 results, so change them only with v1.2.
 - **Validation:** local Z' 4 TeV, with and without systematics; all six variations
   fill, overflow empty.
 - **Parked questions:** (a) split each bin's total into an uncorrelated fit part plus
-  correlated model/JMR/JES/JER/PU nuisances; (b) the top bin is measured mostly at
-  600–800 GeV and applied to 1.5–2 TeV jets with no extrapolation uncertainty.
+  correlated model/JMR/JES/JER/PU nuisances — **decided no (2026-09-24): one total per
+  bin, as in Run 2**; (b) the top bin is measured mostly at 600–800 GeV and applied to
+  1.5–2 TeV jets with no extrapolation uncertainty — open (item 7 findings).
 
 ### 2. Run-3 jet-veto map — `9e405c1`
 
@@ -294,6 +296,8 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | **Correction:** the earlier 2025 data numbers (item 3/16: AK8 0.966, AK4 0.985, mSD 1.028) used run 392293 without the lumi mask; LS 1–35 are uncertified tracker-off data. Certified LS only: AK8 **0.971**, AK4 **1.002**, mSD **1.033** (one run, low statistics). 2024 numbers unaffected (file 100% certified). |
 | 2026-09-24 | Presented (Slides artifact 6aw4XinzZgEhf8WiU7KfS4; research-notes `topics/ttbarhadronic_skimmer_v12_changes_and_mc_plan.md`). **2025 and 2026 MC: use 2024 (Summer24) for everything** — `scale_iov` 2024 × lumi, no 2025 MC run, no 2025 pileup (items 12, 13). **2022/2023 Z′ signal:** contact the B2G MC contact for a NanoAODv15 re-processing. **Approved as presented:** antitag band SF measured directly (7), PDF recipe last (8), rerun list and order. |
 
+| 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. Still open: a 4th T&P pT bin (≥ 800 GeV) and any extra uncertainty beyond the measured pT range (item 7 findings). |
+
 ## Validation log
 
 | Date | Check | Result |
@@ -303,6 +307,8 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | 2025C data through 2025 JEC + veto map + jet ID | runs; veto pass 97.85% |
 | 2026-09-24 | 2024 Z' as 2025 MC, 2025 vs 2024 payload | mean AK8 pT ratio 1.0002 |
 | 2026-09-24 | Vendored JME files vs GitLab `latest` (Kerberos clone on lxplus) | md5 identical |
+| 2026-09-24 | PSWeight index parsing on local Z′, TTto4Q (4 entries) and QCD (44 entries) | correct isr/fsr ×2/×0.5 entries in all three |
+| 2026-09-24 | Z′ 4 TeV (W10) local smoke test with isr/fsr | isrUp/Down −0.3/+0.3%, fsrUp/Down +2.1/−2.2%; norm factors 1.000–1.001 |
 | 2026-09-24 | DAS: 2025 NanoAOD data + MC | only unused data = era B PromptReco; no new 2025 signal/ttbar MC |
 | 2026-09-24 | brilcalc per era vs PPD table (newest golden) | all five eras match to <0.01 fb⁻¹ |
 | 2026-09-24 | brilcalc 2025 C–G | 110.03 fb⁻¹ (current golden), 110.37 (newest) vs 110.59 in code |
