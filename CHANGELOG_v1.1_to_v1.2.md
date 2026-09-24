@@ -22,16 +22,16 @@ Last updated: 2026-09-24 (round 2)
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
 | 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Approved | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
 | 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
-| 9 | msoftdrop rebuilt from re-corrected subjets; JES/JER from varied subjets; JMS 1%, JMR 2% | Done | `d3fbc3e`, `e922747` | Data + MC | Nominal mSD: 2024 data +0.3%, 2025 data +2.8%, MC −0.9%; JES ±0.7% on ⟨mSD⟩ |
-| 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
-| 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
+| 9 | msoftdrop rebuilt from re-corrected subjets; JES/JER from varied subjets; JMS 1%, JMR 2% | Done | `d3fbc3e`, `e922747` | Data + MC | Nominal mSD: 2024 data +0.3%, 2025 data +3.3%, MC −0.9%; JES ±0.7% on ⟨mSD⟩ |
+| 10 | Q2/PDF templates normalized to generator-level nominal sumw | Done | `5bcdf08` | MC | Z′ 4 TeV q2 ±11% → ±2.4%, pdf ±5% → ±1.4% (acceptance only) |
+| 11 | AK8 candidates: PUPPI Tight jet ID | Done | `27d8c36` | Data + MC | Z′ 99.85%, tt̄ 100%, certified 2025C data 98.9% of AK8 jets |
 | 12 | Real 2025 MC run instead of `scale_iov` | Decided: no | — | 2025 MC | 2024 MC stands in for 2025 and 2026 (2024 × lumi) |
 | 13 | 2025 pileup weights (LUM 2025 file) | Decided: no | — | 2025 MC | Stays with 2024 (follows item 12) |
 | 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | `d4b719c` | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
 | 14b | 2022/2023/2024 golden JSONs → DC re-issue after the 2026 tracker-ML review | Done | `f6ff4c1` | Data | LS: 2022 +0.07%, 2023 −0.43%, 2024 −0.04% |
-| 14c | 2022/2023/2024 lumi values from the current PPD tables | Open | — | MC norm | Waiting on the PPD table numbers |
+| 14c | 2022/2023/2024 lumi values | Decided: unchanged | — | — | PPD values not updated since; keep |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
-| 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −3.4% (2025)** vs NanoAOD JEC, pT > 400 GeV |
+| 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −2.9% (2025)** vs NanoAOD JEC, pT > 400 GeV |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -274,6 +274,8 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 
 | Date | Decision |
 |---|---|
+| 2026-09-24 | 2022/2023/2024 luminosity values stay (PPD not updated). Q2/PDF normalization approved and done (`5bcdf08`). AK8 Tight jet ID (not TightLepVeto) approved and done (`27d8c36`). Top-tag SF nuisance model: to be improved on physics grounds. |
+| 2026-09-24 | **Correction:** the earlier 2025 data numbers (item 3/16: AK8 0.966, AK4 0.985, mSD 1.028) used run 392293 without the lumi mask; LS 1–35 are uncertified tracker-off data. Certified LS only: AK8 **0.971**, AK4 **1.002**, mSD **1.033** (one run, low statistics). 2024 numbers unaffected (file 100% certified). |
 | 2026-09-24 | Presented (Slides artifact 6aw4XinzZgEhf8WiU7KfS4; research-notes `topics/ttbarhadronic_skimmer_v12_changes_and_mc_plan.md`). **2025 and 2026 MC: use 2024 (Summer24) for everything** — `scale_iov` 2024 × lumi, no 2025 MC run, no 2025 pileup (items 12, 13). **2022/2023 Z′ signal:** contact the B2G MC contact for a NanoAODv15 re-processing. **Approved as presented:** antitag band SF measured directly (7), PDF recipe last (8), rerun list and order. |
 
 ## Validation log
