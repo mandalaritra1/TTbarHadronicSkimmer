@@ -1,7 +1,7 @@
 import awkward as ak
 import numpy as np
 
-from corrections import _JSONPOG_JME_DIR, GetJECUncertainties, GetJetVetoMapMask
+from corrections import _JSONPOG_JME_DIR, GetJECUncertainties, GetJetIdMask, GetJetVetoMapMask
 from functions import getRapidity
 
 # Jet-collection variations run as separate passes of the processor.
@@ -182,10 +182,13 @@ class Run3JetManager:
             > self.ht_cut
         )
 
-        # No separate analysis-level jet-ID cut is applied here. TightLepVeto is
-        # evaluated only for the official jet-veto-map eligibility above.
-
-        jetkin = (fatjets.pt > self.ak8_pt_min) & (np.abs(getRapidity(fatjets.p4)) < _AK8_RAPIDITY_MAX)
+        # AK8 candidates must pass the official PUPPI Tight jet ID (not TightLepVeto:
+        # its lepton-fraction cuts only remove top jets with semileptonic b decays).
+        jetkin = (
+            (fatjets.pt > self.ak8_pt_min)
+            & (np.abs(getRapidity(fatjets.p4)) < _AK8_RAPIDITY_MAX)
+            & GetJetIdMask(fatjets, self.iov, "AK8", "Tight")
+        )
 
         # jetkin_mask: ≥1 FatJet passes kinematics — used as a PackedSelection cut.
         # twofat_mask: ≥2 FatJets survive after filtering — the actual physics requirement.

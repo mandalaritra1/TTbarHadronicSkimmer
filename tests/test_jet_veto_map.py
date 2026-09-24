@@ -40,8 +40,8 @@ class JetVetoMapTest(unittest.TestCase):
             ),
             mock.patch.object(
                 corrections,
-                "_tight_lepton_veto_mask",
-                side_effect=lambda jet_collection, iov: (jet_collection.jetId & 4) != 0,
+                "GetJetIdMask",
+                side_effect=lambda jet_collection, iov, jet_type, wp: (jet_collection.jetId & 4) != 0,
             ),
         ):
             result = corrections.GetJetVetoMapMask(jets, "2024")

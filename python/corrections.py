@@ -82,25 +82,31 @@ def _load_jet_veto_correction(iov):
 
 
 @lru_cache(maxsize=None)
-def _load_jet_id_correction(iov):
+def _load_jet_id_correction(iov, name="AK4PUPPI_TightLeptonVeto"):
     subdir = _JSONPOG_JETID_DIR[iov]
     json_path = (
         _PROJECT_ROOT / "data" / "corrections" / "jsonpog" / "JME"
         / subdir / "jetid.json.gz"
     )
     correction_set = correctionlib.CorrectionSet.from_file(str(json_path))
-    return correction_set["AK4PUPPI_TightLeptonVeto"]
+    return correction_set[name]
 
 
-def _tight_lepton_veto_mask(jets, iov):
-    """Evaluate or read the AK4 PUPPI TightLepVeto jet-ID decision."""
+# NanoAOD Jet_jetId / FatJet_jetId bits, for IOVs that still carry the branch.
+_JETID_BIT = {"Tight": 2, "TightLeptonVeto": 4}
+
+
+def GetJetIdMask(jets, iov, jet_type="AK4", working_point="TightLeptonVeto"):
+    """Official Run-3 PUPPI jet ID (jet_type AK4 or AK8, working point Tight or
+    TightLeptonVeto): evaluated from the vendored jetid.json.gz where the IOV has
+    one (NanoAODv15 has no jetId branch), else read from the NanoAOD jetId bits."""
     if iov not in _JSONPOG_JETID_DIR:
         if "jetId" not in jets.fields:
             raise KeyError(
-                f"Jet-veto map for {iov} needs either Jet_jetId or an official "
-                "jetid.json.gz payload; neither is available"
+                f"{jet_type} {working_point} jet ID for {iov} needs either a jetId "
+                "branch or an official jetid.json.gz payload; neither is available"
             )
-        return (jets.jetId & 4) != 0  # NanoAOD bit 2: TightLepVeto
+        return (jets.jetId & _JETID_BIT[working_point]) != 0
 
     id_fields = {
         "eta", "chHEF", "neHEF", "chEmEF", "neEmEF", "muEF",
@@ -109,12 +115,12 @@ def _tight_lepton_veto_mask(jets, iov):
     missing_fields = id_fields.difference(jets.fields)
     if missing_fields:
         raise KeyError(
-            f"Official TightLepVeto ID for {iov} requires Jet fields "
+            f"Official {jet_type} {working_point} jet ID for {iov} requires fields "
             f"{sorted(id_fields)}; missing {sorted(missing_fields)}"
         )
 
     counts = ak.to_numpy(ak.num(jets, axis=1))
-    correction = _load_jet_id_correction(iov)
+    correction = _load_jet_id_correction(iov, f"{jet_type}PUPPI_{working_point}")
     flat_values = correction.evaluate(
         ak.to_numpy(ak.flatten(jets.eta, axis=1)),
         ak.to_numpy(ak.flatten(jets.chHEF, axis=1)),
@@ -148,7 +154,7 @@ def GetJetVetoMapMask(jets, iov):
             f"missing {sorted(missing_fields)}"
         )
 
-    tight_lepton_veto = _tight_lepton_veto_mask(jets, iov)
+    tight_lepton_veto = GetJetIdMask(jets, iov, "AK4", "TightLeptonVeto")
     eligible = (
         (jets.pt > 15.0)
         & tight_lepton_veto

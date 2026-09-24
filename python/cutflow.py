@@ -44,9 +44,9 @@ BASE_CUTFLOW_STEPS = [
     },
     {
         "key": "jetkincut",
-        "label": "At least one AK8 passing kinematics",
+        "label": "At least one AK8 passing kinematics and jet ID",
         "group": "Preselection",
-        "description": "Cumulative AK8 pT and rapidity requirement.",
+        "description": "Cumulative AK8 pT, rapidity and Tight jet-ID requirement.",
     },
     {
         "key": "twoFatJets",
