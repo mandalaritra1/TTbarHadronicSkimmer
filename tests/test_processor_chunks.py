@@ -5,6 +5,7 @@ a category with events but no gen-matched tops (its weight variations were
 skipped), and a chunk with only a few events after the baseline selection
 (returned early after sumw was recorded). Skipped when the file is absent.
 """
+import copy
 import os
 import sys
 import unittest
@@ -58,6 +59,14 @@ class ProcessorChunkBookkeepingTest(unittest.TestCase):
                     for direction in ("Up", "Down"):
                         filled = h[{"systematic": syst + direction, "anacat": i}]
                         self.assertGreater(filled.variance, 0.0, f"{cat} {syst}{direction}")
+
+    def test_chunk_outputs_merge(self):
+        # coffea's accumulate (futures/iterative executors) could not merge 3+
+        # outputs carrying event_list, which is now off by default
+        from coffea.processor import accumulate
+
+        merged = accumulate(copy.deepcopy(o) for o in self.outputs)
+        self.assertEqual(merged["cutflow"]["all events"], CHUNK * NCHUNKS)
 
     def test_chunk_with_few_selected_events_is_processed(self):
         few = [o for o in self.outputs if 0 < o["cutflow"].get("after_eventCut", 0) < 10]

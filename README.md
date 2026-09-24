@@ -85,6 +85,7 @@ Common options:
 | `--subsample` | Run a specific manifest subsection, e.g. `--subsample QCD_PT-1000to1500` |
 | `--noSyst` | Run nominal only (no systematics) |
 | `--ntuple` | Collect flat per-event ntuple in the `.coffea` output |
+| `--event-list` | Store run/lumi/event after the tt̄-candidate cuts (debugging; off by default) |
 | `--test` | Run on 1 chunk with 1 worker |
 | `--blind` | Process 1/10th of data |
 | `--ttagWP` | Top-tagger working point: `loose`, `medium` (default), `tight` |

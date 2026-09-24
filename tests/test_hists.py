@@ -18,6 +18,11 @@ class TruthHistogramLayoutTest(unittest.TestCase):
         # with the systematic axis this hist was 21.6M bins, 346 MB per chunk output
         self.assertLess(output["gen_jetmsd_reco_jetmsd"].values(flow=True).size, 1_000_000)
 
+    def test_event_list_only_on_request(self):
+        kwargs = dict(anacats=["atcen"], systematics=["nominal"], no_syst=True)
+        self.assertNotIn("event_list", build_output_histograms(**kwargs))
+        self.assertIn("event_list", build_output_histograms(store_event_list=True, **kwargs))
+
 
 if __name__ == "__main__":
     unittest.main()

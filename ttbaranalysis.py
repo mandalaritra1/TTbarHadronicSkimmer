@@ -179,6 +179,8 @@ if __name__ == "__main__":
     parser.add_argument('--ht',       choices=['1400', '950'], default='1400')
     parser.add_argument('--noSyst',   action='store_true', help='run without systematics')
     parser.add_argument('--ntuple',   action='store_true', help='collect flat ntuple in output')
+    parser.add_argument('--event-list', action='store_true',
+                        help='store run/lumi/event after the ttbar-candidate cuts (debugging; off by default)')
 
     # run options
     parser.add_argument('--dask',      action='store_true')
@@ -419,6 +421,7 @@ if __name__ == "__main__":
                     systematics=systematics,
                     blinding=args.blind,
                     produce_ntuple=args.ntuple,
+                    store_event_list=args.event_list,
                     sample_metadata=rep_meta,
                     dataset_metadata=dataset_metadata,
                     group_by_dataset=is_signal,

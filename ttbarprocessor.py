@@ -221,6 +221,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         sample_metadata=None,
         dataset_metadata=None,
         group_by_dataset=False,
+        store_event_list=False,
     ):
         self.iov = iov
         self.htCut = htCut
@@ -351,6 +352,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             produce_ntuple_chunks=self.write_ntuple_chunks,
             ntuple_columns=ntuple_columns,
             group_by_dataset=self.group_by_dataset,
+            store_event_list=store_event_list,
         )
 
     def _tscore(self, jet):
@@ -949,7 +951,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 print(f"[CUTFLOW] after ttbarcandCuts: {len(events)}  "
                       f"(dPhiCut alone: {n_dPhi}, GoodSubjets alone: {n_subjets}, both: {n_both})")
 
-        if isNominal:
+        if isNominal and "event_list" in output:
             before = len(output["event_list"]["run"])
             output["event_list"]["run"]   += list(run)
             output["event_list"]["lumi"]  += list(lumi)

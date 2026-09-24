@@ -22,6 +22,7 @@ def build_output_histograms(
     produce_ntuple_chunks=False,
     ntuple_columns="full",
     group_by_dataset=False,
+    store_event_list=False,
 ):
     syst_category_strings = ["nominal"]
     if not no_syst:
@@ -145,13 +146,6 @@ def build_output_histograms(
             "cutflow_weighted2": processor.defaultdict_accumulator(float),
             "weights": processor.defaultdict_accumulator(float),
             "systematics": processor.defaultdict_accumulator(float),
-            "event_list": processor.dict_accumulator(
-                {
-                    "run": processor.list_accumulator([]),
-                    "lumi": processor.list_accumulator([]),
-                    "event": processor.list_accumulator([]),
-                }
-            ),
             "truthstudy": processor.defaultdict_accumulator(int),
         }
     )
@@ -162,6 +156,17 @@ def build_output_histograms(
         output["sumw2_by_dataset"] = processor.defaultdict_accumulator(float)
     # generator-level sums of the Q2/PDF-varied weights, before any selection
     output["sumw_theory"] = processor.defaultdict_accumulator(float)
+    # run/lumi/event of every event after the ttbar-candidate cuts, for event-level
+    # debugging (run_evt_lumi.py): python lists grow with the whole run, and coffea's
+    # list_accumulator cannot be merged by the futures/iterative executors (3+ chunks)
+    if store_event_list:
+        output["event_list"] = processor.dict_accumulator(
+            {
+                "run": processor.list_accumulator([]),
+                "lumi": processor.list_accumulator([]),
+                "event": processor.list_accumulator([]),
+            }
+        )
     if produce_ntuple:
         output["ntuple"] = build_ntuple_accumulators(ntuple_columns)
     if produce_ntuple_chunks:
