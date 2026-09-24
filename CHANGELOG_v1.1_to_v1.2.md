@@ -33,6 +33,7 @@ Last updated: 2026-09-24 (round 2)
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
 | 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −2.9% (2025)** vs NanoAOD JEC, pT > 400 GeV |
 | 17 | ISR/FSR parton-shower variations (`isr`, `fsr`), normalized like Q2/PDF | Done | `13dc1e3` | MC | Z′ 4 TeV (W10, local): ISR ±0.3%, FSR ±2.1% on the selected yield; none in v1.1 or Run 2 |
+| 18 | Top-tag SF uncertainty doubled for jets above 1.2 TeV (beyond the T&P data) | Done | `571526c` | MC | Z′ 4 TeV (W10, local): `ttag_pt3` +15.5/−14.4% → +23.5/−20.8%; nominal unchanged |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -61,7 +62,9 @@ correct for v1.1 results, so change them only with v1.2.
 - **Parked questions:** (a) split each bin's total into an uncorrelated fit part plus
   correlated model/JMR/JES/JER/PU nuisances — **decided no (2026-09-24): one total per
   bin, as in Run 2**; (b) the top bin is measured mostly at 600–800 GeV and applied to
-  1.5–2 TeV jets with no extrapolation uncertainty — open (item 7 findings).
+  1.5–2 TeV jets with no extrapolation uncertainty — **decided (2026-09-24): above 1.2 TeV
+  the uncertainty is doubled, same nuisance (item 18, `571526c`)**; an 800 GeV+ T&P bin is
+  fitted as a check only (if it agrees with 600–800, the three-bin scheme stays).
 
 ### 2. Run-3 jet-veto map — `9e405c1`
 
@@ -296,7 +299,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | **Correction:** the earlier 2025 data numbers (item 3/16: AK8 0.966, AK4 0.985, mSD 1.028) used run 392293 without the lumi mask; LS 1–35 are uncertified tracker-off data. Certified LS only: AK8 **0.971**, AK4 **1.002**, mSD **1.033** (one run, low statistics). 2024 numbers unaffected (file 100% certified). |
 | 2026-09-24 | Presented (Slides artifact 6aw4XinzZgEhf8WiU7KfS4; research-notes `topics/ttbarhadronic_skimmer_v12_changes_and_mc_plan.md`). **2025 and 2026 MC: use 2024 (Summer24) for everything** — `scale_iov` 2024 × lumi, no 2025 MC run, no 2025 pileup (items 12, 13). **2022/2023 Z′ signal:** contact the B2G MC contact for a NanoAODv15 re-processing. **Approved as presented:** antitag band SF measured directly (7), PDF recipe last (8), rerun list and order. |
 
-| 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. Still open: a 4th T&P pT bin (≥ 800 GeV) and any extra uncertainty beyond the measured pT range (item 7 findings). |
+| 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. **Extrapolation:** jets above 1.2 TeV (where the T&P data run out) keep the top-bin SF with doubled uncertainty, same nuisance (done, `571526c`); an 800 GeV+ T&P bin is fitted as a check only. |
 
 ## Validation log
 
@@ -309,6 +312,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Vendored JME files vs GitLab `latest` (Kerberos clone on lxplus) | md5 identical |
 | 2026-09-24 | PSWeight index parsing on local Z′, TTto4Q (4 entries) and QCD (44 entries) | correct isr/fsr ×2/×0.5 entries in all three |
 | 2026-09-24 | Z′ 4 TeV (W10) local smoke test with isr/fsr | isrUp/Down −0.3/+0.3%, fsrUp/Down +2.1/−2.2%; norm factors 1.000–1.001 |
+| 2026-09-24 | Top-tag extrapolation: unit tests (`tests/test_ttag_weights.py`) + Z′ 4 TeV smoke test | 3/3 pass (doubling only above 1.2 TeV, antitag jet included, Run 2 untouched); `ttag_pt3` +23.5/−20.8%, nominal identical |
 | 2026-09-24 | DAS: 2025 NanoAOD data + MC | only unused data = era B PromptReco; no new 2025 signal/ttbar MC |
 | 2026-09-24 | brilcalc per era vs PPD table (newest golden) | all five eras match to <0.01 fb⁻¹ |
 | 2026-09-24 | brilcalc 2025 C–G | 110.03 fb⁻¹ (current golden), 110.37 (newest) vs 110.59 in code |
