@@ -20,13 +20,13 @@ Last updated: 2026-09-24 (round 2)
 | 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Done | `a694078` | 2024 data + MC | New η-dependent residuals and JER SFs |
 | 5 | GloParTv3 score histograms `jet0/1_tdisc` | Done | `28c02a9` | Output only | None (new diagnostics for CR/VR data/MC) |
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
-| 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Decided (fix) | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
+| 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Approved | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
 | 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
 | 9 | msoftdrop rebuilt from re-corrected subjets; JES/JER from varied subjets; JMS 1%, JMR 2% | Done | `d3fbc3e`, `e922747` | Data + MC | Nominal mSD: 2024 data +0.3%, 2025 data +2.8%, MC −0.9%; JES ±0.7% on ⟨mSD⟩ |
 | 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
-| 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
-| 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
+| 12 | Real 2025 MC run instead of `scale_iov` | Decided: no | — | 2025 MC | 2024 MC stands in for 2025 and 2026 (2024 × lumi) |
+| 13 | 2025 pileup weights (LUM 2025 file) | Decided: no | — | 2025 MC | Stays with 2024 (follows item 12) |
 | 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | `d4b719c` | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
 | 14b | 2022/2023/2024 golden JSONs → DC re-issue after the 2026 tracker-ML review | Done | `f6ff4c1` | Data | LS: 2022 +0.07%, 2023 −0.43%, 2024 −0.04% |
 | 14c | 2022/2023/2024 lumi values from the current PPD tables | Open | — | MC norm | Waiting on the PPD table numbers |
@@ -269,6 +269,12 @@ No 2025 (Winter25/Summer25) TTto4Q or Z'→tt̄ exists; no Summer25 campaign at 
 Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 
 ---
+
+## Decision log
+
+| Date | Decision |
+|---|---|
+| 2026-09-24 | Presented (Slides artifact 6aw4XinzZgEhf8WiU7KfS4; research-notes `topics/ttbarhadronic_skimmer_v12_changes_and_mc_plan.md`). **2025 and 2026 MC: use 2024 (Summer24) for everything** — `scale_iov` 2024 × lumi, no 2025 MC run, no 2025 pileup (items 12, 13). **2022/2023 Z′ signal:** contact the B2G MC contact for a NanoAODv15 re-processing. **Approved as presented:** antitag band SF measured directly (7), PDF recipe last (8), rerun list and order. |
 
 ## Validation log
 
