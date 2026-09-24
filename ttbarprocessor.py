@@ -787,9 +787,9 @@ class TTbarResProcessor(processor.ProcessorABC):
             )
         logger.debug('memory:%s: get nanoAOD objects %s:%s', time.time(), correction, get_memory_usage())
 
-        if len(events) < 10:
+        if len(events) == 0:
             self.logger.debug(
-                'early return before weights/baseline cutflow: events=%d < 10 '
+                'early return before weights/baseline cutflow: events=%d '
                 '(original_chunk_events=%d, correction=%s)',
                 len(events), nEvents, correction,
             )
@@ -867,9 +867,12 @@ class TTbarResProcessor(processor.ProcessorABC):
             if self.cutflow_verbose:
                 print(f"[CUTFLOW] after all preselection (eventCut): {len(events)}")
         logger.debug(f"Length of event {len(events)}")
-        if len(events) < 10:
+        # Only an empty chunk may return here: sumw is already recorded, so
+        # dropping a chunk with a few selected events (formerly < 10) removed
+        # them from the templates but not from the normalization.
+        if len(events) == 0:
             self.logger.debug(
-                'early return after baseline eventCut: events=%d < 10 '
+                'early return after baseline eventCut: events=%d '
                 '(original_chunk_events=%d, correction=%s)',
                 len(events), nEvents, correction,
             )
@@ -1137,34 +1140,35 @@ class TTbarResProcessor(processor.ProcessorABC):
                 truth_event_weights = self.weights[correction].weight()[gen_top_match_info["event_mask"]]
                 truth_weights       = truth_event_weights[truth_cat_mask]
 
-                if ak.sum(truth_cat_mask) == 0:
-                    continue
-
-                output["gen_mt"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
-                    gentopmass=gen_top_match_info["gen_top0"].mass[truth_cat_mask],
-                    weight=truth_weights,
-                )
-                output["gen_mt"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
-                    gentopmass=gen_top_match_info["gen_top1"].mass[truth_cat_mask],
-                    weight=truth_weights,
-                )
-                output["gen_mttbar"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
-                    ttbarmass=gen_top_match_info["top_pair_mass"][truth_cat_mask],
-                    weight=truth_weights,
-                )
-                output["jet0_gen_dr"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
-                    dr=gen_top_match_info["jet0_dr"][truth_cat_mask],
-                    weight=truth_weights,
-                )
-                output["jet1_gen_dr"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
-                    dr=gen_top_match_info["jet1_dr"][truth_cat_mask],
-                    weight=truth_weights,
-                )
+                # No gen-matched event in this category: skip only these truth
+                # fills. A `continue` here also skipped the weight-variation fills
+                # below, so pileup/PDF/Q2/ISR/FSR/ttag_pt came out low.
+                if ak.any(truth_cat_mask):
+                    output["gen_mt"].fill(
+                        **ds_kw, systematic=correction, anacat=i,
+                        gentopmass=gen_top_match_info["gen_top0"].mass[truth_cat_mask],
+                        weight=truth_weights,
+                    )
+                    output["gen_mt"].fill(
+                        **ds_kw, systematic=correction, anacat=i,
+                        gentopmass=gen_top_match_info["gen_top1"].mass[truth_cat_mask],
+                        weight=truth_weights,
+                    )
+                    output["gen_mttbar"].fill(
+                        **ds_kw, systematic=correction, anacat=i,
+                        ttbarmass=gen_top_match_info["top_pair_mass"][truth_cat_mask],
+                        weight=truth_weights,
+                    )
+                    output["jet0_gen_dr"].fill(
+                        **ds_kw, systematic=correction, anacat=i,
+                        dr=gen_top_match_info["jet0_dr"][truth_cat_mask],
+                        weight=truth_weights,
+                    )
+                    output["jet1_gen_dr"].fill(
+                        **ds_kw, systematic=correction, anacat=i,
+                        dr=gen_top_match_info["jet1_dr"][truth_cat_mask],
+                        weight=truth_weights,
+                    )
 
             if genjetak8_match_info is not None:
                 genak8_truth_cat_mask = icat[genjetak8_match_info["event_mask"]]
