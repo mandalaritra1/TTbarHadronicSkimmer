@@ -28,7 +28,8 @@ Last updated: 2026-09-24
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
 | 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
 | 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | `d4b719c` | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
-| 14b | 2024 golden JSON post-TrkML review + lumi re-check | Open | — | 2024 data + MC norm | −106 LS in 27 runs |
+| 14b | 2022/2023/2024 golden JSONs → DC re-issue after the 2026 tracker-ML review | Done | `f6ff4c1` | Data | LS: 2022 +0.07%, 2023 −0.43%, 2024 −0.04% |
+| 14c | 2022/2023/2024 lumi values from the current PPD tables | Open | — | MC norm | Waiting on the PPD table numbers |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
@@ -160,6 +161,13 @@ LUM now ships preliminary 2025 weights for Summer24 MC:
   with our golden, 110.37 fb⁻¹ with the newest. The code uses 110.59 fb⁻¹
   (`ttbarprocessor.py`, PPD summary table), 0.5% above the brilcalc value for the
   golden we actually apply. 2024 (109.95 fb⁻¹) not yet re-checked.
+
+### 14b. 2022–2024 golden JSON refresh — `f6ff4c1`
+DC re-issued the 2022, 2023 and 2024 golden JSONs after a 2026 tracker-ML review; ours
+were the `_before_TrkML2026_review` versions. Same filenames, new content (= DC `latest`):
+2022 +123/−38 LS (38 runs), 2023 +4/−394 LS (8 runs), 2024 −106 LS (27 runs).
+Lumi values in `ttbarprocessor._LUMI_PB` are unchanged until the PPD tables are read
+(item 14c); the 2024 LS change is −0.04%.
 
 ### 15. 2025 era B data (dropped)
 DAS has `/JetMET{0,1}/Run2025B-PromptReco-v1/NANOAOD` (13.6M events each); `data.json`
