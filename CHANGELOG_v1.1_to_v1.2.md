@@ -6,7 +6,7 @@ current 39-point limits. **v1.2** = the next MC + data re-skim.
 Status: **Done** = committed · **Working tree** = written, not committed ·
 **Planned** = decided, not started · **Open** = needs a decision.
 
-Last updated: 2026-09-24 (round 2)
+Last updated: 2026-09-24 (round 3)
 
 ---
 
@@ -34,6 +34,10 @@ Last updated: 2026-09-24 (round 2)
 | 16 | Re-apply JEC to data (and `--noSyst` MC), Run-3 IOVs | Done | `77fa52e` | Data | **Data AK8 pT −4.6% (2024), −2.9% (2025)** vs NanoAOD JEC, pT > 400 GeV |
 | 17 | ISR/FSR parton-shower variations (`isr`, `fsr`), normalized like Q2/PDF | Done | `13dc1e3` | MC | Z′ 4 TeV (W10, local): ISR ±0.3%, FSR ±2.1% on the selected yield; none in v1.1 or Run 2 |
 | 18 | Top-tag SF uncertainty doubled for jets above 1.2 TeV (beyond the T&P data) | Done | `571526c` | MC | Z′ 4 TeV (W10, local): `ttag_pt3` +15.5/−14.4% → +23.5/−20.8%; nominal unchanged |
+| 19 | Weight variations no longer skipped for a category without gen-matched tops | Done | `2ec6420` | MC | v1 TTbar: 305 of 103,611 events were missing from every weight-variation template; Z′ W1% 400–700 GeV up to 11% (review numbers) |
+| 20 | Chunks with 1–9 events after the baseline selection kept | Done | `2ec6420` | Data + MC | Those events were dropped from the templates but kept in sumw; small (file-tail chunks) |
+| 21 | AK8 JER gen pT from the matched GenJetAK8 (was the nearest AK4 GenJet) | Done | `7298517` | MC | Z′ 2 TeV: smeared AK8 pT −0.2% on average; gen match 91% → 100% |
+| 22 | Notebook runner uses the CLI's `_signal_xsec` (1-TeV-spike fix) | Done | `d02e9d7` | Signal run from the notebook | None for CLI runs; notebook signal runs no longer save 400–900 GeV at raw counts |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -125,6 +129,35 @@ correct for v1.1 results, so change them only with v1.2.
   every event.
 
 ---
+
+### 19–22. Code-review bug fixes — `2ec6420`, `7298517`, `d02e9d7`
+A static review of the skimmer (separate session, 2026-09-24) found four bugs that
+predate v1.2; none was a decision. Fixed before the re-skim:
+
+- **19.** In the per-category loop, `if ak.sum(truth_cat_mask) == 0: continue` sat in
+  the gen-truth block, above the weight-variation fills, so a category with events
+  but no gen-matched tops lost its pileup/PDF/Q2/ISR/FSR/ttag_pt fills and its
+  `systematics` counter (up and down both low). QCD MC was hit in every category.
+  Now only the truth fills are guarded.
+- **20.** `if len(events) < 10: return output` after the baseline selection ran after
+  sumw was recorded. Both early returns now fire only for empty chunks. The first
+  one (before sumw) dropped whole tiny chunks consistently, so only data lost events there.
+- **21.** `Run3JetManager.prepare_for_corrections` set FatJet `pt_gen` from the nearest
+  AK4 GenJet within ΔR 0.2 (the AK4 recipe), overriding the GenJetAK8 fallback in
+  `GetJECUncertainties`. Z′ 2 TeV, AK8 pT > 400 GeV: median (pT − pT_gen)/pT +8.3% →
+  −0.6%. The top-tag T&P already used GenJetAK8.
+- **22.** fab5038 fixed `_signal_xsec` in `ttbaranalysis.py` only; `ttbar_notebook.py`
+  now imports it.
+
+Tests: `tests/test_processor_chunks.py` (15-event chunks of the local Z′ 2 TeV file;
+skipped without it) fails on the old code for 19 and 20 separately;
+`tests/test_signal_xsec.py` for 22.
+
+Other review findings (truth-histogram memory, correction-file caching, the two
+runners, lumi constants in six places, Run-2 leftovers) are not in v1.2 yet. Local
+note: with coffea's futures/iterative executors, merging three or more chunks crashes on
+`event_list` (`list_accumulator.identity()` returns a plain list, same code in coffea
+2025.12.0–2026.5.0). The Dask path merges in place and is unaffected (v1.1 production).
 
 ## Planned / open
 
@@ -329,11 +362,16 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Presented (Slides artifact 6aw4XinzZgEhf8WiU7KfS4; research-notes `topics/ttbarhadronic_skimmer_v12_changes_and_mc_plan.md`). **2025 and 2026 MC: use 2024 (Summer24) for everything** — `scale_iov` 2024 × lumi, no 2025 MC run, no 2025 pileup (items 12, 13). **2022/2023 Z′ signal:** contact the B2G MC contact for a NanoAODv15 re-processing. **Approved as presented:** antitag band SF measured directly (7), PDF recipe last (8), rerun list and order. |
 
 | 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. **Extrapolation:** jets above 1.2 TeV (where the T&P data run out) keep the top-bin SF with doubled uncertainty, same nuisance (done, `571526c`); an 800 GeV+ T&P bin is fitted as a check only. |
+| 2026-09-24 | Code review (separate session): its bugs 1–4 are pre-existing bugs, not v1.2 decisions; fixed for v1.2 (items 19–22). |
 
 ## Validation log
 
 | Date | Check | Result |
 |---|---|---|
+| 2026-09-24 | Items 19–22: unit tests (74) + `tests/test_processor_chunks.py` on old code | 74/74 pass; old code fails the few-events check, old code + only the item-20 fix fails the weight-variation check (3 vs 4) |
+| 2026-09-24 | Item 20: 50-event vs one 2000-event chunk (Z′ 2 TeV, nominal) | old 147 vs 149, new 148 vs 149; the remaining events differ in both directions (3 vs 5), i.e. per-chunk random smearing, not dropped events |
+| 2026-09-24 | Item 21: AK8 JER old vs new gen match (Z′ 2 TeV, 26k jets) | median (pT − pT_gen)/pT +8.3% → −0.6%; smeared pT new/old 0.998 |
+| 2026-09-24 | Z′ 4 TeV local CLI smoke test after items 19–22 | exit 0; categories 2581/2564/4479/5793; 1 pb reference applied |
 | 2026-09-24 | Z' 4 TeV 2024 smoke test, syst + noSyst | all ttag variations fill; overflow empty |
 | 2026-09-24 | Veto-map unit tests (committed tree, clean checkout) | pass; processor imports |
 | 2026-09-24 | 2025C data through 2025 JEC + veto map + jet ID | runs; veto pass 97.85% |
