@@ -114,12 +114,14 @@ def build_output_histograms(
             "gen_mttbar": hist.Hist(*_pre,syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "jet0_gen_dr": hist.Hist(*_pre,syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
             "jet1_gen_dr": hist.Hist(*_pre,syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
+            # Gen-matched AK8 response: filled on the nominal MC pass only (the
+            # gen matching runs there), so no systematic axis -- with it this
+            # hist was 21.6M bins, 346 MB per chunk output, 24/25 slices empty.
             "jet_mass_resolution": hist.Hist(
-                *_pre, syst_axis, cats_axis, abs_eta_axis, jet_nearby_axis, massres_axis, storage="weight", name="Counts"
+                *_pre, cats_axis, abs_eta_axis, jet_nearby_axis, massres_axis, storage="weight", name="Counts"
             ),
             "gen_jetmsd_reco_jetmsd": hist.Hist(
                 *_pre,
-                syst_axis,
                 cats_axis,
                 abs_eta_axis,
                 jet_nearby_axis,

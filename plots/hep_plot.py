@@ -176,7 +176,10 @@ def plot1dList(output, hname, axes, labels=None, density=False, ax=None, dataset
     if ax is None:
         _, ax = plt.subplots()
 
-    h2d = output[hname]['nominal', ...].project(*axes)
+    h = output[hname]
+    if 'systematic' in h.axes.name:
+        h = h[{'systematic': 'nominal'}]
+    h2d = h.project(*axes)
 
     for axis, label in zip(axes, labels):
         h2d.project(axis).plot1d(ax=ax, label=label, density=density, **kwargs)

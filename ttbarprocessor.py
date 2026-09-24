@@ -714,6 +714,10 @@ class TTbarResProcessor(processor.ProcessorABC):
         ds_kw = {'dataset': dataset} if self.group_by_dataset else {}
 
         output = self.histo_dict
+        if isData:
+            # gen-matched truth histograms are never filled for data
+            for key in ('gen_jetmsd_reco_jetmsd', 'jet_mass_resolution'):
+                output.pop(key, None)
 
         if isNominal:
             output['cutflow']['all events 1'] += nEvents
@@ -1176,7 +1180,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 genak8_truth_weights  = genak8_event_weights[genak8_truth_cat_mask]
 
                 output["gen_jetmsd_reco_jetmsd"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
+                    **ds_kw, anacat=i,
                     abs_eta=jet0_abs_eta[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     jet_nearby=jet0_nearby_label[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     genjetmass=genjetak8_match_info["jet0_genjet"].mass[genak8_truth_cat_mask],
@@ -1184,7 +1188,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                     weight=genak8_truth_weights,
                 )
                 output["gen_jetmsd_reco_jetmsd"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
+                    **ds_kw, anacat=i,
                     abs_eta=jet1_abs_eta[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     jet_nearby=jet1_nearby_label[genjetak8_match_info["event_mask"]][genak8_truth_cat_mask],
                     genjetmass=genjetak8_match_info["jet1_genjet"].mass[genak8_truth_cat_mask],
@@ -1202,14 +1206,14 @@ class TTbarResProcessor(processor.ProcessorABC):
                 jet1_genak8_truth_cat_mask = genak8_truth_cat_mask & genjetak8_match_info["jet1_is_matched"]
 
                 output["jet_mass_resolution"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
+                    **ds_kw, anacat=i,
                     abs_eta=jet0_abs_eta[genjetak8_match_info["event_mask"]][jet0_genak8_truth_cat_mask],
                     jet_nearby=jet0_nearby_label[genjetak8_match_info["event_mask"]][jet0_genak8_truth_cat_mask],
                     massres=jet0_genak8_massres[jet0_genak8_truth_cat_mask],
                     weight=genak8_event_weights[jet0_genak8_truth_cat_mask],
                 )
                 output["jet_mass_resolution"].fill(
-                    **ds_kw, systematic=correction, anacat=i,
+                    **ds_kw, anacat=i,
                     abs_eta=jet1_abs_eta[genjetak8_match_info["event_mask"]][jet1_genak8_truth_cat_mask],
                     jet_nearby=jet1_nearby_label[genjetak8_match_info["event_mask"]][jet1_genak8_truth_cat_mask],
                     massres=jet1_genak8_massres[jet1_genak8_truth_cat_mask],
