@@ -1,7 +1,7 @@
 import awkward as ak
 import numpy as np
 
-from corrections import GetJECUncertainties, GetJetVetoMapMask
+from corrections import _JSONPOG_JME_DIR, GetJECUncertainties, GetJetVetoMapMask
 from functions import getRapidity
 
 # Jet-collection variations run as separate passes of the processor.
@@ -54,7 +54,16 @@ class Run3JetManager:
         return fatjets, jets
 
     def build_corrections(self, events, is_data):
-        if not _JET_VARIATIONS.intersection(self.systematics) or self.no_syst or is_data:
+        variations = (
+            set() if (self.no_syst or is_data)
+            else _JET_VARIATIONS.intersection(self.systematics)
+        )
+        # Run-3 IOVs re-apply the vendored JEC (and JER for MC) on every pass, data
+        # and --noSyst included, so data and MC carry the same JEC version. Run 2
+        # keeps the NanoAOD jets unless variations are requested (its legacy data
+        # JEC path is not usable).
+        run3 = self.iov in _JSONPOG_JME_DIR
+        if not variations and not run3:
             return None
 
         fatjets, jets = self.prepare_for_corrections(events, is_data)
@@ -76,6 +85,8 @@ class Run3JetManager:
             return with_msd(varied, nominal_msd * ratio)
 
         corrections = [({"Jet": corrected_jets, "FatJet": corrected_fatjets}, "nominal")]
+        if not variations:
+            return corrections
         if "jes" in self.systematics:
             corrections.extend([
                 ({"Jet": corrected_jets.JES_jes.up,   "FatJet": follow_pt(corrected_fatjets.JES_jes.up)},   "jesUp"),
