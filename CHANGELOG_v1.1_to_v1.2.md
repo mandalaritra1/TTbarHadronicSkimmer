@@ -175,6 +175,24 @@ JetMET data (73716 AK8 jets, pT > 400): corrected/NanoAOD pT 0.954, rebuilt/Nano
 `--apply-jec --apply-pu`, MC also `--apply-jec-syst`), then the three-category fit at the
 analysis cuts (pass ≥ 0.9284, band [0.8571, 0.9284), fail) with an 800 GeV+ check bin.
 
+**Band-SF fit ready, production running on the LPC (2026-09-24).** `toptag-sf-derivation`
+`519c9d0` / `4dc71d6`: three-category fit (scipy `p1_bandfit.py`, Combine
+`make_p1_band_datacards.py`, systematics `p1_band_systematics.py`); closure and injection
+exact. Preview on the **pre-v1.2** ntuples (Combine, rest tag rates fixed, jms profiled):
+
+| pT bin | SF (D ≥ 0.9284) | band SF [0.8571, 0.9284) | loose SF applied now |
+|---|---|---|---|
+| 400–480 | 0.929 ± 0.029 | 1.33 ± 0.10 | 1.05 |
+| 480–600 | 0.821 ± 0.03 | 1.29 ± 0.09 | 0.93 |
+| 600–800 | 0.834 ± 0.05 | 1.62 ± 0.13 | 0.95 |
+| 800+ | 0.714 +0.087/−0.063 | 0.69 ± 0.22 | 0.95 |
+
+Stat errors only; systematics (old objects) add ~0.04 (SF) and ~0.07 (band SF), mostly JMR.
+The tight SF above 800 GeV agrees with 600–800 within ~1.3σ; the band SF there does not
+(58 band events) — re-check on v1.2. coffea-casa's worker pool was down (2 slots, all casa
+worker jobs idle since 2026-09-09), so the v1.2 T&P production runs on the LPC
+(`~/nobackup/toptag-sf-derivation`, coffea 2026.4.0; runner fix `1ca2b22`).
+
 ### 8. PDF uncertainty (last; reconsider)
 `GetPDFWeights` uses std/mean across replicas; the review argued the PDF set needs the
 Hessian formula (~10× larger). The code came from senior CMS colleagues, so revisit the
