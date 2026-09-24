@@ -16,24 +16,27 @@ sys.path.insert(0, os.getcwd())
 ZPRIME = os.path.expanduser(
     "~/Projects/rootfiles/ttbar/2024/mc/ZPrime2000_W10/ZPrime2000_W10_0.root"
 )
+QCD = os.path.expanduser(
+    "~/Projects/rootfiles/ttbar/2024/mc/QCD_PT1000to1500/QCD_PT1000to1500_0.root"
+)
 CATS = ["atcen", "atfwd", "2tcen", "2tfwd"]
 WEIGHT_SYSTEMATICS = ["pileup", "isr", "fsr", "ttag_pt1", "ttag_pt2", "ttag_pt3"]
 CHUNK = 15
 NCHUNKS = 20
 
 
-def _process(start, stop):
+def _process(start, stop, path=ZPRIME, dataset="ZPrime2000_10", systematics=None):
     from coffea.nanoevents import NanoAODSchema, NanoEventsFactory
     from ttbarprocessor import TTbarResProcessor
 
     events = NanoEventsFactory.from_root(
-        {ZPRIME: "Events"}, schemaclass=NanoAODSchema, entry_start=start, entry_stop=stop,
-        metadata={"dataset": "ZPrime2000_10"}, mode="eager",
+        {path: "Events"}, schemaclass=NanoAODSchema, entry_start=start, entry_stop=stop,
+        metadata={"dataset": dataset}, mode="eager",
     ).events()
     # weight systematics only: one pass per chunk, no jet variations
     processor = TTbarResProcessor(
         iov="2024", htCut=1400.0, deepAK8Cut="tight", topTagger="topvsqcd",
-        anacats=CATS, systematics=["nominal"] + WEIGHT_SYSTEMATICS,
+        anacats=CATS, systematics=systematics or ["nominal"] + WEIGHT_SYSTEMATICS,
     )
     return processor.process(events)
 
@@ -73,6 +76,18 @@ class ProcessorChunkBookkeepingTest(unittest.TestCase):
         self.assertTrue(few, "no chunk with 1-9 events after the baseline selection")
         for output in few:
             self.assertIn("after_ttbarcandCuts", output["cutflow"])
+
+
+@unittest.skipUnless(os.path.exists(QCD), "local QCD NanoAOD test file not available")
+class FlatTheoryVariationTest(unittest.TestCase):
+    def test_sample_without_lhe_weights_is_recorded(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            output = _process(0, 200, path=QCD, dataset="QCD_PT1000to1500",
+                              systematics=["nominal", "pdf", "q2"])
+        flat = output["flat_theory_variations"]
+        self.assertEqual(sorted(k.split("|")[-1] for k in flat), ["pdf", "q2"])
+        self.assertTrue(all(v == 200 for v in flat.values()))
 
 
 if __name__ == "__main__":

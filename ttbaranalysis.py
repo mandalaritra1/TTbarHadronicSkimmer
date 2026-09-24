@@ -527,6 +527,8 @@ if __name__ == "__main__":
 
                 output['analysisCategories'] = label_map
                 output['provenance'] = run_provenance
+                if output.get('flat_theory_variations'):
+                    print('WARNING: flat PDF/Q2 variations (sample without LHE weights):', dict(output['flat_theory_variations']))
                 util.save(output, savefilename)
                 print('saving', savefilename)
 

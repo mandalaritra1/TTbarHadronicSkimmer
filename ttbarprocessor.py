@@ -1279,9 +1279,14 @@ class TTbarResProcessor(processor.ProcessorABC):
             ("isr", lambda ev: GetPSWeights(ev, "isr")),
             ("fsr", lambda ev: GetPSWeights(ev, "fsr")),
         )
+        lhe_branch = {"q2": "LHEScaleWeight", "pdf": "LHEPdfWeight"}
         for name, getter in getters:
             if name not in self.systematics:
                 continue
+            if name in lhe_branch and lhe_branch[name] not in events.fields:
+                # pure-Pythia samples (e.g. Run-3 QCD_PT) carry no LHE weights: the
+                # variation stays flat; counted so the runner warns about it
+                output['flat_theory_variations'][f"{key}|{name}"] += len(events)
             _, up, down = getter(events)
             output['sumw_theory'][f"{key}|{name}Up"]   += float(np.sum(weights * np.asarray(up, dtype=np.float64)))
             output['sumw_theory'][f"{key}|{name}Down"] += float(np.sum(weights * np.asarray(down, dtype=np.float64)))

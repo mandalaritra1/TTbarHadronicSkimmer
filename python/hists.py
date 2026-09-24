@@ -156,6 +156,8 @@ def build_output_histograms(
         output["sumw2_by_dataset"] = processor.defaultdict_accumulator(float)
     # generator-level sums of the Q2/PDF-varied weights, before any selection
     output["sumw_theory"] = processor.defaultdict_accumulator(float)
+    # "<dataset>|<pdf|q2>" -> events whose sample has no LHE weights (flat variation)
+    output["flat_theory_variations"] = processor.defaultdict_accumulator(int)
     # run/lumi/event of every event after the ttbar-candidate cuts, for event-level
     # debugging (run_evt_lumi.py): python lists grow with the whole run, and coffea's
     # list_accumulator cannot be merged by the futures/iterative executors (3+ chunks)

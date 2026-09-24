@@ -503,7 +503,9 @@ def GetPDFWeights(events):
     pdf_nom = np.ones(len(events))
 
     if "LHEPdfWeight" in events.fields:
-        
+        n_pdf = ak.to_numpy(ak.num(events.LHEPdfWeight, axis=1))
+        if len(n_pdf) and (n_pdf.min() < 2 or n_pdf.min() != n_pdf.max()):
+            raise ValueError(f"LHEPdfWeight lengths {sorted(set(n_pdf.tolist()))}: expected the same replica count in every event")
         pdfUnc = ak.std(events.LHEPdfWeight,axis=1)/ak.mean(events.LHEPdfWeight,axis=1)
         pdfUnc = ak.fill_none(pdfUnc, 0.00)
         
@@ -682,6 +684,12 @@ def GetQ2weights(events):
     q2Up = np.ones(len(events))
     q2Down = np.ones(len(events))
     if ("LHEScaleWeight" in events.fields):
+        n_scale = ak.num(events.LHEScaleWeight, axis=1)
+        if not (ak.all(n_scale == 9) or ak.all(n_scale == 8)):
+            raise ValueError(
+                f"LHEScaleWeight lengths {sorted(set(ak.to_numpy(n_scale).tolist()))}: "
+                "expected 9 (or 8) entries in every event"
+            )
         if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
             nom = events.LHEScaleWeight[:,4]
             scales = events.LHEScaleWeight[:,[0,1,3,5,7,8]]
