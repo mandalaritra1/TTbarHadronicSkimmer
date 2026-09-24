@@ -22,7 +22,7 @@ Last updated: 2026-09-24 (round 2)
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
 | 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Decided (fix) | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
 | 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
-| 9 | Soft-drop mass variations: JES/JER propagated, JMS 1%, JMR 2% | Done | `d3fbc3e` | MC | JES now moves ⟨mSD⟩ ±0.7%; new jms/jmr shape nuisances |
+| 9 | msoftdrop rebuilt from re-corrected subjets; JES/JER from varied subjets; JMS 1%, JMR 2% | Done | `d3fbc3e`, `e922747` | Data + MC | Nominal mSD: 2024 data +0.3%, 2025 data +2.8%, MC −0.9%; JES ±0.7% on ⟨mSD⟩ |
 | 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
@@ -156,7 +156,24 @@ corrects pT and the ungroomed `mass`, not `msoftdrop`, so there is no jet mass s
 data/MC mass scale s ≈ 0.990–0.995 (profiled) and used a prescribed 2% JMR.
 Effects: the mass-window acceptance for signal and tt̄ differs between data and MC
 (normalization), and events migrate between the jet-mass regions (shape). 
-**Done — `d3fbc3e`.** Nominal JMS = JMR = 1.000 (no nominal correction; mSD stays on the
+**Update — `e922747` (supersedes the pT-ratio propagation below for Run 3).**
+Following the JMAR recipe used in `smp_jetmass_run2` (`dijet_processor.py`): the soft-drop
+subjets are un-corrected (`rawFactor`) and re-corrected with the vendored AK4 PUPPI JEC
+(data: DATA chain with residuals; MC: MC chain + JER, subjet pT_gen from the nearest
+`SubGenJetAK8`, ΔR < 0.4), and `msoftdrop` = mass(subjet1 + subjet2) is rebuilt for the
+nominal and the JES/JER-varied passes. Jets without two subjets keep the NanoAOD value.
+Rebuilding from the untouched NanoAOD subjets reproduces NanoAOD `msoftdrop` exactly.
+
+| Sample | median new / NanoAOD mSD |
+|---|---|
+| 2024 data | 1.0026 |
+| 2025 data | 1.0277 |
+| 2024 tt̄ MC (nominal, JEC + JER) | 0.9914 |
+
+Data and MC now move toward each other (the T&P saw the data top peak ~3% below MC with
+NanoAOD mSD). 2025 data moves most: its PromptReco subjets carried smaller residuals.
+
+**Original — `d3fbc3e`.** Nominal JMS = JMR = 1.000 (no nominal correction; mSD stays on the
 NanoAOD value, which is built from AK4-PUPPI-corrected subjets). Variations as extra
 jet passes in `Run3JetManager.build_corrections`:
 - `jes`/`jer` Up/Down: mSD × (pT_var / pT_nominal), from coffea's CorrectedJetsFactory.
