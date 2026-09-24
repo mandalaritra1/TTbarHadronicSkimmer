@@ -2,7 +2,7 @@ import awkward as ak
 import numpy as np
 from coffea.analysis_tools import Weights
 
-from corrections import GetPDFWeights, GetPUSF, GetQ2weights, pTReweighting
+from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, pTReweighting
 
 
 class Run3WeightManager:
@@ -37,6 +37,11 @@ class Run3WeightManager:
         if "q2" in self.systematics:
             q2Nom, q2Up, q2Down = GetQ2weights(events)
             weights.add("q2", weight=q2Nom, weightUp=q2Up, weightDown=q2Down)
+
+        for ps in ("isr", "fsr"):
+            if ps in self.systematics:
+                psNom, psUp, psDown = GetPSWeights(events, ps)
+                weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
         if "ttag_pt1" in self.systematics:
             self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag)

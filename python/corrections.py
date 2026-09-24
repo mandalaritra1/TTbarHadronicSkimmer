@@ -1,5 +1,6 @@
 # corrections.py
 
+import re
 import numpy as np
 import awkward as ak
 from coffea.lumi_tools import LumiMask
@@ -692,3 +693,41 @@ def GetQ2weights(events):
             q2Down = ak.min(scales,axis=1)
 
     return q2Nom, q2Up, q2Down
+
+
+# "[3] fsr.murfac=2.0;" -- the plain ISR/FSR renormalization-scale entries only
+# (not the per-splitting "fsr.g2gg.murfac" ones).
+_PS_DOC_RE = re.compile(r"\[(\d+)\]\s*(isr|fsr)\.murfac=([0-9.]+);")
+# Standard 4-entry NanoAOD layout, used when the branch title is not available.
+_PS_DEFAULT_INDEX = {("isr", "Up"): 0, ("fsr", "Up"): 1, ("isr", "Down"): 2, ("fsr", "Down"): 3}
+
+
+def _ps_indices(psweight):
+    """(isr|fsr, Up|Down) -> PSWeight index; Up = murfac 2.0, Down = murfac 0.5.
+    Read from the branch title because the layout differs between samples
+    (Summer24 TTto4Q/Z': 4 entries; Summer24 QCD: 44, in another order)."""
+    index = {}
+    for i, kind, fac in _PS_DOC_RE.findall(getattr(psweight, "__doc__", None) or ""):
+        if float(fac) == 2.0:
+            index[(kind, "Up")] = int(i)
+        elif float(fac) == 0.5:
+            index[(kind, "Down")] = int(i)
+    return index if len(index) == 4 else _PS_DEFAULT_INDEX
+
+
+def GetPSWeights(events, kind):
+    """Parton-shower ISR or FSR weights (kind = "isr" | "fsr") from NanoAOD PSWeight
+    (w_var / w_nominal): up = shower renormalization scale x2, down = x0.5.
+    Raises if the branch is missing or short, so a requested variation is never
+    silently flat."""
+    if "PSWeight" not in events.fields:
+        raise KeyError(f"PSWeight missing: cannot build the {kind} variation")
+    ps = events.PSWeight
+    index = _ps_indices(ps)
+    iup, idown = index[(kind, "Up")], index[(kind, "Down")]
+    if not ak.all(ak.num(ps, axis=1) > max(iup, idown)):
+        raise ValueError(f"PSWeight has fewer than {max(iup, idown) + 1} entries in some events")
+    psNom = np.ones(len(events))
+    psUp = ak.to_numpy(ps[:, iup])
+    psDown = ak.to_numpy(ps[:, idown])
+    return psNom, psUp, psDown

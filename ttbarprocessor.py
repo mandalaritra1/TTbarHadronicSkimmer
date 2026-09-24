@@ -39,6 +39,7 @@ sys.path.append(os.getcwd() + '/python/')
 from corrections import (
     GetFlavorEfficiency,
     GetPDFWeights,
+    GetPSWeights,
     GetQ2weights,
     getLumiMask,
     getMETFilter,
@@ -1273,7 +1274,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         return dataset if self.group_by_dataset else 'all'
 
     def _accumulate_theory_sumw(self, output, dataset, events, evtweights):
-        """Generator-level sums of the Q2/PDF-varied weights over all events, before
+        """Generator-level sums of the Q2/PDF/ISR/FSR-varied weights over all events, before
         any selection. postprocess rescales those templates by sumw_nominal /
         sumw_varied: the inclusive cross-section change is removed (the signal
         limit is on sigma; ttbar's rate has its own prior) and only the acceptance
@@ -1281,7 +1282,13 @@ class TTbarResProcessor(processor.ProcessorABC):
         key = self._theory_key(dataset)
         weights = np.asarray(evtweights, dtype=np.float64)
         output['sumw_theory'][f"{key}|nominal"] += float(np.sum(weights))
-        for name, getter in (("q2", GetQ2weights), ("pdf", GetPDFWeights)):
+        getters = (
+            ("q2", GetQ2weights),
+            ("pdf", GetPDFWeights),
+            ("isr", lambda ev: GetPSWeights(ev, "isr")),
+            ("fsr", lambda ev: GetPSWeights(ev, "fsr")),
+        )
+        for name, getter in getters:
             if name not in self.systematics:
                 continue
             _, up, down = getter(events)
@@ -1292,7 +1299,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         sums = accumulator.get('sumw_theory', {})
         nominal = float(sums.get(f"{key}|nominal", 0.0))
         factors = {}
-        for syst in ("q2Up", "q2Down", "pdfUp", "pdfDown"):
+        for syst in (f"{name}{d}" for name in ("q2", "pdf", "isr", "fsr") for d in ("Up", "Down")):
             varied = float(sums.get(f"{key}|{syst}", 0.0))
             if nominal and varied:
                 factors[syst] = nominal / varied

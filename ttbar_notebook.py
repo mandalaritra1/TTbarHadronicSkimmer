@@ -895,6 +895,8 @@ def run_analysis(args):
         "pileup",
         "pdf",
         "q2",
+        "isr",
+        "fsr",
         "ttag_pt1",
         "ttag_pt2",
         "ttag_pt3",
