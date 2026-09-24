@@ -74,11 +74,7 @@ XSEC_PB = {
     'QCD_PT-600to800': 178.7,
 }
 
-# Integrated luminosity [pb^-1] per IOV (preliminary; matches ttbarprocessor).
-LUMI_PB = {
-    '2023': 27000.0,
-    '2024': 109950.0,  # golden-JSON certified 2024 lumi (109.95 fb^-1)
-}
+from lumi import LUMI_PB  # noqa: E402  (python/ on sys.path above)
 
 QCD_MIN_SUBSAMPLE_PT = 300.0
 QCD_SUBSAMPLE_RE = re.compile(r'QCD_(?:Bin-)?PT-?(\d+(?:\.\d+)?)to')

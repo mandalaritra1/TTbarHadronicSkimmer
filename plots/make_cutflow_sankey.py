@@ -219,7 +219,8 @@ def main():
     # 2024 integrated luminosity, so every mass starts at sigma*L before any
     # selection (1 pb x 104 fb^-1 = 104,000 events) and yields read as eff x 1pb.
     SIG_XSEC_PB = 1.0
-    SIG_LUMI_FB = 109.95
+    from lumi import LUMI_PB
+    SIG_LUMI_FB = LUMI_PB['2024'] / 1000.0
     # NOTE: the cutflow tables are per-file. A grouped multi-mass width-file only
     # carries an AGGREGATE cutflow, so per-mass Sankeys need either legacy per-mass
     # files or a single-mass grouped file. find_signal_mass prefers per-mass files.
