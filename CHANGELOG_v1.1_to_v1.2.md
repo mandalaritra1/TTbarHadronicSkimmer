@@ -154,8 +154,8 @@ records the T&P commit and the sha256 of its result file. `TTAG_SF_FILE` selects
 version (`ttag_sf_v1.1.json` reproduces v1.1). The skimmer's stale T&P copy
 (`python/toptag_sf_processor.py`, `run_toptag_sf.py`, `run_sf_simple.py`,
 `toptag_sf_cutcount.py`, `format_2024_ttagsf_block.py`, `plot_sf_result.py`, its test) is
-gone; `toptag_sf_derivation_plan.md` points to the T&P repo. Pending: correction-file
-caching (last).
+gone; `toptag_sf_derivation_plan.md` points to the T&P repo. Correction-file caching
+is deferred to v1.3 (decision log).
 
 ### 19–22. Code-review bug fixes — `2ec6420`, `7298517`, `d02e9d7`
 A static review of the skimmer (separate session, 2026-09-24) found four bugs that
@@ -427,6 +427,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Code review (separate session): its bugs 1–4 are pre-existing bugs, not v1.2 decisions; fixed for v1.2 (items 19–22). |
 | 2026-09-24 | Review follow-ups, decided item by item: lumi table, truth-hist axis (keep the hist for the efficiency-recovery studies, drop only the empty syst slices), `event_list` flag, provenance, loud PDF/Q2, executor recovery + remove the jupytext pairing + key-name test — now (23–28). SF tables → JSON and stale T&P copy removal — with the band SF. Correction caching — last. |
 | 2026-09-24 | Final top-tag SFs from the v1.2 T&P (s = 0.998, 3-bin layout, 800+ as check only) go into the skimmer with the band SF for the antitag jet (item 7), together with the SF JSON and the T&P-copy removal (29–30). |
+| 2026-09-24 | Correction-file caching (review item 4) moves to v1.3: speed only, no physics effect, and v1.2 should not carry a new failure mode on the batch workers. |
 
 ## Validation log
 
