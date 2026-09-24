@@ -6,7 +6,7 @@ current 39-point limits. **v1.2** = the next MC + data re-skim.
 Status: **Done** = committed · **Working tree** = written, not committed ·
 **Planned** = decided, not started · **Open** = needs a decision.
 
-Last updated: 2026-09-24 (round 3)
+Last updated: 2026-09-24 (round 4)
 
 ---
 
@@ -20,7 +20,7 @@ Last updated: 2026-09-24 (round 3)
 | 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Done | `a694078` | 2024 data + MC | New η-dependent residuals and JER SFs |
 | 5 | GloParTv3 score histograms `jet0/1_tdisc` | Done | `28c02a9` | Output only | None (new diagnostics for CR/VR data/MC) |
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
-| 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Approved | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
+| 7 | 2024 top-tag SFs re-measured on the v1.2 objects; antitag jet gets the [0.8571, 0.9284) band SF (was the loose SF) | Done | `3d16500` | tt̄ + signal MC, 2024/2025 | Per jet, 400–480 / 480–600 / 600+ GeV: tagged −14% / +0.5% / −7%, antitag +23% / +35% / +67%. Both jets in one bin: 2t −25% / +1% / −13%, at +6% / +36% / +56% |
 | 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
 | 9 | msoftdrop rebuilt from re-corrected subjets; JES/JER from varied subjets; JMS 1%, JMR 2% | Done | `d3fbc3e`, `e922747` | Data + MC | Nominal mSD: 2024 data +0.3%, 2025 data +3.3%, MC −0.9%; JES ±0.7% on ⟨mSD⟩ |
 | 10 | Q2/PDF templates normalized to generator-level nominal sumw | Done | `5bcdf08` | MC | Z′ 4 TeV q2 ±11% → ±2.4%, pdf ±5% → ±1.4% (acceptance only) |
@@ -44,6 +44,8 @@ Last updated: 2026-09-24 (round 3)
 | 26 | Provenance in every `.coffea` (`output['provenance']`) | Done | `d938d80` | Output | None (git SHA, .py diff, config, 166 payload hashes, versions) |
 | 27 | PDF/Q2: malformed LHE weights raise; samples without LHE weights recorded | Done | `bd1490c` | MC | None for LHE samples; QCD_PT (pure Pythia) keeps flat pdf/q2, now counted and warned |
 | 28 | Streaming executor recovered; jupytext pairing removed; 2DAlphabet key-name test | Done | `3087246`, `7c671e5`, `a18967b` | Repo | None; unknown `make2Drootfiles --categories` now raise |
+| 29 | Top-tag SF tables → versioned JSON (`data/toptag/ttag_sf_<version>.json`) | Done | `3d16500` | MC | None by itself: `ttag_sf_v1.1.json` is the old table exactly; v1.2 numbers are item 7. An unmeasured WP now raises |
+| 30 | Stale T&P copy removed (`toptag_sf_processor.py`, runners, cut-and-count, 7 files) | Done | `3d16500` | Repo | None; the live code is `toptag-sf-derivation` |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -146,8 +148,14 @@ plot scripts that normalize with it; 2024 plot-label defaults (109.95) left as i
 **27:** Run-3 QCD_PT has no `LHEPdfWeight`/`LHEScaleWeight`; a hard raise would stop the
 QCD production, so missing branches stay flat but are counted in
 `output['flat_theory_variations']`. **28:** `ttbaranalysis.md` held the old inline runner.
-Pending from the list: SF tables → versioned JSON and removal of the skimmer's stale
-T&P copy (with the band-SF update); correction-file caching (last).
+**29–30** (with the band SF): the SF table left `weights.py` for
+`data/toptag/ttag_sf_<version>.json`, loaded once per `Run3WeightManager`; the 2024 entry
+records the T&P commit and the sha256 of its result file. `TTAG_SF_FILE` selects the
+version (`ttag_sf_v1.1.json` reproduces v1.1). The skimmer's stale T&P copy
+(`python/toptag_sf_processor.py`, `run_toptag_sf.py`, `run_sf_simple.py`,
+`toptag_sf_cutcount.py`, `format_2024_ttagsf_block.py`, `plot_sf_result.py`, its test) is
+gone; `toptag_sf_derivation_plan.md` points to the T&P repo. Pending: correction-file
+caching (last).
 
 ### 19–22. Code-review bug fixes — `2ec6420`, `7298517`, `d02e9d7`
 A static review of the skimmer (separate session, 2026-09-24) found four bugs that
@@ -180,7 +188,31 @@ note: with coffea's futures/iterative executors, merging three or more chunks cr
 
 ## Planned / open
 
-### 7. Antitag SF (decided: fix)
+### 7. Top-tag SFs on the v1.2 objects + antitag band SF — `3d16500`
+**Final (2026-09-24), in `data/toptag/ttag_sf_v1.2.json`:** T&P `toptag-sf-derivation`
+`e997fed`, three-category Combine fit (pass ≥ 0.9284 / band [0.8571, 0.9284) / fail),
+rest tag rates fixed, jet mass scale **0.998** (re-derived on v1.2; 0.995 was the old
+objects) with jms profiled. Errors = stat ⊕ exact JES/JER ⊕ JMR 2% ⊕ PU ⊕ model.
+
+| pT (GeV) | SF (tag) | band SF (antitag) | v1.1: tight / loose |
+|---|---|---|---|
+| 400–480 | 0.816 ± 0.032 | 1.29 ± 0.10 | 0.945 / 1.046 |
+| 480–600 | 0.822 +0.052/−0.050 | 1.25 ± 0.13 | 0.818 / 0.926 |
+| 600+ | 0.821 +0.075/−0.072 | 1.58 ± 0.19 | 0.880 / 0.947 |
+
+- The 400–480 drop (0.945 → 0.816) is the JES change: a one-at-a-time refit (440–480 GeV)
+  gives 0.874 (old) → 0.865 (new cuts) → 0.851 (rebuilt mSD) → 0.762 (V5 JES). Old data
+  AK8 pT read high just above the 431 GeV merging threshold, so the July SF was biased
+  high for the v1.2 objects. Mass scale 0.995 → 0.998 moves no SF by more than 0.015.
+- 800+ GeV check bin (not applied): SF 0.91 +0.28/−0.26 agrees with 600+; its band SF has
+  no usable systematic (fit at the lower bound in every variation).
+- Data probes 20,938 vs 29,065 (−28%), matched event by event to the old ntuples.
+- Only the `tight` WP is measured for 2024 (and 2025 via the alias); other WPs raise.
+  Jets above 1.2 TeV keep the doubled uncertainty (item 18). Tag and antitag SFs of a pT
+  bin still move together in `ttag_pt{1,2,3}` (the Run-2 scheme); their fit correlation
+  is not used.
+
+**History (antitag SF):**
 The antitag (Fail) jet is required to have medium ≤ score < tight
 (`ttbarprocessor.py` antitag_disc, tight analysis → low threshold = medium 0.8571) but is
 weighted with the loose-WP SF (`weights.py:101-103`).
@@ -394,11 +426,13 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. **Extrapolation:** jets above 1.2 TeV (where the T&P data run out) keep the top-bin SF with doubled uncertainty, same nuisance (done, `571526c`); an 800 GeV+ T&P bin is fitted as a check only. |
 | 2026-09-24 | Code review (separate session): its bugs 1–4 are pre-existing bugs, not v1.2 decisions; fixed for v1.2 (items 19–22). |
 | 2026-09-24 | Review follow-ups, decided item by item: lumi table, truth-hist axis (keep the hist for the efficiency-recovery studies, drop only the empty syst slices), `event_list` flag, provenance, loud PDF/Q2, executor recovery + remove the jupytext pairing + key-name test — now (23–28). SF tables → JSON and stale T&P copy removal — with the band SF. Correction caching — last. |
+| 2026-09-24 | Final top-tag SFs from the v1.2 T&P (s = 0.998, 3-bin layout, 800+ as check only) go into the skimmer with the band SF for the antitag jet (item 7), together with the SF JSON and the T&P-copy removal (29–30). |
 
 ## Validation log
 
 | Date | Check | Result |
 |---|---|---|
+| 2026-09-24 | Items 7, 29–30: `tests/test_ttag_weights.py` (v1.1 JSON = old table entry by entry; band SF on the antitag jet; doubling above 1.2 TeV; unmeasured WP raises) + full suite incl. the Z′ chunk test | 72/72 pass |
 | 2026-09-24 | Items 19–22: unit tests (74) + `tests/test_processor_chunks.py` on old code | 74/74 pass; old code fails the few-events check, old code + only the item-20 fix fails the weight-variation check (3 vs 4) |
 | 2026-09-24 | Item 20: 50-event vs one 2000-event chunk (Z′ 2 TeV, nominal) | old 147 vs 149, new 148 vs 149; the remaining events differ in both directions (3 vs 5), i.e. per-chunk random smearing, not dropped events |
 | 2026-09-24 | Item 21: AK8 JER old vs new gen match (Z′ 2 TeV, 26k jets) | median (pT − pT_gen)/pT +8.3% → −0.6%; smeared pT new/old 0.998 |
