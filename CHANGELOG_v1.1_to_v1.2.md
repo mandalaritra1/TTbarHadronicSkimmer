@@ -27,7 +27,8 @@ Last updated: 2026-09-24
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
 | 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
-| 14 | Golden JSON refresh (2024 post-TrkML review, 2025 latest) | Open | — | Data | 2024: −106 LS in 27 runs; 2025: +1056 / −859 LS |
+| 14 | Golden JSON refresh + brilcalc luminosity | Open | — | Data + MC norm | 2025 C–G lumi: code 110.59, brilcalc 110.03 (current golden) / 110.37 (newest) fb⁻¹ |
+| 15 | Add 2025 era B data (JetMET0/1 PromptReco) | Open | — | Data | +0.254 fb⁻¹ certified (+0.23%) |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, then re-fit the 39 points.
@@ -151,7 +152,20 @@ LUM now ships preliminary 2025 weights for Summer24 MC:
 - **2025:** ours is `Cert_Collisions2025_391658_398860_Golden.json`; the newest is
   `..._398903_Golden.json` (= `golden_json_latest.json`, updated 2026-09-23):
   +1056 LS in 3 runs (395103/5/7), −859 LS in 37 runs.
-- Both need a lumi recalculation (brilcalc) if adopted.
+- **brilcalc (normtag_BRIL, recorded), 2025 eras C–G (runs ≥ 392174):** 110.03 fb⁻¹
+  with our golden, 110.37 fb⁻¹ with the newest. The code uses 110.59 fb⁻¹
+  (`ttbarprocessor.py`, PPD summary table), 0.5% above the brilcalc value for the
+  golden we actually apply. 2024 (109.95 fb⁻¹) not yet re-checked.
+
+### 15. 2025 era B data (open)
+DAS has `/JetMET{0,1}/Run2025B-PromptReco-v1/NANOAOD` (13.6M events each); `data.json`
+starts at era C. The golden JSON certifies 24 era-B runs (391668–392046, 6691 LS),
+0.254 fb⁻¹ recorded. Small, but it is certified data. The 2025 lumi would need
+updating if added.
+
+### MC availability (checked in DAS 2026-09-24)
+No 2025 (Winter25/Summer25) TTto4Q or Z'→tt̄ exists; no Summer25 campaign at all.
+Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 
 ---
 
@@ -164,4 +178,6 @@ LUM now ships preliminary 2025 weights for Summer24 MC:
 | 2026-09-24 | 2025C data through 2025 JEC + veto map + jet ID | runs; veto pass 97.85% |
 | 2026-09-24 | 2024 Z' as 2025 MC, 2025 vs 2024 payload | mean AK8 pT ratio 1.0002 |
 | 2026-09-24 | Vendored JME files vs GitLab `latest` (Kerberos clone on lxplus) | md5 identical |
+| 2026-09-24 | DAS: 2025 NanoAOD data + MC | only unused data = era B PromptReco; no new 2025 signal/ttbar MC |
+| 2026-09-24 | brilcalc 2025 C–G | 110.03 fb⁻¹ (current golden), 110.37 (newest) vs 110.59 in code |
 | 2026-09-24 | Sweep of all 2025 correction packages on cvmfs (BTV/DC/EGM/JME/LUM/MUO/TAU) | relevant: JME (done), LUM pileup, DC golden JSON |
