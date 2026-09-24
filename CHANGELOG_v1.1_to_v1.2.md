@@ -173,6 +173,10 @@ Rebuilding from the untouched NanoAOD subjets reproduces NanoAOD `msoftdrop` exa
 Data and MC now move toward each other (the T&P saw the data top peak ~3% below MC with
 NanoAOD mSD). 2025 data moves most: its PromptReco subjets carried smaller residuals.
 
+**Follow-up:** the top-tag SF measurement (`toptag_sf_processor.py`) still uses NanoAOD
+`msoftdrop` for its mSD window. For full consistency it should use the same rebuilt
+msoftdrop, most naturally when the antitag band SF (item 7) is measured.
+
 **Original — `d3fbc3e`.** Nominal JMS = JMR = 1.000 (no nominal correction; mSD stays on the
 NanoAOD value, which is built from AK4-PUPPI-corrected subjets). Variations as extra
 jet passes in `Run3JetManager.build_corrections`:
