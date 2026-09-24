@@ -143,6 +143,22 @@ nearly equal products is amplified; the result depends entirely on the SF_M/SF_T
 correlation. **Plan:** measure the band SF directly in the T&P (probes in [M, T) as
 their own category) with `toptag-sf-derivation`, then use it for the antitag jet.
 
+**Further findings (2026-09-24, from the local T&P ntuples `ntuples_2024_full_fswp`):**
+- **Threshold mismatch.** The T&P flags use per-pT thresholds (tight 0.926 → 0.917,
+  medium 0.855 → 0.837); the analysis cuts at the flat scalars 0.9284 / 0.8571. Fully
+  merged tt̄ MC ε_T at the analysis cut vs the T&P flag: 0.663 vs 0.667 (400–480),
+  0.669 vs 0.677 (480–600), 0.676 vs 0.694 (600+). The tight SF must also be re-measured
+  at the analysis cut (no reprocessing needed for this alone: the ntuples store the raw
+  score).
+- **Probe pT reach.** 29065 data probes: 14313 / 9909 / 3993 / 674 / 128 / 48 in
+  400–480 / 480–600 / 600–800 / 800–1000 / 1000–1200 / 1200+. The 600+ bin has median
+  680 GeV (90% below 870); multi-TeV Z′ jets at 1.5–2 TeV are an extrapolation.
+- **Band at the analysis cuts.** ε_band ≈ 0.09 of fully merged tops in every pT bin
+  (ε_T ≈ 0.66–0.68).
+- **T&P object definitions predate v1.2**: V3/JRV1 JEC, NanoAOD msoftdrop, no veto map,
+  no AK8 jet ID. Re-producing the ntuples with the v1.2 definitions covers items 7 and
+  the T&P msoftdrop follow-up in one pass.
+
 ### 8. PDF uncertainty (last; reconsider)
 `GetPDFWeights` uses std/mean across replicas; the review argued the PDF set needs the
 Hessian formula (~10× larger). The code came from senior CMS colleagues, so revisit the
