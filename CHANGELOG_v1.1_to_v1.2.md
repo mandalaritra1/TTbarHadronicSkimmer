@@ -38,6 +38,12 @@ Last updated: 2026-09-24 (round 3)
 | 20 | Chunks with 1–9 events after the baseline selection kept | Done | `2ec6420` | Data + MC | Those events were dropped from the templates but kept in sumw; small (file-tail chunks) |
 | 21 | AK8 JER gen pT from the matched GenJetAK8 (was the nearest AK4 GenJet) | Done | `7298517` | MC | Z′ 2 TeV: smeared AK8 pT −0.2% on average; gen match 91% → 100% |
 | 22 | Notebook runner uses the CLI's `_signal_xsec` (1-TeV-spike fix) | Done | `d02e9d7` | Signal run from the notebook | None for CLI runs; notebook signal runs no longer save 400–900 GeV at raw counts |
+| 23 | Gen-matched truth hists without the systematic axis (`gen_jetmsd_reco_jetmsd`, `jet_mass_resolution`); not in data outputs | Done | `2bfda85` | Output size | 21.6M → 0.83M bins (346 → ~13 MB per chunk output); nominal content bin-for-bin identical |
+| 24 | One luminosity table, `python/lumi.py` | Done | `7219cba` | 2025 normalization via `functions.lumi` (`scaleCoffeaFiles.py`) | `functions.lumi['2025']` 110.59 → 110.37 fb⁻¹ (−0.2% where it was used) |
+| 25 | `event_list` only with `--event-list` | Done | `77260f6` | Output size | None; local futures runs with 3+ chunks merge again |
+| 26 | Provenance in every `.coffea` (`output['provenance']`) | Done | `d938d80` | Output | None (git SHA, .py diff, config, 166 payload hashes, versions) |
+| 27 | PDF/Q2: malformed LHE weights raise; samples without LHE weights recorded | Done | `bd1490c` | MC | None for LHE samples; QCD_PT (pure Pythia) keeps flat pdf/q2, now counted and warned |
+| 28 | Streaming executor recovered; jupytext pairing removed; 2DAlphabet key-name test | Done | `3087246`, `7c671e5`, `a18967b` | Repo | None; unknown `make2Drootfiles --categories` now raise |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
@@ -129,6 +135,19 @@ correct for v1.1 results, so change them only with v1.2.
   every event.
 
 ---
+
+### 23–28. Code-review follow-ups — `2bfda85` … `a18967b`
+Chosen item by item from the review's list (decision log). **23:** only the nominal MC pass
+fills the gen-matched AK8 response, so 24 of 25 systematic slices were always empty;
+the efficiency-recovery studies keep every axis they use. **24:** `python/lumi.py` is
+read by the processor, `functions.lumi`, `run_toptag_wp.py` (had no 2025) and the two
+plot scripts that normalize with it; 2024 plot-label defaults (109.95) left as is.
+**25:** `event_list` stored run/lumi/event of every event after the tt̄-candidate cuts.
+**27:** Run-3 QCD_PT has no `LHEPdfWeight`/`LHEScaleWeight`; a hard raise would stop the
+QCD production, so missing branches stay flat but are counted in
+`output['flat_theory_variations']`. **28:** `ttbaranalysis.md` held the old inline runner.
+Pending from the list: SF tables → versioned JSON and removal of the skimmer's stale
+T&P copy (with the band-SF update); correction-file caching (last).
 
 ### 19–22. Code-review bug fixes — `2ec6420`, `7298517`, `d02e9d7`
 A static review of the skimmer (separate session, 2026-09-24) found four bugs that
@@ -374,6 +393,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 
 | 2026-09-24 | **ISR/FSR:** add both (done, `13dc1e3`). **Top-tag SF nuisances:** keep one total (stat ⊕ syst) uncertainty per pT bin, bins uncorrelated — the Run-2 scheme (`ttag_pt1/2/3_{16,17,18}` in the Run-2 configs); no stat/syst split. **Extrapolation:** jets above 1.2 TeV (where the T&P data run out) keep the top-bin SF with doubled uncertainty, same nuisance (done, `571526c`); an 800 GeV+ T&P bin is fitted as a check only. |
 | 2026-09-24 | Code review (separate session): its bugs 1–4 are pre-existing bugs, not v1.2 decisions; fixed for v1.2 (items 19–22). |
+| 2026-09-24 | Review follow-ups, decided item by item: lumi table, truth-hist axis (keep the hist for the efficiency-recovery studies, drop only the empty syst slices), `event_list` flag, provenance, loud PDF/Q2, executor recovery + remove the jupytext pairing + key-name test — now (23–28). SF tables → JSON and stale T&P copy removal — with the band SF. Correction caching — last. |
 
 ## Validation log
 
