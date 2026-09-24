@@ -68,7 +68,7 @@ class _BroadcastHeavyClient:
         return future
 
 from ttbarprocessor import TTbarResProcessor
-from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
+from python.functions import printTime, makeSaveDirectories
 
 # ── Widgets for interactive configuration ─────────────────────────────────────
 import ipywidgets as widgets
@@ -539,12 +539,9 @@ def _signal_dataset_key(sample, subsection):
     return subsection or sample
 
 
-def _signal_xsec(sample, subsection):
-    """1 pb reference xsec (pb) for a signal mass point, from functions.xs."""
-    try:
-        return _XS_TABLE.get(sample, {}).get(str(subsection))
-    except Exception:
-        return None
+# Shared with the CLI runner: a local copy here missed the fix for masses outside
+# the functions.xs grid (fab5038), which left them at raw weighted counts.
+from ttbaranalysis import _signal_xsec
 
 
 def _batch_tag(subsections):
