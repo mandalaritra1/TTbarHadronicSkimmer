@@ -13,6 +13,12 @@ bin-by-bin and across every systematic-axis slice (the processor applies one glo
 lumi*xsec/sumw factor: `hist * scale_factor`). If 2025 ever gets its own MC or its
 own pileup/JEC/SF, this shortcut is no longer valid -- re-run instead.
 
+CAVEAT (2026-09-24): since 2025 moved to the dedicated JME campaign
+(2025_Summer24Prompt25), 2025 MC has the same MC JEC and JES uncertainty as 2024
+but its own JER scale factor (Summer24Prompt25_JRV2). The SFs agree within their
+uncertainty for |eta| < ~1.5 but differ at |eta| ~ 2.3 (e.g. 1.36 -> 1.17 at 1 TeV),
+so this rescaling is an approximation for forward jets. Prefer a real 2025 MC run.
+
 Data is never rescaled: real per-year data must be processed for real.
 
 CLI:

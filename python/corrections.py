@@ -38,28 +38,29 @@ _JSONPOG_JME_DIR = {
     "2023preBPix":  "2023_Summer23",
     "2023postBPix": "2023_Summer23BPix",
     "2024":         "2024_Summer24",
-    # 2025 analysis uses Summer24 MC (PPD recommendation), so the MC JEC/JER come
-    # from the Summer24 correctionlib files. The 2025 prompt-data residuals + veto
-    # map live separately under jsonpog/JME/2025_Prompt25/ (for data, when wired).
-    "2025":         "2024_Summer24",
+    # 2025 PromptReco data is analysed with Summer24 MC (PPD recommendation). JME
+    # ships a dedicated campaign for exactly that pairing,
+    # Run3-25Prompt-Summer24-NanoAODv15 (Summer24Prompt25 JEC/JER, 2025 data
+    # residuals, veto map, jet ID), vendored here.
+    "2025":         "2025_Summer24Prompt25",
 }
 
-# Jet-veto payloads follow the data-taking campaign. Keep this separate from
-# _JSONPOG_JME_DIR because 2025 MC currently uses Summer24 JEC/JER, while 2025
-# data has its own Prompt25 veto map.
+# Jet-veto payloads follow the data-taking campaign (kept separate from
+# _JSONPOG_JME_DIR in case the two ever diverge again).
 _JSONPOG_JETVETO_DIR = {
     "2022preEE":    "2022_Summer22",
     "2022postEE":   "2022_Summer22EE",
     "2023preBPix":  "2023_Summer23",
     "2023postBPix": "2023_Summer23BPix",
     "2024":         "2024_Summer24",
-    "2025":         "2025_Prompt25",
+    "2025":         "2025_Summer24Prompt25",
 }
 
 _JSONPOG_JETID_DIR = {
-    # NanoAODv15 does not carry Jet_jetId in the current 2024 production, so
+    # NanoAODv15 (2024 and 2025 PromptReco) does not carry Jet_jetId, so
     # evaluate the official Run-3 TightLepVeto recipe from its correction JSON.
     "2024": "2024_Summer24",
+    "2025": "2025_Summer24Prompt25",
 }
 
 
