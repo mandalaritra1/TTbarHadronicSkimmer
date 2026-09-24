@@ -358,7 +358,15 @@ def _root_category_label(cat: str) -> str:
         "cen": "Cen",
         "fwd": "Fwd",
     }
-    return labels.get(cat, cat)
+    if cat not in labels:
+        raise KeyError(f"unknown analysis category {cat!r}: the bgestimation configs expect {sorted(labels)}")
+    return labels[cat]
+
+
+def _template_name(cat: str, year_label: str, region: str, syst: str) -> str:
+    """2DAlphabet input key, e.g. MttvsMtCen24Pass or MttvsMtFwd25FailJESup: the
+    interface contract with the bgestimation configs."""
+    return f"MttvsMt{_root_category_label(cat)}{year_label}{region}{_syst_suffix(syst)}"
 
 
 def _print_time(seconds: float) -> None:
@@ -452,11 +460,9 @@ def main() -> None:
         sample_systs = ["nominal"] if label == "Data" else syst_labels
         with uproot.recreate(out_path) as fout:
             for cat, (pass_ids, fail_ids) in cat_ids.items():
-                root_cat = _root_category_label(cat)
                 for syst in sample_systs:
-                    suffix = _syst_suffix(syst)
-                    pass_name = f"MttvsMt{root_cat}{year_label}Pass{suffix}"
-                    fail_name = f"MttvsMt{root_cat}{year_label}Fail{suffix}"
+                    pass_name = _template_name(cat, year_label, "Pass", syst)
+                    fail_name = _template_name(cat, year_label, "Fail", syst)
                     h_pass = _template(outputs, args.hist, pass_ids, syst)
                     h_fail = _template(outputs, args.hist, fail_ids, syst)
                     if label != "Data":

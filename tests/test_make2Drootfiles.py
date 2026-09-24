@@ -12,6 +12,8 @@ from plots.make2Drootfiles import (
     _resolve_signal_outputs,
     _zprime_signal_point_specs,
     _zprime_signal_specs,
+    _template_name,
+    _year_label,
 )
 
 import signal_grouped as sg  # noqa: E402  (plots.make2Drootfiles puts python/ on sys.path)
@@ -143,6 +145,25 @@ class ResolveSignalOutputsTest(unittest.TestCase):
 
         with self.assertRaisesRegex(FileNotFoundError, "ZPrime900_1"):
             self._resolve("900", "1")
+
+
+class TemplateNameTest(unittest.TestCase):
+    """The 2DAlphabet input keys are the interface contract with bgestimation."""
+
+    def test_nominal_and_varied_keys(self):
+        cases = {
+            ("cen", "2024", "Pass", "nominal"): "MttvsMtCen24Pass",
+            ("fwd", "2024", "Fail", "nominal"): "MttvsMtFwd24Fail",
+            ("cen", "2025", "Pass", "jesUp"): "MttvsMtCen25PassJESup",
+            ("fwd", "2025", "Fail", "ttag_pt2Down"): "MttvsMtFwd25FailTTAG_PT2down",
+            ("cen", "2024", "Fail", "isrUp"): "MttvsMtCen24FailISRup",
+        }
+        for (cat, year, region, syst), name in cases.items():
+            self.assertEqual(_template_name(cat, _year_label(year), region, syst), name)
+
+    def test_unknown_category_raises(self):
+        with self.assertRaises(KeyError):
+            _template_name("central", "24", "Pass", "nominal")
 
 
 if __name__ == "__main__":
