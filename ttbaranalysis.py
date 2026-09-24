@@ -21,6 +21,7 @@ default_signals = ['RSGluon', 'ZPrime10', 'ZPrime30', 'ZPrimeDM', 'ZPrime1']
 
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
+from python import provenance
 
 
 def _build_sample_metadata(sample, subsection, iov, metadata):
@@ -234,6 +235,7 @@ if __name__ == "__main__":
     ycats    = ["cen", "fwd"]
     anacats  = [t + y for t, y in itertools.product(ttagcats, ycats)]
     label_map = {i: label for i, label in enumerate(anacats)}
+    run_provenance = provenance.collect({**vars(args), 'systematics': systematics, 'anacats': anacats})
 
     with open('out.log', 'w') as f:
         print('\n' + date.today().isoformat(), file=f)
@@ -524,6 +526,7 @@ if __name__ == "__main__":
                         del cluster
 
                 output['analysisCategories'] = label_map
+                output['provenance'] = run_provenance
                 util.save(output, savefilename)
                 print('saving', savefilename)
 

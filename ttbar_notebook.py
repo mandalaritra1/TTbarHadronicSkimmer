@@ -69,6 +69,7 @@ class _BroadcastHeavyClient:
 
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories
+from python import provenance
 
 # ── Widgets for interactive configuration ─────────────────────────────────────
 import ipywidgets as widgets
@@ -910,6 +911,7 @@ def run_analysis(args):
 
     anacats = [t + y for t, y in itertools.product(ttagcats, ycats)]
     label_map = {i: label for i, label in enumerate(anacats)}
+    run_provenance = provenance.collect({**vars(args), 'systematics': systematics, 'anacats': anacats})
 
     with open("out.log", "w") as f:
         print("\n" + date.today().isoformat(), file=f)
@@ -1225,6 +1227,7 @@ def run_analysis(args):
                         )
 
                     output["analysisCategories"] = label_map
+                    output["provenance"] = run_provenance
                     util.save(output, savefilename)
                     print("saving", savefilename)
                     if args.ntuple:

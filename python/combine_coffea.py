@@ -26,6 +26,7 @@ _METADATA_KEYS = {
     "cutflow_table_steps",
     "sample_metadata",
     "normalization",
+    "provenance",
 }
 
 
