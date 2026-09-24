@@ -30,7 +30,6 @@ import json
 import logging
 import psutil
 import time
-import warnings
 
 import awkward as ak
 
@@ -738,18 +737,17 @@ class TTbarResProcessor(processor.ProcessorABC):
         trig_paths = self.triggernames[self.iov]
 
         if 'HLT' not in events.fields:
-            warnings.warn(
-                f"HLT branch missing for IOV {self.iov}; accepting all events."
+            raise KeyError(
+                f"HLT branch missing for IOV {self.iov}; refusing to run without "
+                "the configured trigger selection"
             )
-            selection.add('trigger', np.ones(len(events), dtype=bool))
         else:
             available = [p for p in trig_paths if p in events.HLT.fields]
             if not available:
-                warnings.warn(
+                raise KeyError(
                     f"None of {trig_paths} present in HLT for IOV {self.iov}; "
-                    "accepting all events."
+                    "refusing to run without the configured trigger selection"
                 )
-                selection.add('trigger', np.ones(len(events), dtype=bool))
             else:
                 mask = events.HLT[available[0]]
                 for p in available[1:]:
