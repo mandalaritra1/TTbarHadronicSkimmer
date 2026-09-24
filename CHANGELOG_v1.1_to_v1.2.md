@@ -6,7 +6,7 @@ current 39-point limits. **v1.2** = the next MC + data re-skim.
 Status: **Done** = committed · **Working tree** = written, not committed ·
 **Planned** = decided, not started · **Open** = needs a decision.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-24 (round 2)
 
 ---
 
@@ -17,11 +17,11 @@ Last updated: 2026-09-24
 | 1 | `ttag_pt2`/`ttag_pt3` variations actually filled | Done | `d664e04` | MC | Adds the top-tag SF uncertainty for jets with pT > 480 GeV (±15–17% on a 4 TeV Z') |
 | 2 | Run-3 jet-veto map as a preselection cut | Done | `9e405c1` | Data + MC | Removes ~17–18% of high-HT signal events after MET filters; ~2% of 2025C JetMET events |
 | 3 | 2025 → JME `Run3-25Prompt-Summer24` campaign | Done | `3c47f7c` | 2025 data (+ 2025 MC JER) | 2025 data JEC with 2025 residuals (AK8 pT −3.1% vs NanoAOD-embedded); 2025 jet ID works |
-| 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Working tree | — | 2024 data + MC | New η-dependent residuals and JER SFs |
-| 5 | GloParTv3 score histograms `jet0/1_tdisc` | Working tree | — | Output only | None (new diagnostics for CR/VR data/MC) |
-| 6 | Missing HLT path raises instead of accepting all events | Working tree | — | Safety | None in a correct setup |
-| 7 | Antitag jet SF | Open | — | MC | Fail-window jet currently gets the loose-WP SF |
-| 8 | PDF uncertainty: std/mean → Hessian | Planned | — | MC | PDF uncertainty ~10× larger |
+| 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Done | `a694078` | 2024 data + MC | New η-dependent residuals and JER SFs |
+| 5 | GloParTv3 score histograms `jet0/1_tdisc` | Done | `28c02a9` | Output only | None (new diagnostics for CR/VR data/MC) |
+| 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
+| 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Decided (fix) | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
+| 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
 | 9 | Soft-drop mass scale/resolution systematic | Planned | — | MC | New shape nuisance on the fit mass axis |
 | 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
@@ -93,9 +93,9 @@ correct for v1.1 results, so change them only with v1.2.
 
 ---
 
-## Working tree (not committed yet)
+## Done (continued)
 
-### 4. 2024 JEC V5 / JER JRV2
+### 4. 2024 JEC V5 / JER JRV2 — `a694078`
 
 - `data/corrections/jsonpog/JME/2024_Summer24/{jet,fatJet}_jerc.json.gz` updated to
   the `Run3-24CDEReprocessingFGHIPrompt-Summer24-NanoAODv15` 2026-07-16 release
@@ -104,13 +104,13 @@ correct for v1.1 results, so change them only with v1.2.
 - V4 → V5: the V4 release shipped unchanged residuals by mistake; V5 has the new
   η-dependent L2L3Residual.
 
-### 5. Top-score histograms
+### 5. Top-score histograms — `28c02a9`
 
 - `jet0_tdisc`, `jet1_tdisc` (GloParTv3 Top-vs-QCD, finer bins above 0.9) per
   category and systematic, plus two entries in `plots/make_leading_jet_datamc_plots.py`.
   Requested by the B2G audit for CR/VR data/MC.
 
-### 6. Trigger safety
+### 6. Trigger safety — `8a078df`
 
 - A missing `HLT` branch or configured path now raises; v1.1 warned and accepted
   every event.
@@ -119,17 +119,40 @@ correct for v1.1 results, so change them only with v1.2.
 
 ## Planned / open
 
-### 7. Antitag SF (open)
-The antitag (Fail) jet sits in the [medium, tight) score window but gets the
-loose-WP SF (`weights.py:101-103`). Options: medium-WP SF, or an SF for that band.
+### 7. Antitag SF (decided: fix)
+The antitag (Fail) jet is required to have medium ≤ score < tight
+(`ttbarprocessor.py` antitag_disc, tight analysis → low threshold = medium 0.8571) but is
+weighted with the loose-WP SF (`weights.py:101-103`).
 
-### 8. PDF uncertainty (planned)
-`GetPDFWeights` uses std/mean across replicas; the PDF set needs the Hessian
-formula, so the uncertainty is ~10× too small.
+Building the band SF from the existing per-WP SFs,
+SF_band = (SF_M·ε_M − SF_T·ε_T)/(ε_M − ε_T), with ε = T&P MC efficiencies
+(`toptag-sf-derivation/results/outputs/sf_2024_full.json`) and the final P1 SFs:
+
+| pT bin | ε_M | ε_T | SF_band | coherent ± | SF_M/SF_T errors uncorrelated | loose SF (now) |
+|---|---|---|---|---|---|---|
+| 400–480 | 0.670 | 0.575 | 1.23 | 1.04–1.41 | ±0.86 | 1.05 ± 0.05 |
+| 480–600 | 0.727 | 0.629 | 1.22 | 1.21–1.23 | ±0.80 | 0.93 ± 0.05 |
+| 600+ | 0.786 | 0.696 | 1.49 | 1.41–1.57 | ±1.18 | 0.95 ± 0.09 |
+
+The band holds only 11–14% of medium-passing true tops, so the difference of two
+nearly equal products is amplified; the result depends entirely on the SF_M/SF_T error
+correlation. **Plan:** measure the band SF directly in the T&P (probes in [M, T) as
+their own category) with `toptag-sf-derivation`, then use it for the antitag jet.
+
+### 8. PDF uncertainty (last; reconsider)
+`GetPDFWeights` uses std/mean across replicas; the review argued the PDF set needs the
+Hessian formula (~10× larger). The code came from senior CMS colleagues, so revisit the
+recipe carefully at the end rather than change it now.
 
 ### 9. Soft-drop mass systematic (planned)
-`msoftdrop` has no scale/resolution variation, but it is the fit's jet-mass axis.
-Needs JMS/JMR variations in the processor.
+`msoftdrop` is taken raw from NanoAOD everywhere: `jetmsd = jet0.msoftdrop` is the
+fit's jet-mass axis, and jet1 must satisfy 105 < mSD < 210 GeV. The JES/JER factory
+corrects pT and the ungroomed `mass`, not `msoftdrop`, so there is no jet mass scale
+(JMS) or resolution (JMR) correction and no uncertainty on either. The T&P measured
+data/MC mass scale s ≈ 0.990–0.995 (profiled) and used a prescribed 2% JMR.
+Effects: the mass-window acceptance for signal and tt̄ differs between data and MC
+(normalization), and events migrate between the jet-mass regions (shape). Fix: apply
+JMS/JMR to MC mSD and add `jms`/`jmr` Up/Down as correction-loop variations (like JES).
 
 ### 10. Q2/PDF normalization (open)
 `q2`/`pdf` Up/Down are applied as raw event weights, so templates carry both a rate
