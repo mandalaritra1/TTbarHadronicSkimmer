@@ -226,6 +226,17 @@ The tight SF above 800 GeV agrees with 600–800 within ~1.3σ; the band SF ther
 worker jobs idle since 2026-09-09), so the v1.2 T&P production runs on the LPC
 (`~/nobackup/toptag-sf-derivation`, coffea 2026.4.0; runner fix `1ca2b22`).
 
+**v1.2 production status (20:45 CEST).** Data (7 eras, 2.5 h) and TTbar (2.5 h) done.
+Data probes 20,938 vs 29,065 with the old objects (−28%; expected direction from the
+−4.6% data AK8 pT, Tight ID, |y| < 2.4 and veto map — to be validated). SingleTop
+failed on a 152-event file whose 2 preselected events had no AK8 jet: coffea's JER
+smearing raises on an empty collection. Fixed in T&P `450ee8d` (return before the
+corrections when a chunk has no AK8/AK4/subjet; checked on that file at the LPC);
+SingleTop + WJets relaunched. Preliminary scipy fit on data + TTbar (non-tt̄ component
+floated, stat only): SF 0.81/0.85/0.84/0.96, SB 1.35/1.30/1.75 for 400–480/480–600/
+600–800/800+ GeV; SB above 800 GeV at the lower bound (25 band events). Combine fit
+after the full MC.
+
 ### 8. PDF uncertainty (last; reconsider)
 `GetPDFWeights` uses std/mean across replicas; the review argued the PDF set needs the
 Hessian formula (~10× larger). The code came from senior CMS colleagues, so revisit the
