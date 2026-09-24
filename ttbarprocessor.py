@@ -559,6 +559,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
         jetpt, jeteta, jetphi, jety,
         jetpt1, jeteta1, jetphi1, jety1,
+        tdisc_s0, tdisc_s1,
     ):
         """Fill all kinematic histograms for one analysis category and one systematic."""
         w  = weights[icat]
@@ -578,6 +579,8 @@ class TTbarResProcessor(processor.ProcessorABC):
         output['jet1_eta'].fill(    **kw, jeteta=jeteta1[icat],         weight=w)
         output['jet1_phi'].fill(    **kw, jetphi=jetphi1[icat],         weight=w)
         output['jet1_rapidity'].fill(**kw, jety=jety1[icat],            weight=w)
+        output['jet0_tdisc'].fill(  **kw, topscore=tdisc_s0[icat],      weight=w)
+        output['jet1_tdisc'].fill(  **kw, topscore=tdisc_s1[icat],      weight=w)
 
     def _build_normalization_metadata(self, sumw_raw, sumw2_raw, scale_factor, applied,
                                       reason=None, sample_metadata=None):
@@ -1112,6 +1115,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
                 jetpt, jeteta, jetphi, jety,
                 jetpt1, jeteta1, jetphi1, jety1,
+                tdisc_s0, tdisc_s1,
             )
             if correction == "nominal":
                 output['mtt_vs_dy_vs_chi'].fill(
@@ -1225,6 +1229,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                         jetmsd, jetmsd1, ttbarmass, rapidity, chi, ht,
                         jetpt, jeteta, jetphi, jety,
                         jetpt1, jeteta1, jetphi1, jety1,
+                        tdisc_s0, tdisc_s1,
                     )
 
         logger.debug('memory:%s: fill histograms %s:%s', time.time(), correction, get_memory_usage())

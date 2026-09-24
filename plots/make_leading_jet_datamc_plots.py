@@ -77,6 +77,18 @@ VARIABLES = {
         rebin=1,
         xlim=(-2.5, 2.5),
     ),
+    "topscore0": VariableConfig(
+        hist_name="jet0_tdisc",
+        axis_name="topscore",
+        label="Higher-score AK8 GloParTv3 Top-vs-QCD score",
+        xlim=(0.0, 1.0),
+    ),
+    "topscore1": VariableConfig(
+        hist_name="jet1_tdisc",
+        axis_name="topscore",
+        label="Lower-score AK8 GloParTv3 Top-vs-QCD score",
+        xlim=(0.0, 1.0),
+    ),
 }
 
 
