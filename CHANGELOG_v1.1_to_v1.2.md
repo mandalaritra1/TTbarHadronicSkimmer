@@ -27,11 +27,15 @@ Last updated: 2026-09-24
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
 | 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
-| 14 | Golden JSON refresh + brilcalc luminosity | Open | — | Data + MC norm | 2025 C–G lumi: code 110.59, brilcalc 110.03 (current golden) / 110.37 (newest) fb⁻¹ |
-| 15 | Add 2025 era B data (JetMET0/1 PromptReco) | Open | — | Data | +0.254 fb⁻¹ certified (+0.23%) |
+| 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | see log | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
+| 14b | 2024 golden JSON post-TrkML review + lumi re-check | Open | — | 2024 data + MC norm | −106 LS in 27 runs |
+| 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
-in the six Run-3 configs, then re-fit the 39 points.
+in the six Run-3 configs, then re-fit the 39 points. Update the hard-coded lumi labels
+(110.59 → 110.37, 220.54 → 220.32) in `ttbar.py`, `plot_limits*.py`, `combine_cards25/2425.sh`,
+`preunblind/plot_masked_postfit_2d_projections.py`, `docs/plotting_reference.md`; they are
+correct for v1.1 results, so change them only with v1.2.
 
 ---
 
@@ -157,11 +161,18 @@ LUM now ships preliminary 2025 weights for Summer24 MC:
   (`ttbarprocessor.py`, PPD summary table), 0.5% above the brilcalc value for the
   golden we actually apply. 2024 (109.95 fb⁻¹) not yet re-checked.
 
-### 15. 2025 era B data (open)
+### 15. 2025 era B data (dropped)
 DAS has `/JetMET{0,1}/Run2025B-PromptReco-v1/NANOAOD` (13.6M events each); `data.json`
 starts at era C. The golden JSON certifies 24 era-B runs (391668–392046, 6691 LS),
-0.254 fb⁻¹ recorded. Small, but it is certified data. The 2025 lumi would need
-updating if added.
+0.254 fb⁻¹ recorded. **Dropped:** the PPD Run3-2025 table, which we follow as the
+reference, lists eras C–G only.
+
+### Luminosity reference
+The PPD Run-3 tables on the PdmV Run-3 analysis TWiki are the reference; they are updated
+as the golden JSON evolves. 2025 (version 20 Jan 2026): C 21.56, D 25.82, E 14.05, F 26.69,
+G 22.25 = 110.37 fb⁻¹, reproduced per era to <0.01 fb⁻¹ with brilcalc --normtag
+normtag_BRIL on `Cert_Collisions2025_391658_398903_Golden.json`. Re-check both before
+the v1.2 production.
 
 ### MC availability (checked in DAS 2026-09-24)
 No 2025 (Winter25/Summer25) TTto4Q or Z'→tt̄ exists; no Summer25 campaign at all.
@@ -179,5 +190,6 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | 2024 Z' as 2025 MC, 2025 vs 2024 payload | mean AK8 pT ratio 1.0002 |
 | 2026-09-24 | Vendored JME files vs GitLab `latest` (Kerberos clone on lxplus) | md5 identical |
 | 2026-09-24 | DAS: 2025 NanoAOD data + MC | only unused data = era B PromptReco; no new 2025 signal/ttbar MC |
+| 2026-09-24 | brilcalc per era vs PPD table (newest golden) | all five eras match to <0.01 fb⁻¹ |
 | 2026-09-24 | brilcalc 2025 C–G | 110.03 fb⁻¹ (current golden), 110.37 (newest) vs 110.59 in code |
 | 2026-09-24 | Sweep of all 2025 correction packages on cvmfs (BTV/DC/EGM/JME/LUM/MUO/TAU) | relevant: JME (done), LUM pileup, DC golden JSON |

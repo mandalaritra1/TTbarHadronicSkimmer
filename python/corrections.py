@@ -602,7 +602,7 @@ def getLumiMask(IOV):
     golden_json_path_2022 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2022_355100_362760_Golden.json"
     golden_json_path_2023 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2023_366442_370790_Golden.json"
     golden_json_path_2024 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2024_378981_386951_Golden.json"
-    golden_json_path_2025 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2025_391658_398860_Golden.json"
+    golden_json_path_2025 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2025_391658_398903_Golden.json"
     
 
     masks = {"2022":LumiMask(golden_json_path_2022),
