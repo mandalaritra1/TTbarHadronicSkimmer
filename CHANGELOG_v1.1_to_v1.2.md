@@ -22,7 +22,7 @@ Last updated: 2026-09-24 (round 2)
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
 | 7 | Antitag jet SF: measure the [medium, tight) band SF directly | Decided (fix) | — | MC | Loose SF ~0.93–1.05 now; band SF from existing SFs ~1.2–1.5 but ill-constrained |
 | 8 | PDF uncertainty: std/mean → Hessian | Last (reconsider) | — | MC | PDF uncertainty ~10× larger |
-| 9 | Soft-drop mass scale/resolution systematic | Planned | — | MC | New shape nuisance on the fit mass axis |
+| 9 | Soft-drop mass variations: JES/JER propagated, JMS 1%, JMR 2% | Done | `d3fbc3e` | MC | JES now moves ⟨mSD⟩ ±0.7%; new jms/jmr shape nuisances |
 | 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
@@ -31,9 +31,10 @@ Last updated: 2026-09-24 (round 2)
 | 14b | 2022/2023/2024 golden JSONs → DC re-issue after the 2026 tracker-ML review | Done | `f6ff4c1` | Data | LS: 2022 +0.07%, 2023 −0.43%, 2024 −0.04% |
 | 14c | 2022/2023/2024 lumi values from the current PPD tables | Open | — | MC norm | Waiting on the PPD table numbers |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
+| 16 | JEC is never re-applied to data (or to `--noSyst` MC) in the analysis processor | Open | — | Data | Data keeps the NanoAOD-embedded JEC while MC gets V5 / Summer24Prompt25_V3 |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
-in the six Run-3 configs, then re-fit the 39 points. Update the hard-coded lumi labels
+in the six Run-3 configs, add `jms`/`jmr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
 (110.59 → 110.37, 220.54 → 220.32) in `ttbar.py`, `plot_limits*.py`, `combine_cards25/2425.sh`,
 `preunblind/plot_masked_postfit_2d_projections.py`, `docs/plotting_reference.md`; they are
 correct for v1.1 results, so change them only with v1.2.
@@ -84,6 +85,9 @@ correct for v1.1 results, so change them only with v1.2.
     (`7b51c08`, 2026-07-31), so v1.1 data used the JEC applied in NanoAOD.
   - With the pre-switch mapping, 2025 data would have crashed (run 392293 is outside
     the 2024 residual binning).
+  - **Correction (2026-09-24):** this data path is only reached by the top-tag SF
+    processor. `Run3JetManager.build_corrections` returns `None` for data, so the
+    analysis processor does not re-apply JEC to data at all (item 16).
   - On 2025C data (pT > 200): AK8 corrected pT / NanoAOD pT = 0.9695, AK4 = 0.9900.
 - **Jet ID:** 2025 NanoAODv15 has no `Jet_jetId`; the campaign's `jetid.json.gz`
   (byte-identical to 2024's) is now used, so 2025 data runs.
@@ -151,8 +155,25 @@ corrects pT and the ungroomed `mass`, not `msoftdrop`, so there is no jet mass s
 (JMS) or resolution (JMR) correction and no uncertainty on either. The T&P measured
 data/MC mass scale s ≈ 0.990–0.995 (profiled) and used a prescribed 2% JMR.
 Effects: the mass-window acceptance for signal and tt̄ differs between data and MC
-(normalization), and events migrate between the jet-mass regions (shape). Fix: apply
-JMS/JMR to MC mSD and add `jms`/`jmr` Up/Down as correction-loop variations (like JES).
+(normalization), and events migrate between the jet-mass regions (shape). 
+**Done — `d3fbc3e`.** Nominal JMS = JMR = 1.000 (no nominal correction; mSD stays on the
+NanoAOD value, which is built from AK4-PUPPI-corrected subjets). Variations as extra
+jet passes in `Run3JetManager.build_corrections`:
+- `jes`/`jer` Up/Down: mSD × (pT_var / pT_nominal), from coffea's CorrectedJetsFactory.
+- `jms` Up/Down: mSD × (1 ± 0.01).
+- `jmr` Up: Gaussian smearing σ = 0.02 × mSD (seeded per chunk); Down filled with
+  nominal and mirrored as 2·nominal − up in `make2Drootfiles.py`.
+Same conventions as the top-tag SF measurement (`p1_systematics.py`).
+Smoke test (Z' 4 TeV): ⟨mSD⟩ jes ±0.7%, jms ±1%; jmr widens/narrows; overflow empty.
+Downstream: add `jms`, `jmr` to the six bgestimation configs (templates
+`JMSup/down`, `JMRup/down`).
+
+### 16. No JEC on data in the analysis processor (open)
+`build_corrections` returns `None` for data and for `--noSyst`, so those events keep
+the JEC embedded in NanoAOD, while MC with systematics gets the re-applied payloads
+(2024 V5, 2025 Summer24Prompt25_V3). CMS recommends the same JEC version on data and
+MC. Options: re-apply JEC to data (nominal pass only), or keep the NanoAOD JEC on
+both. Needs a decision before v1.2.
 
 ### 10. Q2/PDF normalization (open)
 `q2`/`pdf` Up/Down are applied as raw event weights, so templates carry both a rate
