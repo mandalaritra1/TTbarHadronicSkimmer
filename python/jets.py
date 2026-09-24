@@ -64,12 +64,10 @@ class Run3JetManager:
     def prepare_for_corrections(self, events, is_data):
         fatjets = self._add_p4(events.FatJet)
         jets = self._add_p4(events.Jet)
-
-        if not is_data:
-            genjets = self._add_p4(events.GenJet)
-            _matched_gen = fatjets.p4.nearest(genjets.p4, threshold=0.2)
-            fatjets["pt_gen"] = ak.values_astype(ak.fill_none(_matched_gen.pt, 0), np.float32)
-
+        # MC gen pT for the JER smearing is set in GetJECUncertainties from each
+        # collection's own matched_gen (GenJetAK8 for FatJet, GenJet for Jet).
+        # Matching AK8 jets to AK4 GenJets here put pt_gen ~8% below the reco pT
+        # (GenJetAK8: -0.6%) and raised the smeared AK8 pT by ~0.2% (Z' 2 TeV).
         return fatjets, jets
 
     def build_corrections(self, events, is_data):
