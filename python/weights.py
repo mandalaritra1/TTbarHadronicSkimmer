@@ -99,6 +99,11 @@ class Run3WeightManager:
         for _subera in ("2022preEE", "2022postEE", "2023preBPix", "2023postBPix", "2025"):
             ttag_scale_factors[_subera] = ttag_scale_factors["2024"]
 
+        # Extrapolation: the 2024 T&P data run out at ~1.2 TeV (48 probes above), so
+        # jets beyond that get the top-bin SF with its uncertainty doubled (same
+        # nuisance). Run-2 SFs keep their original treatment (no doubling).
+        pt_measured_max = np.inf if self.iov in ("2016", "2016APV", "2017", "2018") else 1200.0
+
         nomsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["nominal"])
         upsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["up"])
         downsf = np.array(ttag_scale_factors[self.iov][self.deepak8_cut]["down"])
@@ -107,23 +112,22 @@ class Run3WeightManager:
         upsf_fail = np.array(ttag_scale_factors[self.iov]["loose"]["up"])
         downsf_fail = np.array(ttag_scale_factors[self.iov]["loose"]["down"])
 
-        jet0_ptbins = np.digitize(ak.to_numpy(jet0.p4.pt), ptbins) - 1
-        jet1_ptbins = np.digitize(ak.to_numpy(jet1.p4.pt), ptbins) - 1
+        jet0_pt = ak.to_numpy(jet0.p4.pt)
+        jet1_pt = ak.to_numpy(jet1.p4.pt)
+        jet0_ptbins = np.digitize(jet0_pt, ptbins) - 1
+        jet1_ptbins = np.digitize(jet1_pt, ptbins) - 1
+        jet0_k = np.where(jet0_pt > pt_measured_max, 2.0, 1.0)
+        jet1_k = np.where(jet1_pt > pt_measured_max, 2.0, 1.0)
+
+        def jet_sf(jet_ptbins, k, ibin, sf_nom, sf_var, sel=True):
+            # per-jet SF in pT bin ibin: nominal + k * (variation - nominal)
+            return np.where((jet_ptbins == ibin) & sel, sf_nom[ibin] + k * (sf_var[ibin] - sf_nom[ibin]), 1.0)
 
         for ibin in range(1, 4):
-            nom = (
-                np.where(jet0_ptbins == ibin, nomsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & ttag2, nomsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & antitag, nomsf_fail[ibin], 1.0)
-            )
-            up = (
-                np.where(jet0_ptbins == ibin, upsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & ttag2, upsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & antitag, upsf_fail[ibin], 1.0)
-            )
-            down = (
-                np.where(jet0_ptbins == ibin, downsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & ttag2, downsf[ibin], 1.0)
-                * np.where((jet1_ptbins == ibin) & antitag, downsf_fail[ibin], 1.0)
+            nom, up, down = (
+                jet_sf(jet0_ptbins, jet0_k, ibin, nomsf, var)
+                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf, var, ttag2)
+                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag)
+                for var, var_fail in ((nomsf, nomsf_fail), (upsf, upsf_fail), (downsf, downsf_fail))
             )
             weights.add(f"ttag_pt{ibin}", weight=nom, weightUp=up, weightDown=down)
