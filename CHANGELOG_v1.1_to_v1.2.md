@@ -27,7 +27,7 @@ Last updated: 2026-09-24
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
 | 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
-| 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | see log | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
+| 14a | 2025 golden JSON → `..._398903` + lumi 110.59 → **110.37** fb⁻¹ (PPD table) | Done | `d4b719c` | 2025 data + MC norm | 2025 MC −0.2%; +1056 / −859 LS in data |
 | 14b | 2024 golden JSON post-TrkML review + lumi re-check | Open | — | 2024 data + MC norm | −106 LS in 27 runs |
 | 15 | 2025 era B data | Dropped | — | — | PPD table (reference) covers eras C–G only |
 
