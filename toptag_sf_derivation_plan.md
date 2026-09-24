@@ -1,12 +1,12 @@
-# Top-tag efficiency SF derivation — moved to its own project
+# Top-tag efficiency SF derivation — lives in its own project
 
 The scale-factor measurement (semileptonic ttbar tag-and-probe for the
-GloParTv3 `TopvsQCD` WPs) is now a standalone project:
+GloParTv3 `TopvsQCD` WPs) is the standalone project
+**`~/Projects/toptag-sf-derivation/`** (canonical `PLAN.md` there). Its code
+(processor, runners, fits) is only there; the stale copy that used to sit in this
+repo was removed in v1.2 (recover it from `7b51c08` if ever needed).
 
-**`~/Projects/toptag-sf-derivation/`** — canonical `PLAN.md` there.
-
-It stays coupled to this repo: the `TopTagSFProcessor` code is expected to land
-in `python/` here, it reuses `python/truthstudy.py` (`get_hadronic_tops`) and the
-`_tscore` formula (`ttbarprocessor.py:272`), and its output fills
-`python/weights.py` `ttag_scale_factors[iov][wp]` (placeholders today). See the
-companion WP-threshold plan `toptag_wp_derivation_plan.md` in this repo.
+Its results reach this repo as a versioned table,
+`data/toptag/ttag_sf_<version>.json`, read by `python/weights.py`
+(`TTAG_SF_FILE`). Each 2024 entry records the T&P commit and result file it came
+from. See the companion WP-threshold plan `toptag_wp_derivation_plan.md`.

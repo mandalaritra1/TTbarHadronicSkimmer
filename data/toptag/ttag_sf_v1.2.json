@@ -1,0 +1,665 @@
+{
+ "version": "v1.2",
+ "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling).",
+ "pt_edges": [
+  0,
+  400,
+  480,
+  600
+ ],
+ "aliases": {
+  "2022preEE": "2024",
+  "2022postEE": "2024",
+  "2023preBPix": "2024",
+  "2023postBPix": "2024",
+  "2025": "2024"
+ },
+ "iovs": {
+  "2016": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.92,
+       1.01,
+       0.84,
+       1.0
+      ],
+      "up": [
+       1.04,
+       1.18,
+       0.9,
+       1.07
+      ],
+      "down": [
+       0.82,
+       0.84,
+       0.78,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.89,
+       1.02,
+       0.93,
+       1.0
+      ],
+      "up": [
+       0.97,
+       1.07,
+       0.97,
+       1.05
+      ],
+      "down": [
+       0.81,
+       0.97,
+       0.89,
+       0.95
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2016APV": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.92,
+       1.01,
+       0.84,
+       1.0
+      ],
+      "up": [
+       1.04,
+       1.18,
+       0.9,
+       1.07
+      ],
+      "down": [
+       0.82,
+       0.84,
+       0.78,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.89,
+       1.02,
+       0.93,
+       1.0
+      ],
+      "up": [
+       0.97,
+       1.07,
+       0.97,
+       1.05
+      ],
+      "down": [
+       0.81,
+       0.97,
+       0.89,
+       0.95
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2017": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.88,
+       0.9,
+       0.95,
+       0.97
+      ],
+      "up": [
+       0.96,
+       0.95,
+       1.0,
+       1.03
+      ],
+      "down": [
+       0.8,
+       0.85,
+       0.9,
+       0.91
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.95,
+       1.0,
+       0.98,
+       0.98
+      ],
+      "up": [
+       1.01,
+       1.04,
+       1.02,
+       1.02
+      ],
+      "down": [
+       0.89,
+       0.96,
+       0.94,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    }
+   }
+  },
+  "2018": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.81,
+       0.93,
+       0.96,
+       0.93
+      ],
+      "up": [
+       0.88,
+       0.98,
+       1.02,
+       1.01
+      ],
+      "down": [
+       0.74,
+       0.88,
+       0.92,
+       0.85
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.9,
+       0.97,
+       0.98,
+       0.95
+      ],
+      "up": [
+       0.95,
+       1.0,
+       1.01,
+       0.98
+      ],
+      "down": [
+       0.85,
+       0.94,
+       0.95,
+       0.92
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2024": {
+   "source": "v1.2 T&P (2026-09-24): semileptonic ttbar tag-and-probe (mu), full 2024, v1.2 AK8 objects (V5/JRV2 JEC, rebuilt msoftdrop, Tight ID, |y|<2.4, veto map). Three-category mSD fit (pass / band / fail) in Combine, rest tag rates fixed, jet mass scale 0.998 with jms profiled. up/down = nominal +/- total (stat (+) exact JES/JER (+) JMR 2% (+) PU (+) model); breakdown per bin. Applies to fully merged top jets in ttbar/signal MC.",
+   "tp_commit": "toptag-sf-derivation e997fed (branch aritra)",
+   "tp_result": "results/outputs/ntuples_2024_v12_fits/band_final_s998.json",
+   "tp_result_sha256": "edc0fdeb60703376836eb67166a8d36923ef1d4d206f555ca6120d207e8dd094",
+   "pt_measured_max": 1200.0,
+   "thresholds": {
+    "tag": 0.9284,
+    "antitag_low": 0.8571
+   },
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       1.0,
+       0.816,
+       0.822,
+       0.821
+      ],
+      "up": [
+       1.0,
+       0.8484,
+       0.8741,
+       0.8956
+      ],
+      "down": [
+       1.0,
+       0.7843,
+       0.7723,
+       0.7486
+      ],
+      "breakdown": {
+       "400-480": {
+        "stat_up": 0.023,
+        "stat_down": 0.022,
+        "jes": 0.0144,
+        "jer": 0.0027,
+        "jmr": 0.0161,
+        "pu": 0.0043,
+        "model": 0.0051
+       },
+       "480-600": {
+        "stat_up": 0.032,
+        "stat_down": 0.028,
+        "jes": 0.0161,
+        "jer": 0.0075,
+        "jmr": 0.0348,
+        "pu": 0.0051,
+        "model": 0.0116
+       },
+       "600+": {
+        "stat_up": 0.056,
+        "stat_down": 0.053,
+        "jes": 0.0153,
+        "jer": 0.0102,
+        "jmr": 0.0154,
+        "pu": 0.0009,
+        "model": 0.0431
+       }
+      }
+     },
+     "antitag": {
+      "nominal": [
+       1.0,
+       1.286,
+       1.254,
+       1.578
+      ],
+      "up": [
+       1.0,
+       1.3863,
+       1.384,
+       1.7657
+      ],
+      "down": [
+       1.0,
+       1.1892,
+       1.1278,
+       1.3895
+      ],
+      "breakdown": {
+       "400-480": {
+        "stat_up": 0.089,
+        "stat_down": 0.085,
+        "jes": 0.0157,
+        "jer": 0.0131,
+        "jmr": 0.0288,
+        "pu": 0.0274,
+        "model": 0.0119
+       },
+       "480-600": {
+        "stat_up": 0.099,
+        "stat_down": 0.094,
+        "jes": 0.0501,
+        "jer": 0.0183,
+        "jmr": 0.0589,
+        "pu": 0.0142,
+        "model": 0.0243
+       },
+       "600+": {
+        "stat_up": 0.155,
+        "stat_down": 0.156,
+        "jes": 0.031,
+        "jer": 0.0052,
+        "jmr": 0.0056,
+        "pu": 0.0121,
+        "model": 0.1002
+       }
+      }
+     }
+    }
+   },
+   "check_800plus": {
+    "tag": 0.909,
+    "antitag": 0.504,
+    "note": "800+ GeV check bin, not applied: SF 0.909 +0.28/-0.26 agrees with 600+; the band fit sits at its lower bound in every variation (no usable syst)."
+   }
+  }
+ }
+}
