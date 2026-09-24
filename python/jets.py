@@ -1,7 +1,7 @@
 import awkward as ak
 import numpy as np
 
-from corrections import GetJECUncertainties
+from corrections import GetJECUncertainties, GetJetVetoMapMask
 from functions import getRapidity
 
 # AK4 jet selection thresholds (used in both HT sum and baseline masks)
@@ -83,12 +83,14 @@ class Run3JetManager:
         return fatjets, subjets, jets, genjets, genjetak8, subgenjetak8
 
     def baseline_masks(self, events, fatjets, jets):
+        jet_veto_map_mask = GetJetVetoMapMask(jets, self.iov)
         ht_mask = (
             ak.sum(jets[(jets.pt > _AK4_PT_MIN) & (np.abs(jets.eta) < _AK4_ETA_MAX)].pt, axis=1)
             > self.ht_cut
         )
 
-        # JetID disabled: Run-3 NanoAOD working point not yet centrally validated.
+        # No separate analysis-level jet-ID cut is applied here. TightLepVeto is
+        # evaluated only for the official jet-veto-map eligibility above.
 
         jetkin = (fatjets.pt > self.ak8_pt_min) & (np.abs(getRapidity(fatjets.p4)) < _AK8_RAPIDITY_MAX)
 
@@ -102,9 +104,10 @@ class Run3JetManager:
         event_mask = ht_mask & jetkin_mask & twofat_mask
 
         masks = {
+            "jetVetoMap": jet_veto_map_mask,
             "htCut":      ht_mask,
             "jetkincut":  jetkin_mask,
             "twoFatJets": twofat_mask,
-            "event":      event_mask,
+            "event":      jet_veto_map_mask & event_mask,
         }
         return fatjets_selected, masks

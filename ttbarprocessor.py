@@ -819,6 +819,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         FatJets, jet_masks = self.jet_manager.baseline_masks(events, FatJets, Jets)
         selection.add('htCut',      jet_masks['htCut'])
         selection.add('metfilter',  getMETFilter(self.iov, events))
+        selection.add('jetVetoMap', jet_masks['jetVetoMap'])
         selection.add('jetkincut',  jet_masks['jetkincut'])
         selection.add('twoFatJets', jet_masks['twoFatJets'])
 

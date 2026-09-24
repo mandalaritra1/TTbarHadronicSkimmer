@@ -37,6 +37,12 @@ BASE_CUTFLOW_STEPS = [
         "description": "Cumulative recommended event filter requirement for the IOV.",
     },
     {
+        "key": "jetVetoMap",
+        "label": "Jet-veto map",
+        "group": "Preselection",
+        "description": "Cumulative Run-3 event veto for mapped detector hot/cold regions.",
+    },
+    {
         "key": "jetkincut",
         "label": "At least one AK8 passing kinematics",
         "group": "Preselection",
@@ -52,7 +58,7 @@ BASE_CUTFLOW_STEPS = [
         "key": "preselection",
         "label": "All preselection",
         "group": "Preselection",
-        "description": "Combined trigger, HT, MET filter, AK8 kinematics, and two-AK8 requirement.",
+        "description": "Combined trigger, HT, MET filter, jet-veto map, AK8 kinematics, and two-AK8 requirement.",
     },
     {
         "key": "dphi",

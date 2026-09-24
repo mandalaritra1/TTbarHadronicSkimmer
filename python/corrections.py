@@ -15,6 +15,7 @@ from coffea.lookup_tools import extractor
 import copy
 import gzip
 import json as _json
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -42,6 +43,128 @@ _JSONPOG_JME_DIR = {
     # map live separately under jsonpog/JME/2025_Prompt25/ (for data, when wired).
     "2025":         "2024_Summer24",
 }
+
+# Jet-veto payloads follow the data-taking campaign. Keep this separate from
+# _JSONPOG_JME_DIR because 2025 MC currently uses Summer24 JEC/JER, while 2025
+# data has its own Prompt25 veto map.
+_JSONPOG_JETVETO_DIR = {
+    "2022preEE":    "2022_Summer22",
+    "2022postEE":   "2022_Summer22EE",
+    "2023preBPix":  "2023_Summer23",
+    "2023postBPix": "2023_Summer23BPix",
+    "2024":         "2024_Summer24",
+    "2025":         "2025_Prompt25",
+}
+
+_JSONPOG_JETID_DIR = {
+    # NanoAODv15 does not carry Jet_jetId in the current 2024 production, so
+    # evaluate the official Run-3 TightLepVeto recipe from its correction JSON.
+    "2024": "2024_Summer24",
+}
+
+
+@lru_cache(maxsize=None)
+def _load_jet_veto_correction(iov):
+    """Load the single final jet-veto correction for one Run-3 IOV."""
+    subdir = _JSONPOG_JETVETO_DIR[iov]
+    json_path = (
+        _PROJECT_ROOT / "data" / "corrections" / "jsonpog" / "JME"
+        / subdir / "jetvetomaps.json.gz"
+    )
+    correction_set = correctionlib.CorrectionSet.from_file(str(json_path))
+    correction_names = list(correction_set.keys())
+    if len(correction_names) != 1:
+        raise ValueError(
+            f"Expected one jet-veto correction in {json_path}, found {correction_names}"
+        )
+    return correction_set[correction_names[0]]
+
+
+@lru_cache(maxsize=None)
+def _load_jet_id_correction(iov):
+    subdir = _JSONPOG_JETID_DIR[iov]
+    json_path = (
+        _PROJECT_ROOT / "data" / "corrections" / "jsonpog" / "JME"
+        / subdir / "jetid.json.gz"
+    )
+    correction_set = correctionlib.CorrectionSet.from_file(str(json_path))
+    return correction_set["AK4PUPPI_TightLeptonVeto"]
+
+
+def _tight_lepton_veto_mask(jets, iov):
+    """Evaluate or read the AK4 PUPPI TightLepVeto jet-ID decision."""
+    if iov not in _JSONPOG_JETID_DIR:
+        if "jetId" not in jets.fields:
+            raise KeyError(
+                f"Jet-veto map for {iov} needs either Jet_jetId or an official "
+                "jetid.json.gz payload; neither is available"
+            )
+        return (jets.jetId & 4) != 0  # NanoAOD bit 2: TightLepVeto
+
+    id_fields = {
+        "eta", "chHEF", "neHEF", "chEmEF", "neEmEF", "muEF",
+        "chMultiplicity", "neMultiplicity",
+    }
+    missing_fields = id_fields.difference(jets.fields)
+    if missing_fields:
+        raise KeyError(
+            f"Official TightLepVeto ID for {iov} requires Jet fields "
+            f"{sorted(id_fields)}; missing {sorted(missing_fields)}"
+        )
+
+    counts = ak.to_numpy(ak.num(jets, axis=1))
+    correction = _load_jet_id_correction(iov)
+    flat_values = correction.evaluate(
+        ak.to_numpy(ak.flatten(jets.eta, axis=1)),
+        ak.to_numpy(ak.flatten(jets.chHEF, axis=1)),
+        ak.to_numpy(ak.flatten(jets.neHEF, axis=1)),
+        ak.to_numpy(ak.flatten(jets.chEmEF, axis=1)),
+        ak.to_numpy(ak.flatten(jets.neEmEF, axis=1)),
+        ak.to_numpy(ak.flatten(jets.muEF, axis=1)),
+        ak.to_numpy(ak.flatten(jets.chMultiplicity, axis=1)),
+        ak.to_numpy(ak.flatten(jets.neMultiplicity, axis=1)),
+        ak.to_numpy(ak.flatten(jets.chMultiplicity + jets.neMultiplicity, axis=1)),
+    )
+    return ak.unflatten(np.asarray(flat_values) != 0, counts)
+
+
+def GetJetVetoMapMask(jets, iov):
+    """Return an event mask that rejects Run-3 jet-veto-map hot/cold regions.
+
+    The map is evaluated for AK4 PUPPI jets with pT > 15 GeV, TightLepVeto ID,
+    and total electromagnetic energy fraction below 0.9. An event fails when
+    any eligible jet has a non-zero value in the payload's final ``jetvetomap``.
+    Run-2 IOVs have no Run-3 map and pass unchanged.
+    """
+    if iov not in _JSONPOG_JETVETO_DIR:
+        return np.ones(len(jets), dtype=bool)
+
+    required_fields = {"pt", "eta", "phi", "chEmEF", "neEmEF"}
+    missing_fields = required_fields.difference(jets.fields)
+    if missing_fields:
+        raise KeyError(
+            f"Jet-veto map for {iov} requires Jet fields {sorted(required_fields)}; "
+            f"missing {sorted(missing_fields)}"
+        )
+
+    tight_lepton_veto = _tight_lepton_veto_mask(jets, iov)
+    eligible = (
+        (jets.pt > 15.0)
+        & tight_lepton_veto
+        & ((jets.chEmEF + jets.neEmEF) < 0.9)
+    )
+
+    counts = ak.to_numpy(ak.num(jets, axis=1))
+    flat_eta = ak.to_numpy(ak.flatten(jets.eta, axis=1))
+    flat_phi = ak.to_numpy(ak.flatten(jets.phi, axis=1))
+    if len(flat_eta) == 0:
+        return np.ones(len(jets), dtype=bool)
+
+    correction = _load_jet_veto_correction(iov)
+    flat_values = correction.evaluate("jetvetomap", flat_eta, flat_phi)
+    map_values = ak.unflatten(np.asarray(flat_values), counts)
+    vetoed = ak.any(eligible & (map_values != 0), axis=1)
+    return np.asarray(~ak.to_numpy(vetoed), dtype=bool)
 
 
 class _SplitJERSF:
