@@ -1,7 +1,8 @@
 # Skimmer changelog: v1.1 → v1.2
 
 Baseline **v1.1** = tag `v1.1` (`fab5038`, 2026-08-01): the production behind the
-current 39-point limits. **v1.2** = the next MC + data re-skim.
+current 39-point limits. **v1.2** = the next MC + data re-skim, tag `v1.2` (2026-09-24;
+this changelog commit). Correction-file caching and the review cleanup go to v1.3.
 
 Status: **Done** = committed · **Working tree** = written, not committed ·
 **Planned** = decided, not started · **Open** = needs a decision.
