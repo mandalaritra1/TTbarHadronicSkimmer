@@ -164,6 +164,17 @@ their own category) with `toptag-sf-derivation`, then use it for the antitag jet
   no AK8 jet ID. Re-producing the ntuples with the v1.2 definitions covers items 7 and
   the T&P msoftdrop follow-up in one pass.
 
+**T&P port to the v1.2 objects — done locally (2026-09-24), `toptag-sf-derivation`
+`81538d9` (branch `aritra`, not pushed):** `--apply-jec` re-corrects AK8, AK4 and subjets
+(V5/JRV2; data JEC with residuals) and rebuilds msoftdrop from the subjets (JES/JER
+variations included; NanoAOD value kept as `probe_msd_nano`); probe PUPPI Tight ID and
+|y| < 2.4 (was |η| < 2.5); tag-side AK4 Tight ID; jet-veto map; re-issued 2024 golden
+JSON; missing trigger/golden JSON/JEC failures now raise. 22 unit tests pass. On 2024
+JetMET data (73716 AK8 jets, pT > 400): corrected/NanoAOD pT 0.954, rebuilt/NanoAOD mSD
+1.004 (skimmer: 0.954, 1.003). **Next:** casa production (Data, TTbar, SingleTop, WJets;
+`--apply-jec --apply-pu`, MC also `--apply-jec-syst`), then the three-category fit at the
+analysis cuts (pass ≥ 0.9284, band [0.8571, 0.9284), fail) with an 800 GeV+ check bin.
+
 ### 8. PDF uncertainty (last; reconsider)
 `GetPDFWeights` uses std/mean across replicas; the review argued the PDF set needs the
 Hessian formula (~10× larger). The code came from senior CMS colleagues, so revisit the
