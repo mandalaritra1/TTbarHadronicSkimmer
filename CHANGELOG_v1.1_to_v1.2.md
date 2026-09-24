@@ -16,7 +16,7 @@ Last updated: 2026-09-24 (round 2)
 |---|---|---|---|---|---|
 | 1 | `ttag_pt2`/`ttag_pt3` variations actually filled | Done | `d664e04` | MC | Adds the top-tag SF uncertainty for jets with pT > 480 GeV (±15–17% on a 4 TeV Z') |
 | 2 | Run-3 jet-veto map as a preselection cut | Done | `9e405c1` | Data + MC | Removes ~17–18% of high-HT signal events after MET filters; ~2% of 2025C JetMET events |
-| 3 | 2025 → JME `Run3-25Prompt-Summer24` campaign | Done | `3c47f7c` | 2025 data (+ 2025 MC JER) | 2025 data JEC with 2025 residuals (AK8 pT −3.1% vs NanoAOD-embedded); 2025 jet ID works |
+| 3 | 2025 → JME `Run3-25Prompt-Summer24` campaign | Done | `3c47f7c` | 2025 MC JER; jet ID + veto map for 2025 data | 2025 jet ID works; 2025 data residuals only take effect if item 16 re-applies data JEC (then AK8 pT −3.1% vs NanoAOD) |
 | 4 | 2024 JEC V3 → V5, JER JRV1 → JRV2 | Done | `a694078` | 2024 data + MC | New η-dependent residuals and JER SFs |
 | 5 | GloParTv3 score histograms `jet0/1_tdisc` | Done | `28c02a9` | Output only | None (new diagnostics for CR/VR data/MC) |
 | 6 | Missing HLT path raises instead of accepting all events | Done | `8a078df` | Safety | None in a correct setup |
