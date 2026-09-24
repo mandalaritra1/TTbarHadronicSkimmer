@@ -224,7 +224,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         bkgEst=False,
         noSyst=False,
         blinding=False,
-        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1'],
+        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3'],
         anacats=['2t0bcen'],
         debug=False,
         cutflow_verbose=False,
@@ -1206,6 +1206,17 @@ class TTbarResProcessor(processor.ProcessorABC):
             output['systematics'][correction] += len(events.event[icat])
 
             if isNominal:
+                # A variation missing from the systematic axis would be filled
+                # into its overflow bin and silently lost (how ttag_pt2/3 went
+                # missing through v1.1).
+                missing = set(self.weights[correction].variations).difference(
+                    output['mtt_vs_mt'].axes['systematic']
+                )
+                if missing:
+                    raise ValueError(
+                        f"Weight variations {sorted(missing)} are not on the systematic "
+                        "axis; add them to the systematics list"
+                    )
                 for syst in self.weights[correction].variations:
                     self._fill_kinematic_hists(
                         output, ds_kw, syst, i, icat,

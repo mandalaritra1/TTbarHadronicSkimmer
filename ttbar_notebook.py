@@ -894,8 +894,8 @@ def run_analysis(args):
         "pdf",
         "q2",
         "ttag_pt1",
-        #'ttag_pt2',
-        #'ttag_pt3'
+        "ttag_pt2",
+        "ttag_pt3",
     ]
 
     if ("2016" in IOV) or ("2017" in IOV):
