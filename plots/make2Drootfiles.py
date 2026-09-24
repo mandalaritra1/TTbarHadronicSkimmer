@@ -294,6 +294,26 @@ def _sum_hists(outputs: list[dict], hist_name: str, anacat_ids: list[int], syst:
     return total
 
 
+# One-sided variations: the skimmer fills the Down slot with the nominal mass and
+# the template is mirrored here, Down = 2*nominal - Up (JMR smearing can only
+# widen the resolution). Negative bins are clipped afterwards like any template.
+_MIRRORED_DOWN = {"jmrDown": "jmrUp"}
+
+
+def _template(outputs: list[dict], hist_name: str, anacat_ids: list[int], syst: str):
+    if syst not in _MIRRORED_DOWN:
+        return _sum_hists(outputs, hist_name, anacat_ids, syst)
+    nominal = _sum_hists(outputs, hist_name, anacat_ids, "nominal")
+    up = _sum_hists(outputs, hist_name, anacat_ids, _MIRRORED_DOWN[syst])
+    down = nominal.copy()
+    view, up_view = down.view(flow=True), up.view(flow=True)
+    if view.dtype.names:
+        view["value"] = 2 * view["value"] - up_view["value"]
+    else:
+        view[...] = 2 * view - up_view
+    return down
+
+
 def _clip_negative_bins(histo, label: str, name: str):
     """Clip negative bins of an MC template to zero (variance kept).
 
@@ -437,8 +457,8 @@ def main() -> None:
                     suffix = _syst_suffix(syst)
                     pass_name = f"MttvsMt{root_cat}{year_label}Pass{suffix}"
                     fail_name = f"MttvsMt{root_cat}{year_label}Fail{suffix}"
-                    h_pass = _sum_hists(outputs, args.hist, pass_ids, syst)
-                    h_fail = _sum_hists(outputs, args.hist, fail_ids, syst)
+                    h_pass = _template(outputs, args.hist, pass_ids, syst)
+                    h_fail = _template(outputs, args.hist, fail_ids, syst)
                     if label != "Data":
                         h_pass = _clip_negative_bins(h_pass, label, pass_name)
                         h_fail = _clip_negative_bins(h_fail, label, fail_name)

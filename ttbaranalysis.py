@@ -221,7 +221,7 @@ if __name__ == "__main__":
         savedir = 'outputs/' + args.outdir.strip('/') + '/'
 
     ##### systematics #####
-    systematics = ['nominal', 'jes', 'jer', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3']
+    systematics = ['nominal', 'jes', 'jer', 'jms', 'jmr', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3']
     if '2016' in IOV or '2017' in IOV:
         systematics.append('prefiring')
     if args.bkgest == '2dalphabet':

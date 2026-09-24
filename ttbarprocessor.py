@@ -1210,10 +1210,14 @@ class TTbarResProcessor(processor.ProcessorABC):
             output['weights'][correction]     += np.sum(self.weights[correction].weight())
             output['systematics'][correction] += len(events.event[icat])
 
+            # A systematic missing from the axis would be filled into its overflow
+            # bin and silently lost (how ttag_pt2/3 went missing through v1.1).
+            if correction not in output['mtt_vs_mt'].axes['systematic']:
+                raise ValueError(
+                    f"Jet variation {correction!r} is not on the systematic axis; "
+                    "add it to the systematics list"
+                )
             if isNominal:
-                # A variation missing from the systematic axis would be filled
-                # into its overflow bin and silently lost (how ttag_pt2/3 went
-                # missing through v1.1).
                 missing = set(self.weights[correction].variations).difference(
                     output['mtt_vs_mt'].axes['systematic']
                 )

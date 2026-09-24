@@ -4,6 +4,18 @@ import numpy as np
 from corrections import GetJECUncertainties, GetJetVetoMapMask
 from functions import getRapidity
 
+# Jet-collection variations run as separate passes of the processor.
+_JET_VARIATIONS = {"jes", "jer", "jms", "jmr"}
+# Soft-drop mass scale and resolution uncertainties (nominal JMS = JMR = 1.000).
+_JMS_UNC = 0.01
+_JMR_UNC = 0.02
+
+
+def _jmr_seed(events):
+    """Seed the JMR smearing from the chunk's event numbers so reruns reproduce it."""
+    ids = ak.to_numpy(events.event[:16]).astype(np.uint64)
+    return int(np.bitwise_xor.reduce(ids)) if len(ids) else 0
+
 # AK4 jet selection thresholds (used in both HT sum and baseline masks)
 _AK4_PT_MIN  = 30    # GeV
 _AK4_ETA_MAX = 3.0
@@ -42,27 +54,54 @@ class Run3JetManager:
         return fatjets, jets
 
     def build_corrections(self, events, is_data):
-        no_corrections = "jes" not in self.systematics and "jer" not in self.systematics
-        if no_corrections or self.no_syst or is_data:
+        if not _JET_VARIATIONS.intersection(self.systematics) or self.no_syst or is_data:
             return None
 
         fatjets, jets = self.prepare_for_corrections(events, is_data)
         corrected_fatjets = GetJECUncertainties(fatjets, events, self.iov, R="AK8", isData=is_data)
         corrected_jets = GetJECUncertainties(jets, events, self.iov, R="AK4", isData=is_data)
 
-        corrections = []
+        # msoftdrop is not re-corrected: NanoAOD builds it from subjets that already
+        # carry AK4 PUPPI corrections, and scaling it by the AK8 JEC shifts the data
+        # top-mass peak (see toptag_sf_processor.py). Nominal JMS = JMR = 1.000, so the
+        # nominal msoftdrop stays on the NanoAOD value; only the variations move it.
+        nominal_msd = corrected_fatjets.msoftdrop
+
+        def with_msd(fatjet_collection, msd):
+            return ak.with_field(fatjet_collection, msd, "msoftdrop")
+
+        def follow_pt(varied):
+            # JES/JER variations move msoftdrop with the jet's own pT ratio.
+            ratio = ak.where(corrected_fatjets.pt > 0, varied.pt / corrected_fatjets.pt, 1.0)
+            return with_msd(varied, nominal_msd * ratio)
+
+        corrections = [({"Jet": corrected_jets, "FatJet": corrected_fatjets}, "nominal")]
         if "jes" in self.systematics:
             corrections.extend([
-                ({"Jet": corrected_jets,             "FatJet": corrected_fatjets},             "nominal"),
-                ({"Jet": corrected_jets.JES_jes.up,  "FatJet": corrected_fatjets.JES_jes.up},  "jesUp"),
-                ({"Jet": corrected_jets.JES_jes.down,"FatJet": corrected_fatjets.JES_jes.down}, "jesDown"),
+                ({"Jet": corrected_jets.JES_jes.up,   "FatJet": follow_pt(corrected_fatjets.JES_jes.up)},   "jesUp"),
+                ({"Jet": corrected_jets.JES_jes.down, "FatJet": follow_pt(corrected_fatjets.JES_jes.down)}, "jesDown"),
             ])
         if "jer" in self.systematics:
-            if not corrections:
-                corrections.append(({"Jet": corrected_jets, "FatJet": corrected_fatjets}, "nominal"))
             corrections.extend([
-                ({"Jet": corrected_jets.JER.up,  "FatJet": corrected_fatjets.JER.up},  "jerUp"),
-                ({"Jet": corrected_jets.JER.down, "FatJet": corrected_fatjets.JER.down}, "jerDown"),
+                ({"Jet": corrected_jets.JER.up,   "FatJet": follow_pt(corrected_fatjets.JER.up)},   "jerUp"),
+                ({"Jet": corrected_jets.JER.down, "FatJet": follow_pt(corrected_fatjets.JER.down)}, "jerDown"),
+            ])
+        if "jms" in self.systematics:
+            corrections.extend([
+                ({"Jet": corrected_jets, "FatJet": with_msd(corrected_fatjets, nominal_msd * (1 + _JMS_UNC))}, "jmsUp"),
+                ({"Jet": corrected_jets, "FatJet": with_msd(corrected_fatjets, nominal_msd * (1 - _JMS_UNC))}, "jmsDown"),
+            ])
+        if "jmr" in self.systematics:
+            # Gaussian smearing can only widen the resolution: jmrUp is smeared,
+            # jmrDown is filled with the nominal mass and mirrored around nominal
+            # (2*nom - up) when the 2DAlphabet templates are written.
+            counts = ak.num(nominal_msd, axis=1)
+            flat_msd = ak.to_numpy(ak.flatten(nominal_msd, axis=1))
+            rng = np.random.default_rng(_jmr_seed(events))
+            smeared = flat_msd * (1 + _JMR_UNC * rng.standard_normal(len(flat_msd)))
+            corrections.extend([
+                ({"Jet": corrected_jets, "FatJet": with_msd(corrected_fatjets, ak.unflatten(smeared, counts))}, "jmrUp"),
+                ({"Jet": corrected_jets, "FatJet": corrected_fatjets}, "jmrDown"),
             ])
 
         return corrections

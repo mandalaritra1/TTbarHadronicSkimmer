@@ -890,6 +890,8 @@ def run_analysis(args):
         "nominal",
         "jes",
         "jer",
+        "jms",
+        "jmr",
         "pileup",
         "pdf",
         "q2",
