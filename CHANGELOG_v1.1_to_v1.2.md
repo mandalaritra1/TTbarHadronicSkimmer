@@ -26,6 +26,8 @@ Last updated: 2026-09-24
 | 10 | Q2/PDF templates yield-normalized | Open | — | MC | Separates acceptance from rate |
 | 11 | AK8 jet ID on the two leading jets | Open | — | Data + MC | Not applied in v1.1 or v1.2 so far |
 | 12 | Real 2025 MC run instead of `scale_iov` | Open | — | 2025 MC | Uses the 2025 JER SF for forward jets |
+| 13 | 2025 pileup weights (LUM 2025 file) | Open | — | 2025 MC | 2025 MC currently reweighted to the **2024** data pileup profile |
+| 14 | Golden JSON refresh (2024 post-TrkML review, 2025 latest) | Open | — | Data | 2024: −106 LS in 27 runs; 2025: +1056 / −859 LS |
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, then re-fit the 39 points.
@@ -135,6 +137,22 @@ No jet ID on the two leading AK8 jets. Run-2 applied one; reviewers will ask.
 own JER SF: consistent within uncertainty for |η| < ~1.5, but e.g. 1.36 → 1.17 at
 |η| 2.3, 1 TeV. A real 2025 MC run removes the approximation.
 
+### 13. 2025 pileup weights (open)
+`GetPUSF` uses the 2024 file (`Collisions24_CDEFGHI_goldenJSON` profile) for 2025.
+LUM now ships preliminary 2025 weights for Summer24 MC:
+`LUM/Run3-25Prompt-Summer24-NanoAODv15` 2026-06-05, `puWeights_2025pp_Golden_Summer24_25ns_69200ub.json.gz`
+(copy in the session scratchpad; not vendored). Like item 12, this also breaks the
+`scale_iov` shortcut, so it favours a real 2025 MC run.
+
+### 14. Golden JSON refresh (open)
+- **2024:** the DC `Collisions24/latest` file was re-issued after a 2026 tracker-ML
+  review; ours equals the `_before_TrkML2026_review` copy. The new one removes
+  106 lumisections in 27 runs (no additions).
+- **2025:** ours is `Cert_Collisions2025_391658_398860_Golden.json`; the newest is
+  `..._398903_Golden.json` (= `golden_json_latest.json`, updated 2026-09-23):
+  +1056 LS in 3 runs (395103/5/7), −859 LS in 37 runs.
+- Both need a lumi recalculation (brilcalc) if adopted.
+
 ---
 
 ## Validation log
@@ -146,3 +164,4 @@ own JER SF: consistent within uncertainty for |η| < ~1.5, but e.g. 1.36 → 1.1
 | 2026-09-24 | 2025C data through 2025 JEC + veto map + jet ID | runs; veto pass 97.85% |
 | 2026-09-24 | 2024 Z' as 2025 MC, 2025 vs 2024 payload | mean AK8 pT ratio 1.0002 |
 | 2026-09-24 | Vendored JME files vs GitLab `latest` (Kerberos clone on lxplus) | md5 identical |
+| 2026-09-24 | Sweep of all 2025 correction packages on cvmfs (BTV/DC/EGM/JME/LUM/MUO/TAU) | relevant: JME (done), LUM pileup, DC golden JSON |
