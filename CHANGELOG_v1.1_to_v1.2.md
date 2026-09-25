@@ -48,6 +48,16 @@ Last updated: 2026-09-24 (round 4)
 | 29 | Top-tag SF tables → versioned JSON (`data/toptag/ttag_sf_<version>.json`) | Done | `3d16500` | MC | None by itself: `ttag_sf_v1.1.json` is the old table exactly; v1.2 numbers are item 7. An unmeasured WP now raises |
 | 30 | Stale T&P copy removed (`toptag_sf_processor.py`, runners, cut-and-count, 7 files) | Done | `3d16500` | Repo | None; the live code is `toptag-sf-derivation` |
 
+**v1.2 production (started 2026-09-24 16:49 CDT, LPC condor; casa unavailable).** Tag `v1.2`
+(`086354a`), clean clone `~/nobackup/TTbarHadronicSkimmer_v12` on cmslpc303, coffea
+2026.4.0 container + lpcjobqueue 0.4.2 (`launch_v12.sh mc | data2024 | data2025 [args]`,
+logs `logs/v12_*.log`), `--dask --env lpc --ttagWP tight --outdir tight_v1.2`, full
+systematics: data 2024 C–I, data 2025 C–G, TTbar 2024, ZPrime1/10/30 2024 (2025 MC via
+`scale_iov`). Smoke test (1 chunk TTbar + 2024 eras on workers) clean, provenance
+`086354a`, no modified files. First checks vs v1: data 2024C categories 576 → 432 (−25%;
+HT −1.4%, veto −18%), 2025C 1297 → 1073 (−17%; HT +6%, veto −20%); TTbar raw events −20%,
+nominal at +15–18% / 2t −30% (band SF / new tight SF), `ttag_pt3` ±13–18%, q2 ±22% → ~−6%.
+
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
 (110.59 → 110.37, 220.54 → 220.32) in `ttbar.py`, `plot_limits*.py`, `combine_cards25/2425.sh`,
