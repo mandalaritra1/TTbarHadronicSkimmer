@@ -57,6 +57,17 @@ systematics: data 2024 C–I, data 2025 C–G, TTbar 2024, ZPrime1/10/30 2024 (2
 `086354a`, no modified files. First checks vs v1: data 2024C categories 576 → 432 (−25%;
 HT −1.4%, veto −18%), 2025C 1297 → 1073 (−17%; HT +6%, veto −20%); TTbar raw events −20%,
 nominal at +15–18% / 2t −30% (band SF / new tight SF), `ttag_pt3` ±13–18%, q2 ±22% → ~−6%.
+**Done 2026-09-25 ~03:30 CDT:** 31 outputs (data 2024 C–I, 2025 C–G, TTbar, ZPrime1/10/30 × 6
+batches), all provenance `086354a`. Five relaunches, none a code problem: two clusters
+never submitted a condor job, one scheduler hit the dashboard port 8787, two signal
+batches lost four workers each while receiving the pickled processor (the chunk itself
+runs in 27 s / 1.1 GB). 2025 MC = 2024 × 1.003820 (`scale_iov`). Fit inputs
+`outputs/twodalphabet_tight{24,25}_v1.2/` (59 files each, same list as v1; 100 keys per MC
+file with JMS/JMR/ISR/FSR/TTAG_PT1–3). Not yet staged to EOS.
+**Open (fit inputs):** in the Fail region TTbar MC is now 0.69 (cen) / 0.50 (fwd) of data in
+2024 (v1: 0.45 / 0.34), 0.76 / 0.57 in 2025, from the band SF (1.29–1.58) and −23–26% data.
+The band SF was measured for fully merged tops but is applied to every antitag TTbar jet.
+JMR-down (mirrored 2·nom − up) clips ~700 negative bins per signal region.
 
 Downstream (bgestimation, after the v1.2 inputs exist): attach `ttag_pt2`/`ttag_pt3`
 in the six Run-3 configs, add `jms`/`jmr`/`isr`/`fsr` likewise, then re-fit the 39 points. Update the hard-coded lumi labels
