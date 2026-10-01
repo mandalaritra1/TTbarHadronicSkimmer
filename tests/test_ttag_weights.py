@@ -9,6 +9,7 @@ from coffea.analysis_tools import Weights
 
 sys.path.append(os.path.join(os.getcwd(), "python"))
 import weights
+from truthstudy import MERGE_FULL, MERGE_NOT, MERGE_SEMI, MERGE_W, top_merge_category
 from weights import Run3WeightManager, load_ttag_sf
 
 
@@ -22,11 +23,13 @@ BAND3 = (1.578, 1.7657, 1.3895)
 
 
 class TopTagSFWeightsTest(unittest.TestCase):
-    def _variations(self, iov, jet0_pt, jet1_pt, ttag2, antitag):
+    def _variations(self, iov, jet0_pt, jet1_pt, ttag2, antitag, merged=None):
         manager = Run3WeightManager(iov=iov, systematics=["ttag_pt3"], no_syst=False, deepak8_cut="tight")
         weights = Weights(len(jet0_pt))
+        if merged is None:
+            merged = (np.ones(len(jet0_pt), bool), np.ones(len(jet0_pt), bool))
         manager._add_ttag_pt_weights(
-            weights, _jets(jet0_pt), _jets(jet1_pt), np.asarray(ttag2), np.asarray(antitag)
+            weights, _jets(jet0_pt), _jets(jet1_pt), np.asarray(ttag2), np.asarray(antitag), merged
         )
         return weights.weight(), weights.weight("ttag_pt3Up"), weights.weight("ttag_pt3Down")
 
@@ -42,6 +45,28 @@ class TopTagSFWeightsTest(unittest.TestCase):
         nom, up, _ = self._variations("2025", [700.0], [1500.0], [False], [True])
         np.testing.assert_allclose(nom, [TIGHT3[0] * BAND3[0]])
         np.testing.assert_allclose(up, [TIGHT3[1] * (BAND3[0] + 2 * (BAND3[1] - BAND3[0]))])
+
+    def test_sf_only_on_fully_merged_jets(self):
+        # 2024 SFs were measured for fully merged tops: other jets keep SF 1
+        # event 0: tagged jet0 merged, antitag jet1 not; event 1: the reverse; event 2: 2t, jet1 not merged
+        nom, up, _ = self._variations(
+            "2024", [700.0, 700.0, 700.0], [700.0, 700.0, 700.0],
+            [False, False, True], [True, True, False],
+            merged=(np.array([True, False, True]), np.array([False, True, False])),
+        )
+        np.testing.assert_allclose(nom, [TIGHT3[0], BAND3[0], TIGHT3[0]])
+        np.testing.assert_allclose(up, [TIGHT3[1], BAND3[1], TIGHT3[1]])
+
+    def test_merge_flags_required_for_fully_merged_tables(self):
+        manager = Run3WeightManager(iov="2025", systematics=["ttag_pt1"], no_syst=False, deepak8_cut="tight")
+        with self.assertRaisesRegex(ValueError, "fully merged"):
+            manager._add_ttag_pt_weights(Weights(1), _jets([450.0]), _jets([450.0]),
+                                         np.array([True]), np.array([False]))
+
+    def test_run2_tables_ignore_merge_flags(self):
+        _, up, _ = self._variations("2018", [1500.0], [1500.0], [True], [False],
+                                    merged=(np.array([False]), np.array([False])))
+        np.testing.assert_allclose(up, [1.01**2])
 
     def test_unmeasured_wp_raises(self):
         manager = Run3WeightManager(iov="2024", systematics=["ttag_pt1"], no_syst=False, deepak8_cut="medium")
@@ -64,6 +89,38 @@ class TopTagSFWeightsTest(unittest.TestCase):
         # 2018 tight, pT bin 3: nominal 0.93, up 1.01
         _, up, _ = self._variations("2018", [1500.0], [1500.0], [True], [False])
         np.testing.assert_allclose(up, [1.01**2])
+
+
+def _genparts(events):
+    """events: list of [(pdgId, mother index, eta, phi), ...]"""
+    return ak.Array([
+        [{"pdgId": p, "genPartIdxMother": m, "eta": eta, "phi": phi} for p, m, eta, phi in ev]
+        for ev in events
+    ])
+
+
+class TopMergeCategoryTest(unittest.TestCase):
+    # t (0) -> b (1) + W (2) -> q (3) q' (4); the jet axis is at eta = phi = 0
+    def _event(self, b, q1, q2):
+        return [(6, -1, 0.0, 0.0), (5, 0, *b), (24, 0, 0.0, 0.0), (1, 2, *q1), (-2, 2, *q2)]
+
+    def test_categories_match_the_tp_definition(self):
+        inside, outside = (0.3, 0.3), (1.5, 0.0)
+        gp = _genparts([
+            self._event(inside, inside, (0.1, -0.5)),   # all three in
+            self._event(outside, inside, inside),       # W only
+            self._event(inside, inside, outside),       # b + one W quark
+            self._event(inside, outside, outside),      # b only
+            [(21, -1, 0.0, 0.0), (1, 0, 0.0, 0.0)],     # QCD: gluon -> quark, no top
+        ])
+        cat = top_merge_category(gp, np.zeros(5), np.zeros(5))
+        np.testing.assert_array_equal(cat, [MERGE_FULL, MERGE_W, MERGE_SEMI, MERGE_NOT, MERGE_NOT])
+
+    def test_phi_wraps_around(self):
+        near_pi = (0.0, np.pi - 0.1)
+        gp = _genparts([self._event(near_pi, near_pi, near_pi)])
+        cat = top_merge_category(gp, np.zeros(1), np.array([-np.pi + 0.1]))
+        np.testing.assert_array_equal(cat, [MERGE_FULL])
 
 
 if __name__ == "__main__":

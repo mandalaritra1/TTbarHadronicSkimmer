@@ -247,6 +247,42 @@ def build_top_aligned_genjetak8_match_info(
     }
 
 
+# Gen merge categories of an AK8 jet, as in the top-tag T&P (toptag-sf-derivation
+# production/toptag_sf_processor.py, CMS DP-2025/010): quark inside if dR(quark, jet) < 0.8.
+MERGE_NOT = 0    # <= 1 quark, or only the b, or only one W quark
+MERGE_SEMI = 1   # b + one W quark
+MERGE_W = 2      # both W quarks, b outside
+MERGE_FULL = 3   # b + both W quarks
+
+
+def top_merge_category(genparts, jet_eta, jet_phi, dr_merge=0.8):
+    """Per-event gen merge category (int8) of one reco jet per event.
+
+    Same definition as the T&P that measured the top-tag SFs: b quarks whose direct
+    mother is a top and light quarks whose direct mother is a W (first copies), counted
+    within dr_merge of the jet axis. Events without tops (QCD) are MERGE_NOT.
+    """
+    pdg = abs(genparts.pdgId)
+    mother = genparts.genPartIdxMother
+    has_mother = mother >= 0
+    mom_pdg = abs(pdg[ak.where(has_mother, mother, 0)])
+    b_quarks = genparts[(pdg == 5) & (mom_pdg == 6) & has_mother]
+    w_quarks = genparts[(pdg >= 1) & (pdg <= 5) & (mom_pdg == 24) & has_mother]
+
+    def n_inside(quarks):
+        dphi = (quarks.phi - jet_phi + np.pi) % (2 * np.pi) - np.pi
+        dr2 = (quarks.eta - jet_eta) ** 2 + dphi ** 2
+        return ak.to_numpy(ak.sum(dr2 < dr_merge ** 2, axis=1))
+
+    b_in = n_inside(b_quarks) >= 1
+    nwq = n_inside(w_quarks)
+    cat = np.full(len(b_in), MERGE_NOT, dtype=np.int8)
+    cat[(nwq >= 1) & b_in] = MERGE_SEMI
+    cat[(nwq >= 2) & ~b_in] = MERGE_W
+    cat[(nwq >= 2) & b_in] = MERGE_FULL
+    return cat
+
+
 # Working-point thresholds used in the diagnostic verbose block of truthstudy_counts.
 # These are for exploration only — not used in any analysis selection.
 _BTAG_WP = 0.5   # DeepFlavB medium WP

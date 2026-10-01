@@ -5,11 +5,9 @@ This is an active CMS analysis code repository. You may edit this repository whe
 For analysis context, first read:
 
 - `/Users/aritra/Projects/ai-wiki/AGENTS.md`
-- `/Users/aritra/Projects/ai-wiki/wiki/meta/index.md`
+- the repo-specific wiki card at `/Users/aritra/Projects/ai-wiki/wiki/repos/ttbarhadronic_skimmer.md`
 
-Then open the repo-specific wiki card:
-
-- `/Users/aritra/Projects/ai-wiki/wiki/repos/ttbarhadronic_skimmer.md`
+Consult `/Users/aritra/Projects/ai-wiki/wiki/meta/index.md` only when the repo card does not provide enough context or additional wiki pages need to be located.
 
 Treat `/Users/aritra/Projects/ai-wiki` as the compiled knowledge base. When a code change creates durable analysis knowledge, changes workflow behavior, fixes a reusable bug, or changes project status, you may edit `/Users/aritra/Projects/ai-wiki` to update the relevant repo, topic, bug, project, synthesis, or question pages.
 

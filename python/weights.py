@@ -6,6 +6,7 @@ import numpy as np
 from coffea.analysis_tools import Weights
 
 from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, pTReweighting
+from truthstudy import MERGE_FULL, top_merge_category
 
 # Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.1 is the table that
 # was hard-coded here up to v1.1; v1.2 has the 2024 SFs re-measured on the v1.2 objects.
@@ -60,17 +61,33 @@ class Run3WeightManager:
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
         if "ttag_pt1" in self.systematics:
-            self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag)
+            merged = None
+            if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
+                merged = tuple(
+                    top_merge_category(events.GenPart, ak.to_numpy(j.p4.eta), ak.to_numpy(j.p4.phi)) == MERGE_FULL
+                    for j in (jet0, jet1)
+                )
+            self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
 
         return weights
 
-    def _add_ttag_pt_weights(self, weights, jet0, jet1, ttag2, antitag):
+    def _add_ttag_pt_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
         table = self.ttag_sf["iovs"][self.iov]
         if self.deepak8_cut not in table["wps"]:
             raise KeyError(f"top-tag SF table {self.ttag_sf['version']} has no '{self.deepak8_cut}' "
                            f"WP for {self.iov} (have {sorted(table['wps'])})")
         wp = table["wps"][self.deepak8_cut]
         ptbins = self.ttag_sf["pt_edges"]
+
+        # The T&P measured the SFs for fully merged tops only (other merge categories fixed
+        # to MC), so with applies_to = fully_merged every other jet keeps SF 1.
+        if table.get("applies_to", "all") == "fully_merged":
+            if merged is None:
+                raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
+                                 "pass the per-jet gen merge flags")
+            merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
+        else:
+            merged0 = merged1 = True
 
         # Extrapolation: the T&P data run out at pt_measured_max, so jets beyond it get
         # the top-bin SF with its uncertainty doubled (same nuisance). null = no doubling
@@ -95,9 +112,9 @@ class Run3WeightManager:
 
         for ibin in range(1, 4):
             nom, up, down = (
-                jet_sf(jet0_ptbins, jet0_k, ibin, nomsf, var)
-                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf, var, ttag2)
-                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag)
+                jet_sf(jet0_ptbins, jet0_k, ibin, nomsf, var, merged0)
+                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf, var, ttag2 & merged1)
+                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag & merged1)
                 for var, var_fail in ((nomsf, nomsf_fail), (upsf, upsf_fail), (downsf, downsf_fail))
             )
             weights.add(f"ttag_pt{ibin}", weight=nom, weightUp=up, weightDown=down)

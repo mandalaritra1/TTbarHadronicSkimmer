@@ -1,6 +1,6 @@
 {
  "version": "v1.2",
- "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling).",
+ "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment).",
  "pt_edges": [
   0,
   400,
@@ -18,6 +18,7 @@
   "2016": {
    "source": "Run-2 top-tag SFs (legacy table)",
    "pt_measured_max": null,
+   "applies_to": "all",
    "wps": {
     "tight": {
      "tag": {
@@ -150,6 +151,7 @@
   "2016APV": {
    "source": "Run-2 top-tag SFs (legacy table)",
    "pt_measured_max": null,
+   "applies_to": "all",
    "wps": {
     "tight": {
      "tag": {
@@ -282,6 +284,7 @@
   "2017": {
    "source": "Run-2 top-tag SFs (legacy table)",
    "pt_measured_max": null,
+   "applies_to": "all",
    "wps": {
     "tight": {
      "tag": {
@@ -414,6 +417,7 @@
   "2018": {
    "source": "Run-2 top-tag SFs (legacy table)",
    "pt_measured_max": null,
+   "applies_to": "all",
    "wps": {
     "tight": {
      "tag": {
@@ -549,6 +553,7 @@
    "tp_result": "results/outputs/ntuples_2024_v12_fits/band_final_s998.json",
    "tp_result_sha256": "edc0fdeb60703376836eb67166a8d36923ef1d4d206f555ca6120d207e8dd094",
    "pt_measured_max": 1200.0,
+   "applies_to": "fully_merged",
    "thresholds": {
     "tag": 0.9284,
     "antitag_low": 0.8571
