@@ -151,6 +151,10 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--mass', action='append', default=[])
     parser.add_argument('--subsample', action='append', default=[],
                         help='run specific manifest subsection(s), e.g. --subsample QCD_PT-1000to1500')
+    parser.add_argument('--manifest', default=None,
+                        help='read the file lists from this JSON instead of the default '
+                             'data/nanoAOD/<dataset>.json (one --dataset only), e.g. the '
+                             'private 2022/2023 re-NANO signal: data/nanoAOD/ZPrime1_renano.json')
 
     # analysis options
     parser.add_argument('--blind',    action='store_true', help='process 1/10th of the data')
@@ -179,6 +183,10 @@ if __name__ == "__main__":
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
     parser.add_argument('--ht',       choices=['1400', '950'], default='1400')
     parser.add_argument('--noSyst',   action='store_true', help='run without systematics')
+    parser.add_argument('--weights-only', action='store_true',
+                        help='keep the weight systematics (so the nominal carries pileup, top-tag '
+                             'SF, ... exactly as in production) but skip the jet-variation passes '
+                             '(jes, jer, jms, jmr): fast nominal-level comparisons')
     parser.add_argument('--ntuple',   action='store_true', help='collect flat ntuple in output')
     parser.add_argument('--event-list', action='store_true',
                         help='store run/lumi/event after the ttbar-candidate cuts (debugging; off by default)')
@@ -209,6 +217,8 @@ if __name__ == "__main__":
 
     ##### parameters #####
     samples           = args.dataset
+    if args.manifest and len(samples) != 1:
+        parser.error('--manifest replaces one dataset\'s file lists: pass exactly one --dataset')
     IOV               = args.iov
     useDeepAK8        = args.toptagger in ('topvsqcd', 'recomb')
     useDeepCSV        = args.btagger == 'deepcsv'
@@ -229,6 +239,8 @@ if __name__ == "__main__":
         systematics.append('prefiring')
     if args.bkgest == '2dalphabet':
         systematics.append('transferFunction')
+    if args.weights_only:
+        systematics = [s for s in systematics if s not in ('jes', 'jer', 'jms', 'jmr')]
 
     ##### analysis categories #####
     ttagcats = ["at", "2t"]
@@ -295,7 +307,7 @@ if __name__ == "__main__":
 
     for sample in samples:
         skipbadfiles = False
-        inputfile = jsonfiles[sample]
+        inputfile = args.manifest or jsonfiles[sample]
 
         with open(inputfile) as json_file:
             subsections = args.era + args.mass + args.pt + args.subsample
@@ -398,6 +410,8 @@ if __name__ == "__main__":
                     savefilename = savefilename.replace('.coffea', '_blind.coffea')
                 if args.noSyst:
                     savefilename = savefilename.replace('.coffea', '_noSyst.coffea')
+                elif args.weights_only:
+                    savefilename = savefilename.replace('.coffea', '_weightsOnly.coffea')
                 if args.ntuple:
                     savefilename = savefilename.replace('.coffea', '_ntuple.coffea')
                 if args.test:
