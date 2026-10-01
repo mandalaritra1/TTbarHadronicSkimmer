@@ -111,11 +111,17 @@ CUTFLOW_LABEL = {"trigger": "Trigger", "htCut": r"$H_T$", "metfilter": "MET filt
 
 
 def conditional_cutflow(out):
-    """{step: step/previous} from the weighted cutflow; None unless the output holds one dataset."""
+    """{step: (step/previous, binomial stat. error)} from the weighted cutflow, the error from the
+    unweighted counts; None unless the output holds one dataset."""
     if len(out["normalization"]) != 1:
         return None
-    cw = out["cutflow_weighted"]
-    return {k: (cw.get(k, 0.0) / cw[d] if cw.get(d) else np.nan) for k, d in CUTFLOW_CHAIN}
+    cw, cu = out["cutflow_weighted"], out["cutflow_unweighted"]
+    res = {}
+    for k, d in CUTFLOW_CHAIN:
+        p = cw.get(k, 0.0) / cw[d] if cw.get(d) else np.nan
+        n = cu.get(d, 0)
+        res[k] = (p, np.sqrt(p * (1 - p) / n) if n else np.nan)
+    return res
 
 
 def plot_cutflow(entries, mass, width, iovs, outdir, inputs_tag):
@@ -131,8 +137,9 @@ def plot_cutflow(entries, mass, width, iovs, outdir, inputs_tag):
     for i, iov in enumerate(iovs):
         if iov == REF_IOV:
             continue
-        r = np.array([flows[iov][s] / ref[s] for s in steps])
-        ax.plot(x, r, marker="o", ms=9, lw=2, color=PETROFF_6[i % len(PETROFF_6)], label=IOV_LABEL[iov])
+        r = np.array([flows[iov][s][0] / ref[s][0] for s in steps])
+        re = r * np.array([np.hypot(flows[iov][s][1] / flows[iov][s][0], ref[s][1] / ref[s][0]) for s in steps])
+        ax.errorbar(x, r, yerr=re, marker="o", ms=9, lw=2, capsize=4, color=PETROFF_6[i % len(PETROFF_6)], label=IOV_LABEL[iov])
         lo, hi = min(lo, np.nanmin(r)), max(hi, np.nanmax(r))
     ax.axhline(1, color="black", lw=1.5)
     ax.set_xticks(x, [CUTFLOW_LABEL[s] for s in steps], rotation=45, ha="right")
@@ -290,18 +297,23 @@ def main():
         w.writeheader(); w.writerows(rows)
     with open(os.path.join(args.outdir, "efficiency.md"), "w") as f:
         f.write("| M (GeV) | IOV | gen events (sumw) | eff 2t | eff at | 2t / 2024 | at / 2024 |\n|---|---|---|---|---|---|---|\n")
+        def ratio(r, ref, g):
+            q = r[f"eff_{g}"] / ref[f"eff_{g}"]
+            return q, q * np.hypot(r[f"err_{g}"] / r[f"eff_{g}"], ref[f"err_{g}"] / ref[f"eff_{g}"])
         for mass in sorted({r["mass"] for r in rows}):
             ref = next(r for r in rows if r["mass"] == mass and r["iov"] == REF_IOV)
             for r in (r for r in rows if r["mass"] == mass):
                 f.write(f"| {mass} | {IOV_LABEL[r['iov']]} | {r['sumw_raw']:.0f} | {r['eff_2t']:.4f} ± {r['err_2t']:.4f} | "
-                        f"{r['eff_at']:.4f} ± {r['err_at']:.4f} | {r['eff_2t'] / ref['eff_2t']:.3f} | {r['eff_at'] / ref['eff_at']:.3f} |\n")
+                        f"{r['eff_at']:.4f} ± {r['err_at']:.4f} | " + ("1 (ref.) | 1 (ref.) |\n" if r is ref else
+                        f"{ratio(r, ref, '2t')[0]:.3f} ± {ratio(r, ref, '2t')[1]:.3f} | "
+                        f"{ratio(r, ref, 'at')[0]:.3f} ± {ratio(r, ref, 'at')[1]:.3f} |\n"))
     if cutflow_rows:
         with open(os.path.join(args.outdir, "cutflow.md"), "w") as f:
             for mass, iovs, flows in cutflow_rows:
                 f.write(f"\n### M = {mass} GeV: conditional step efficiency (step / previous step)\n\n")
                 f.write("| step | " + " | ".join(IOV_LABEL[i] for i in iovs) + " |\n|---|" + "---|" * len(iovs) + "\n")
                 for step, _ in CUTFLOW_CHAIN:
-                    f.write(f"| {step} | " + " | ".join(f"{flows[i][step]:.3f}" for i in iovs) + " |\n")
+                    f.write(f"| {step} | " + " | ".join(f"{flows[i][step][0]:.4f} ± {flows[i][step][1]:.4f}" for i in iovs) + " |\n")
         print(open(os.path.join(args.outdir, "cutflow.md")).read())
     print(open(os.path.join(args.outdir, "efficiency.md")).read())
 
