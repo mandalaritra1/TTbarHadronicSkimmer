@@ -58,8 +58,14 @@ _JSONPOG_JETVETO_DIR = {
 }
 
 _JSONPOG_JETID_DIR = {
-    # NanoAODv15 (2024 and 2025 PromptReco) does not carry Jet_jetId, so
-    # evaluate the official Run-3 TightLepVeto recipe from its correction JSON.
+    # NanoAODv15 does not carry Jet_jetId, so evaluate the official Run-3
+    # TightLepVeto recipe from its correction JSON. The 2022/2023 payloads
+    # (cms-analysis-corrections Run3-22*/23*Sep23, for the v15 re-NANO of those
+    # campaigns) are byte-identical to the 2024 one.
+    "2022preEE":    "2022_Summer22",
+    "2022postEE":   "2022_Summer22EE",
+    "2023preBPix":  "2023_Summer23",
+    "2023postBPix": "2023_Summer23BPix",
     "2024": "2024_Summer24",
     "2025": "2025_Summer24Prompt25",
 }
