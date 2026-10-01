@@ -70,11 +70,12 @@ def _copy_to_xrootd(local_path, remote_path):
     server, remote_dir = _xrootd_parent(remote_path)
     subprocess.run(["xrdfs", server, "mkdir", "-p", remote_dir], check=True)
     subprocess.run(["xrdcp", "-f", local_path, remote_path], check=True)
-from hists import build_output_histograms, ntuple_columns_for_preset
+from hists import GLOPART_HEADS, build_output_histograms, ntuple_columns_for_preset
 from weights import Run3WeightManager
 from lumi import LUMI_PB
 import glopart_recomb as gr
 from truthstudy import truthstudy_counts, build_gen_top_match_info, build_top_aligned_genjetak8_match_info
+from truthstudy import top_merge_category, w_lepton_in_jet
 
 
 logger = logging.getLogger('__main__')
@@ -442,6 +443,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         jetpt, jeteta, jetphi, jetmsd, tdisc_s0,
         jetpt1, jeteta1, jetphi1, jetmsd1, tdisc_s1,
         ttbarmass, ht, rapidity, chi, jety, jety1, evtweights,
+        extra=None, row_mask=None,
     ):
         """Accumulate flat ntuple columns for all selected events."""
         branches = self._build_ntuple_branches(
@@ -449,6 +451,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             jetpt, jeteta, jetphi, jetmsd, tdisc_s0,
             jetpt1, jeteta1, jetphi1, jetmsd1, tdisc_s1,
             ttbarmass, ht, rapidity, chi, jety, jety1, evtweights,
+            extra=extra, row_mask=row_mask,
         )
 
         for name, values in branches.items():
@@ -459,8 +462,13 @@ class TTbarResProcessor(processor.ProcessorABC):
         jetpt, jeteta, jetphi, jetmsd, tdisc_s0,
         jetpt1, jeteta1, jetphi1, jetmsd1, tdisc_s1,
         ttbarmass, ht, rapidity, chi, jety, jety1, evtweights,
+        extra=None, row_mask=None,
     ):
-        """Build flat ntuple arrays for the selected nominal chunk."""
+        """Build flat ntuple arrays for the selected nominal chunk.
+
+        extra: additional per-event columns (e.g. _lepstudy_columns); row_mask: keep
+        only these events.
+        """
         anacat_arr = np.full(len(events), -1, dtype=np.int64)
         for _i, (_lbl, _mask) in enumerate(labels_and_categories.items()):
             anacat_arr[ak.to_numpy(_mask)] = _i
@@ -491,7 +499,54 @@ class TTbarResProcessor(processor.ProcessorABC):
             "lumi":          _col(events.luminosityBlock, dtype=np.int64),
             "event":         _col(events.event, dtype=np.int64),
         }
-        return {name: branches[name] for name in self.ntuple_columns}
+        branches.update(extra or {})
+        branches = {name: branches[name] for name in self.ntuple_columns}
+        if row_mask is not None:
+            branches = {name: values[row_mask] for name, values in branches.items()}
+        return branches
+
+    def _lepstudy_columns(self, events, jet0, jet1, weight_nominal, is_data, ttag_s0, antitag):
+        """Columns of the 'lepstudy' ntuple preset, and the rows to keep.
+
+        Per jet: the GloParTv3 heads (the leptonic-top classes the tagger score ignores)
+        and, in MC, the gen merge category and W-lepton flavour. Per event: the two
+        leading loose muons and veto electrons (for a lepton veto) and the full nominal
+        weight. MC keeps events with a tight-tagged jet0 (Pass, Fail and single-tag);
+        data keep only the antitag (Fail) region, so no Pass-region data are stored.
+        """
+        n = len(events)
+        cols = {"weight_nominal": np.asarray(weight_nominal, dtype=np.float32)}
+        for j, jet in ((0, jet0), (1, jet1)):
+            for head in GLOPART_HEADS:
+                cols[f"jet{j}_{head}"] = ak.to_numpy(jet[f"globalParT3_{head}"]).astype(np.float32)
+            if is_data:
+                cols[f"jet{j}_mergecat"] = np.full(n, -1, dtype=np.int64)
+                cols[f"jet{j}_wlep"] = np.full(n, -1, dtype=np.int64)
+            else:
+                eta, phi = ak.to_numpy(jet.p4.eta), ak.to_numpy(jet.p4.phi)
+                cols[f"jet{j}_mergecat"] = top_merge_category(events.GenPart, eta, phi).astype(np.int64)
+                cols[f"jet{j}_wlep"] = w_lepton_in_jet(events.GenPart, eta, phi).astype(np.int64)
+
+        mu = events.Muon
+        mu = mu[(mu.pt > 20) & (np.abs(mu.eta) < 2.4) & mu.looseId]
+        mu = mu[ak.argsort(mu.pt, ascending=False)]
+        # id bits: 1 loose, 2 medium, 4 tight, 8 global high-pT
+        mu_id = mu.looseId * 1 + mu.mediumId * 2 + mu.tightId * 4 + (mu.highPtId == 2) * 8
+        el = events.Electron
+        el = el[(el.pt > 20) & (np.abs(el.eta) < 2.5) & (el.cutBased >= 1)]
+        el = el[ak.argsort(el.pt, ascending=False)]
+        # id: cutBased (1 veto .. 4 tight) + 8 mvaIso WP90 + 16 HEEP
+        el_id = el.cutBased + el.mvaIso_WP90 * 8 + el.cutBased_HEEP * 16
+        for name, leps, ids in (("mu", mu, mu_id), ("el", el, el_id)):
+            leps, ids = ak.pad_none(leps, 2, axis=1), ak.pad_none(ids, 2, axis=1)
+            for i in (0, 1):
+                for col, field in (("pt", "pt"), ("eta", "eta"), ("miniiso", "miniPFRelIso_all")):
+                    cols[f"{name}{i}_{col}"] = ak.to_numpy(
+                        ak.fill_none(leps[field][:, i], -1.0)).astype(np.float32)
+                cols[f"{name}{i}_id"] = ak.to_numpy(ak.fill_none(ids[:, i], 0)).astype(np.int64)
+
+        row_mask = ak.to_numpy(antitag if is_data else ttag_s0).astype(bool)
+        return cols, row_mask
 
     def _write_ntuple_chunk(self, events, labels_and_categories, *branch_args):
         """Write this nominal chunk to a small ROOT file and return its path."""
@@ -1072,11 +1127,18 @@ class TTbarResProcessor(processor.ProcessorABC):
 
         # --- flat ntuple output ---
         if isNominal and self.store_ntuple_accumulator:
+            extra, row_mask = None, None
+            if "jet0_TopbWev" in self.ntuple_columns:
+                extra, row_mask = self._lepstudy_columns(
+                    events, jet0, jet1, self.weights[correction].weight(), isData,
+                    ttag_s0, antitag,
+                )
             self._fill_ntuple(
                 output, correction, events, labels_and_categories,
                 jetpt, jeteta, jetphi, jetmsd, tdisc_s0,
                 jetpt1, jeteta1, jetphi1, jetmsd1, tdisc_s1,
                 ttbarmass, ht, rapidity, chi, jety, jety1, evtweights,
+                extra=extra, row_mask=row_mask,
             )
         elif isNominal and self.write_ntuple_chunks:
             chunk_path = self._write_ntuple_chunk(
@@ -1373,9 +1435,9 @@ class TTbarResProcessor(processor.ProcessorABC):
                 if isinstance(value, hist.Hist):
                     accumulator[key] = value * scale_factor
 
-            if 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
-                scaled_weight = (accumulator['ntuple']['weight'].value * scale_factor).astype(np.float32)
-                accumulator['ntuple']['weight'] = processor.column_accumulator(scaled_weight)
+            for col in [c for c in accumulator.get('ntuple', {}) if c.startswith('weight')]:
+                scaled_weight = (accumulator['ntuple'][col].value * scale_factor).astype(np.float32)
+                accumulator['ntuple'][col] = processor.column_accumulator(scaled_weight)
 
         theory_factors = self._theory_norm_factors(accumulator, 'all') if is_mc else {}
         self._apply_theory_norm(accumulator, 'all', theory_factors)
@@ -1442,11 +1504,12 @@ class TTbarResProcessor(processor.ProcessorABC):
         accumulator['theory_norm'] = theory_by_dataset
 
         # ntuple weights can only be scaled for a single-dataset (one-mass) grouped run
-        if len(datasets) == 1 and 'ntuple' in accumulator and 'weight' in accumulator['ntuple']:
+        if len(datasets) == 1 and 'ntuple' in accumulator:
             sf0 = factors.get(datasets[0], 1.0)
-            if sf0 != 1.0:
-                scaled_weight = (accumulator['ntuple']['weight'].value * sf0).astype(np.float32)
-                accumulator['ntuple']['weight'] = processor.column_accumulator(scaled_weight)
+            for col in [c for c in accumulator['ntuple'] if c.startswith('weight')]:
+                if sf0 != 1.0:
+                    scaled_weight = (accumulator['ntuple'][col].value * sf0).astype(np.float32)
+                    accumulator['ntuple'][col] = processor.column_accumulator(scaled_weight)
 
         accumulator['sample_metadata'] = meta_by_dataset
         accumulator['normalization'] = norm_by_dataset

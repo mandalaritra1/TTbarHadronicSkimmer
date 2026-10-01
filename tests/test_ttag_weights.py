@@ -10,6 +10,8 @@ from coffea.analysis_tools import Weights
 sys.path.append(os.path.join(os.getcwd(), "python"))
 import weights
 from truthstudy import MERGE_FULL, MERGE_NOT, MERGE_SEMI, MERGE_W, top_merge_category
+from truthstudy import (WLEP_E, WLEP_MU, WLEP_NONE, WLEP_TAUE, WLEP_TAUH, WLEP_TAUMU,
+                        w_lepton_in_jet)
 from weights import Run3WeightManager, load_ttag_sf
 
 
@@ -151,6 +153,31 @@ class TopMergeCategoryTest(unittest.TestCase):
         gp = _genparts([self._event(near_pi, near_pi, near_pi)])
         cat = top_merge_category(gp, np.zeros(1), np.array([-np.pi + 0.1]))
         np.testing.assert_array_equal(cat, [MERGE_FULL])
+
+
+
+class WLeptonInJetTest(unittest.TestCase):
+    # t (0) -> b (1) + W (2) -> lepton (3) + neutrino (4); jet axis at eta = phi = 0
+    def _event(self, lep_pdg, lep, extra=()):
+        return [(6, -1, 0.0, 0.0), (5, 0, 0.1, 0.1), (24, 0, 0.0, 0.0),
+                (lep_pdg, 2, *lep), (-(abs(lep_pdg) + 1), 2, 0.2, 0.2), *extra]
+
+    def test_flavour_codes(self):
+        inside, outside = (0.3, 0.3), (1.5, 0.0)
+        gp = _genparts([
+            self._event(11, inside),
+            self._event(-13, inside),
+            self._event(15, inside),                              # tau -> hadrons
+            self._event(15, inside, [(11, 3, 0.35, 0.3)]),        # tau -> e
+            self._event(-15, inside, [(-13, 3, 0.35, 0.3)]),      # tau -> mu
+            self._event(13, outside),                             # lepton outside the jet
+            [(6, -1, 0.0, 0.0), (5, 0, 0.1, 0.1), (24, 0, 0.0, 0.0),
+             (1, 2, 0.2, 0.2), (-2, 2, -0.2, 0.1)],               # hadronic top
+            [(21, -1, 0.0, 0.0), (13, 0, 0.1, 0.1)],              # QCD muon, not from a W
+        ])
+        code = w_lepton_in_jet(gp, np.zeros(8), np.zeros(8))
+        np.testing.assert_array_equal(code, [WLEP_E, WLEP_MU, WLEP_TAUH, WLEP_TAUE, WLEP_TAUMU,
+                                             WLEP_NONE, WLEP_NONE, WLEP_NONE])
 
 
 if __name__ == "__main__":

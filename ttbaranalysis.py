@@ -188,6 +188,9 @@ if __name__ == "__main__":
                              'SF, ... exactly as in production) but skip the jet-variation passes '
                              '(jes, jer, jms, jmr): fast nominal-level comparisons')
     parser.add_argument('--ntuple',   action='store_true', help='collect flat ntuple in output')
+    parser.add_argument('--ntuple-columns', default='full', choices=['full', 'slim', 'lepstudy'],
+                        help="ntuple column preset; 'lepstudy' adds GloParTv3 heads, gen labels and "
+                             "leptons for the leptonic-top study (implies --ntuple)")
     parser.add_argument('--event-list', action='store_true',
                         help='store run/lumi/event after the ttbar-candidate cuts (debugging; off by default)')
 
@@ -412,8 +415,9 @@ if __name__ == "__main__":
                     savefilename = savefilename.replace('.coffea', '_noSyst.coffea')
                 elif args.weights_only:
                     savefilename = savefilename.replace('.coffea', '_weightsOnly.coffea')
-                if args.ntuple:
-                    savefilename = savefilename.replace('.coffea', '_ntuple.coffea')
+                if args.ntuple or args.ntuple_columns != 'full':
+                    suffix = '_ntuple' if args.ntuple_columns == 'full' else f'_ntuple_{args.ntuple_columns}'
+                    savefilename = savefilename.replace('.coffea', f'{suffix}.coffea')
                 if args.test:
                     savefilename = savefilename.replace('.coffea', '_test.coffea')
 
@@ -436,7 +440,8 @@ if __name__ == "__main__":
                     anacats=anacats,
                     systematics=systematics,
                     blinding=args.blind,
-                    produce_ntuple=args.ntuple,
+                    produce_ntuple=args.ntuple or args.ntuple_columns != 'full',
+                    ntuple_columns=args.ntuple_columns,
                     store_event_list=args.event_list,
                     sample_metadata=rep_meta,
                     dataset_metadata=dataset_metadata,

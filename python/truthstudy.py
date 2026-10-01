@@ -283,6 +283,43 @@ def top_merge_category(genparts, jet_eta, jet_phi, dr_merge=0.8):
     return cat
 
 
+# flavour code of a W-decay lepton inside a jet (w_lepton_in_jet)
+WLEP_NONE, WLEP_E, WLEP_MU, WLEP_TAUH, WLEP_TAUE, WLEP_TAUMU = 0, 11, 13, 15, 1511, 1513
+
+
+def w_lepton_in_jet(genparts, jet_eta, jet_phi, dr=0.8):
+    """Per-event flavour code (int16) of a W-decay charged lepton inside one reco jet.
+
+    Flags leptonic tops whose lepton lies within dr of the jet axis -- the jets that
+    GloParTv3's TopbWev / TopbWmv / TopbWtauhv classes describe. Leptons whose direct
+    mother is a W (first copies); a tau is split by whether a direct e/mu daughter is
+    also inside. WLEP_NONE for hadronic tops, QCD, or a lepton outside the jet.
+    """
+    pdg = abs(genparts.pdgId)
+    mother = genparts.genPartIdxMother
+    has_mother = mother >= 0
+    mom_pdg = abs(pdg[ak.where(has_mother, mother, 0)])
+
+    def any_inside(mask):
+        parts = genparts[mask]
+        dphi = (parts.phi - jet_phi + np.pi) % (2 * np.pi) - np.pi
+        dr2 = (parts.eta - jet_eta) ** 2 + dphi ** 2
+        return ak.to_numpy(ak.any(dr2 < dr ** 2, axis=1))
+
+    from_w = has_mother & (mom_pdg == 24)
+    from_tau = has_mother & (mom_pdg == 15)
+    is_e = any_inside(from_w & (pdg == 11))
+    is_mu = any_inside(from_w & (pdg == 13))
+    is_tau = any_inside(from_w & (pdg == 15))
+    code = np.full(len(is_e), WLEP_NONE, dtype=np.int16)
+    code[is_tau] = WLEP_TAUH
+    code[is_tau & any_inside(from_tau & (pdg == 11))] = WLEP_TAUE
+    code[is_tau & any_inside(from_tau & (pdg == 13))] = WLEP_TAUMU
+    code[is_mu] = WLEP_MU
+    code[is_e] = WLEP_E
+    return code
+
+
 # Working-point thresholds used in the diagnostic verbose block of truthstudy_counts.
 # These are for exploration only — not used in any analysis selection.
 _BTAG_WP = 0.5   # DeepFlavB medium WP

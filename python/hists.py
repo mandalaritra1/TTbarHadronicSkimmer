@@ -183,9 +183,22 @@ _NTUPLE_FLOAT_COLS = [
     "jet0_rapidity", "jet1_rapidity",
 ]
 _NTUPLE_INT_COLS = ["anacat", "run", "lumi", "event"]
+# leptonic-top study: GloParTv3 heads and gen labels per jet, the two leading
+# loose muons / veto electrons, and the full nominal event weight
+GLOPART_HEADS = ["QCD", "TopbWqq", "TopbWq", "TopbWev", "TopbWmv", "TopbWtauhv"]
+_LEPSTUDY_FLOAT_COLS = (
+    [f"jet{j}_{h}" for j in (0, 1) for h in GLOPART_HEADS]
+    + [f"{lep}{i}_{v}" for lep in ("mu", "el") for i in (0, 1) for v in ("pt", "eta", "miniiso")]
+    + ["weight_nominal"]
+)
+_LEPSTUDY_INT_COLS = [
+    "jet0_mergecat", "jet1_mergecat", "jet0_wlep", "jet1_wlep",
+    "mu0_id", "mu1_id", "el0_id", "el1_id",
+]
 _NTUPLE_COLUMN_PRESETS = {
     "full": _NTUPLE_FLOAT_COLS + _NTUPLE_INT_COLS,
     "slim": ["ttbarmass", "jet0_msd", "jet1_msd", "dy", "chi", "weight", "anacat"],
+    "lepstudy": _NTUPLE_FLOAT_COLS + _NTUPLE_INT_COLS + _LEPSTUDY_FLOAT_COLS + _LEPSTUDY_INT_COLS,
 }
 
 
@@ -203,13 +216,13 @@ def build_ntuple_accumulators(ntuple_columns="full"):
     acc = {
         col: processor.column_accumulator(np.array([], dtype=np.float32))
         for col in columns
-        if col in _NTUPLE_FLOAT_COLS
+        if col in _NTUPLE_FLOAT_COLS or col in _LEPSTUDY_FLOAT_COLS
     }
     acc.update(
         {
             col: processor.column_accumulator(np.array([], dtype=np.int64))
             for col in columns
-            if col in _NTUPLE_INT_COLS
+            if col in _NTUPLE_INT_COLS or col in _LEPSTUDY_INT_COLS
         }
     )
     return processor.dict_accumulator(acc)
