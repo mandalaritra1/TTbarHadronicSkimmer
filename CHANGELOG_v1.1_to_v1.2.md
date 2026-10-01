@@ -47,6 +47,7 @@ Last updated: 2026-09-24 (round 4)
 | 28 | Streaming executor recovered; jupytext pairing removed; 2DAlphabet key-name test | Done | `3087246`, `7c671e5`, `a18967b` | Repo | None; unknown `make2Drootfiles --categories` now raise |
 | 29 | Top-tag SF tables → versioned JSON (`data/toptag/ttag_sf_<version>.json`) | Done | `3d16500` | MC | None by itself: `ttag_sf_v1.1.json` is the old table exactly; v1.2 numbers are item 7. An unmeasured WP now raises |
 | 30 | Stale T&P copy removed (`toptag_sf_processor.py`, runners, cut-and-count, 7 files) | Done | `3d16500` | Repo | None; the live code is `toptag-sf-derivation` |
+| 31 | Top-tag SFs (tag and band) only on jets gen-matched as fully merged tops (b + both W quarks within ΔR 0.8, the T&P definition); other jets SF 1 (`applies_to` in the SF JSON; Run-2 tables unchanged) | Done (post-v1.2) | `e975cdc` | tt̄ + signal MC, 2024/2025 | TTto4Q (4 files, low stats): Fail cen −4%, fwd −1%; 2t +7%. Non-fully-merged jets carry no top-tag uncertainty yet (open) |
 
 **v1.2 production (started 2026-09-24 16:49 CDT, LPC condor; casa unavailable).** Tag `v1.2`
 (`086354a`), clean clone `~/nobackup/TTbarHadronicSkimmer_v12` on cmslpc303, coffea
@@ -64,6 +65,10 @@ batches lost four workers each while receiving the pickled processor (the chunk 
 runs in 27 s / 1.1 GB). 2025 MC = 2024 × 1.003820 (`scale_iov`). Fit inputs
 `outputs/twodalphabet_tight{24,25}_v1.2/` (59 files each, same list as v1; 100 keys per MC
 file with JMS/JMR/ISR/FSR/TTAG_PT1–3). Not yet staged to EOS.
+**Correction (2026-10-01):** the band-SF scope (item 31) is *not* the main driver of the
+Fail-region change below: ~80% of TTbar antitag jets at 600–1200 GeV are fully merged, and
+restricting the SFs to them lowers the Fail TTbar yield by only 1–4%. The rise comes from the
+measured band SF size (1.25–1.58) and the −23–26% data.
 **Open (fit inputs):** in the Fail region TTbar MC is now 0.69 (cen) / 0.50 (fwd) of data in
 2024 (v1: 0.45 / 0.34), 0.76 / 0.57 in 2025, from the band SF (1.29–1.58) and −23–26% data.
 The band SF was measured for fully merged tops but is applied to every antitag TTbar jet.
@@ -472,3 +477,5 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | brilcalc per era vs PPD table (newest golden) | all five eras match to <0.01 fb⁻¹ |
 | 2026-09-24 | brilcalc 2025 C–G | 110.03 fb⁻¹ (current golden), 110.37 (newest) vs 110.59 in code |
 | 2026-09-24 | Sweep of all 2025 correction packages on cvmfs (BTV/DC/EGM/JME/LUM/MUO/TAU) | relevant: JME (done), LUM pileup, DC golden JSON |
+| 2026-10-01 | Item 31: `tests/test_ttag_weights.py` (fully-merged restriction, merge flags required for 2024, Run 2 untouched, merge category vs T&P definition incl. φ wrap) + full suite | 10/10; 73 pass, 4 skipped (local Z′ chunk file missing) |
+| 2026-10-01 | Item 31: TTto4Q 2024, 4 files (1.80M events), full v1.2 selection, LPC | antitag jet fully merged 0.67 / 0.82 / 1.00 in 480–600 / 600–1200 / 1200+ GeV (rest mostly b+q); TTbar yield new/old atcen 0.961, atfwd 0.986, 2tcen 1.071, 2tfwd 1.078 (72 Fail, 232 2t raw events) |
