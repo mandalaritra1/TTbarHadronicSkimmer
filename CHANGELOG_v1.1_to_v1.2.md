@@ -455,6 +455,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Review follow-ups, decided item by item: lumi table, truth-hist axis (keep the hist for the efficiency-recovery studies, drop only the empty syst slices), `event_list` flag, provenance, loud PDF/Q2, executor recovery + remove the jupytext pairing + key-name test — now (23–28). SF tables → JSON and stale T&P copy removal — with the band SF. Correction caching — last. |
 | 2026-09-24 | Final top-tag SFs from the v1.2 T&P (s = 0.998, 3-bin layout, 800+ as check only) go into the skimmer with the band SF for the antitag jet (item 7), together with the SF JSON and the T&P-copy removal (29–30). |
 | 2026-09-24 | Correction-file caching (review item 4) moves to v1.3: speed only, no physics effect, and v1.2 should not carry a new failure mode on the batch workers. |
+| 2026-10-01 | **Signal for all years = 2024 Summer24 Z′ (placeholder).** Year study (private v15 re-NANO of 2022/2023 W1% at 2/4/6 TeV, same v1.2 code): shapes agree (m_SD year-independent, m_tt ≤ 1–2% migrations); 2022/2023 efficiency is 1.16–1.56× 2024 (jet-veto map ×1.11–1.14, tight tagging), so the 2024 normalization is conservative there. research-notes `topics/ttbarhadronic_signal_year_dependence.md`. |
 
 ## Validation log
 
