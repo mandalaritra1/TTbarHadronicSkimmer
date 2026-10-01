@@ -72,7 +72,9 @@ def main():
             iov = CAMPAIGN_TO_IOV.get(campaign)
             if iov is None:
                 continue
-            files = sorted(f for f in xrdfs_ls(args.server, campaign_dir) if f.endswith(".root"))
+            # skip hidden entries (CERNBox keeps .sys.v#.* versions of overwritten files)
+            files = sorted(f for f in xrdfs_ls(args.server, campaign_dir)
+                           if f.endswith(".root") and not f.rsplit("/", 1)[-1].startswith("."))
             manifest.setdefault(iov, {})[mass] = files
             exp = expected.get((sample, campaign))
             flag = "" if exp is None or exp == len(files) else f"  INCOMPLETE (expected {exp})"
