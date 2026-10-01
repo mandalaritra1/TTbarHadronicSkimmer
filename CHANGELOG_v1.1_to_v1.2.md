@@ -48,6 +48,7 @@ Last updated: 2026-09-24 (round 4)
 | 29 | Top-tag SF tables → versioned JSON (`data/toptag/ttag_sf_<version>.json`) | Done | `3d16500` | MC | None by itself: `ttag_sf_v1.1.json` is the old table exactly; v1.2 numbers are item 7. An unmeasured WP now raises |
 | 30 | Stale T&P copy removed (`toptag_sf_processor.py`, runners, cut-and-count, 7 files) | Done | `3d16500` | Repo | None; the live code is `toptag-sf-derivation` |
 | 31 | Top-tag SFs (tag and band) only on jets gen-matched as fully merged tops (b + both W quarks within ΔR 0.8, the T&P definition); other jets SF 1 (`applies_to` in the SF JSON; Run-2 tables unchanged) | Done (post-v1.2) | `e975cdc` | tt̄ + signal MC, 2024/2025 | TTto4Q (4 files, low stats): Fail cen −4%, fwd −1%; 2t +7%. Non-fully-merged jets carry no top-tag uncertainty yet (open) |
+| 32 | Flat `ttag_nonmerged` nuisance: ±25% per tagged/antitag jet that is not a fully merged top (SF 1), one nuisance for all pT (`nonmerged_unc` in the SF JSON) | Done (post-v1.2) | `f3c1965` | tt̄ + signal MC | TTto4Q: ~±5% Pass, ~±9% Fail (expected from composition); Z′ 2 TeV (2022 re-NANO, 2k events): Fail +19–22%, Pass +8–9% — most non-merged signal jets are leptonic tops (see decision log) |
 
 **v1.2 production (started 2026-09-24 16:49 CDT, LPC condor; casa unavailable).** Tag `v1.2`
 (`086354a`), clean clone `~/nobackup/TTbarHadronicSkimmer_v12` on cmslpc303, coffea
@@ -456,6 +457,7 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Final top-tag SFs from the v1.2 T&P (s = 0.998, 3-bin layout, 800+ as check only) go into the skimmer with the band SF for the antitag jet (item 7), together with the SF JSON and the T&P-copy removal (29–30). |
 | 2026-09-24 | Correction-file caching (review item 4) moves to v1.3: speed only, no physics effect, and v1.2 should not carry a new failure mode on the batch workers. |
 | 2026-10-01 | **Signal for all years = 2024 Summer24 Z′ (placeholder).** Year study (private v15 re-NANO of 2022/2023 W1% at 2/4/6 TeV, same v1.2 code): shapes agree (m_SD year-independent, m_tt ≤ 1–2% migrations); 2022/2023 efficiency is 1.16–1.56× 2024 (jet-veto map ×1.11–1.14, tight tagging), so the 2024 normalization is conservative there. research-notes `topics/ttbarhadronic_signal_year_dependence.md`. |
+| 2026-10-01 | **Non-merged jets: flat ±25% nuisance** (`ttag_nonmerged`, item 32) instead of per-category SFs or floating them in the T&P. **Finding:** 93–95% of the not-merged tagged/antitag Z′ jets (2 TeV) contain the W lepton and score ~0.93 in GloParTv3's leptonic-top classes; the score num/(num+QCD) ignores those classes, so leptonic tops pass the top tag (12% of tight-tagged, 46% of band signal jets). The TTbar background MC is TTto4Q only, so semileptonic SM tt̄ that passes the same way is not in the TTbar template — to be quantified (open). |
 
 ## Validation log
 
@@ -480,3 +482,4 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-09-24 | Sweep of all 2025 correction packages on cvmfs (BTV/DC/EGM/JME/LUM/MUO/TAU) | relevant: JME (done), LUM pileup, DC golden JSON |
 | 2026-10-01 | Item 31: `tests/test_ttag_weights.py` (fully-merged restriction, merge flags required for 2024, Run 2 untouched, merge category vs T&P definition incl. φ wrap) + full suite | 10/10; 73 pass, 4 skipped (local Z′ chunk file missing) |
 | 2026-10-01 | Item 31: TTto4Q 2024, 4 files (1.80M events), full v1.2 selection, LPC | antitag jet fully merged 0.67 / 0.82 / 1.00 in 480–600 / 600–1200 / 1200+ GeV (rest mostly b+q); TTbar yield new/old atcen 0.961, atfwd 0.986, 2tcen 1.071, 2tfwd 1.078 (72 Fail, 232 2t raw events) |
+| 2026-10-01 | Item 32: `tests/test_ttag_weights.py` (+3: counts per event, SF pT range, Run 2 = 1) + full suite; 2022preEE Z′ 2 TeV CLI smoke test | 13/13; 76 pass, 4 skipped; variation filled in all 4 categories, fit-input key `MttvsMtCen22PassTTAG_NONMERGEDup` |
