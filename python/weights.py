@@ -60,16 +60,45 @@ class Run3WeightManager:
                 psNom, psUp, psDown = GetPSWeights(events, ps)
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
-        if "ttag_pt1" in self.systematics:
+        if "ttag_pt1" in self.systematics or "ttag_nonmerged" in self.systematics:
             merged = None
             if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
                 merged = tuple(
                     top_merge_category(events.GenPart, ak.to_numpy(j.p4.eta), ak.to_numpy(j.p4.phi)) == MERGE_FULL
                     for j in (jet0, jet1)
                 )
-            self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
+            if "ttag_pt1" in self.systematics:
+                self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
+            if "ttag_nonmerged" in self.systematics:
+                self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
 
         return weights
+
+    def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
+        """One flat nuisance for the tagged/antitag jets that are not fully merged tops.
+
+        The SFs were measured for fully merged tops only, so these jets keep SF 1; each of
+        them gets +-nonmerged_unc (same size for all pT bins, tag and antitag alike).
+        Tables applied to all jets (legacy Run 2) carry no such uncertainty: weight 1."""
+        table = self.ttag_sf["iovs"][self.iov]
+        n = len(ak.to_numpy(jet0.p4.pt))
+        unc = table.get("nonmerged_unc") if table.get("applies_to", "all") == "fully_merged" else None
+        if not unc:
+            ones = np.ones(n)
+            weights.add("ttag_nonmerged", weight=ones, weightUp=ones, weightDown=ones)
+            return
+        if merged is None:
+            raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
+                             "pass the per-jet gen merge flags")
+        merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
+        ptbins = self.ttag_sf["pt_edges"]
+        # same jets as the ttag_pt SFs: jet0, and jet1 when tagged or antitag, in the SF pT range
+        in0 = np.digitize(ak.to_numpy(jet0.p4.pt), ptbins) - 1 >= 1
+        in1 = np.digitize(ak.to_numpy(jet1.p4.pt), ptbins) - 1 >= 1
+        sel1 = np.asarray(ak.to_numpy(ttag2), dtype=bool) | np.asarray(ak.to_numpy(antitag), dtype=bool)
+        n_nonmerged = (in0 & ~merged0).astype(int) + (in1 & sel1 & ~merged1).astype(int)
+        weights.add("ttag_nonmerged", weight=np.ones(n),
+                    weightUp=(1.0 + unc) ** n_nonmerged, weightDown=(1.0 - unc) ** n_nonmerged)
 
     def _add_ttag_pt_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
         table = self.ttag_sf["iovs"][self.iov]

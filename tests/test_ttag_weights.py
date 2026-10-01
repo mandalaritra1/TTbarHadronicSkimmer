@@ -68,6 +68,36 @@ class TopTagSFWeightsTest(unittest.TestCase):
                                     merged=(np.array([False]), np.array([False])))
         np.testing.assert_allclose(up, [1.01**2])
 
+    def _nonmerged(self, iov, ttag2, antitag, merged, pts=(700.0, 700.0)):
+        manager = Run3WeightManager(iov=iov, systematics=["ttag_nonmerged"], no_syst=False, deepak8_cut="tight")
+        n = len(ttag2)
+        weights = Weights(n)
+        manager._add_ttag_nonmerged_weights(
+            weights, _jets([pts[0]] * n), _jets([pts[1]] * n), np.asarray(ttag2), np.asarray(antitag), merged
+        )
+        return weights.weight(), weights.weight("ttag_nonmergedUp"), weights.weight("ttag_nonmergedDown")
+
+    def test_nonmerged_jets_get_flat_uncertainty(self):
+        # 0: 2t, jet1 not merged; 1: antitag, both not merged; 2: jet1 neither tagged nor
+        # antitag (only jet0 counts); 3: all merged
+        nom, up, down = self._nonmerged(
+            "2024", [True, False, False, True], [False, True, False, False],
+            (np.array([True, False, False, True]), np.array([False, False, False, True])),
+        )
+        u = load_ttag_sf()["iovs"]["2024"]["nonmerged_unc"]
+        np.testing.assert_allclose(nom, 1.0)
+        np.testing.assert_allclose(up, [1 + u, (1 + u) ** 2, 1 + u, 1.0])
+        np.testing.assert_allclose(down, [1 - u, (1 - u) ** 2, 1 - u, 1.0])
+
+    def test_nonmerged_uncertainty_only_in_sf_pt_range(self):
+        _, up, _ = self._nonmerged("2024", [True], [False], (np.array([False]), np.array([False])),
+                                   pts=(380.0, 700.0))
+        np.testing.assert_allclose(up, [1 + load_ttag_sf()["iovs"]["2024"]["nonmerged_unc"]])
+
+    def test_run2_tables_have_no_nonmerged_uncertainty(self):
+        _, up, down = self._nonmerged("2018", [True], [False], None)
+        np.testing.assert_allclose([up[0], down[0]], [1.0, 1.0])
+
     def test_unmeasured_wp_raises(self):
         manager = Run3WeightManager(iov="2024", systematics=["ttag_pt1"], no_syst=False, deepak8_cut="medium")
         with self.assertRaisesRegex(KeyError, "no 'medium' WP for 2024"):

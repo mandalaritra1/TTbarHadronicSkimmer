@@ -1,6 +1,6 @@
 {
  "version": "v1.2",
- "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment).",
+ "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment). 'nonmerged_unc': flat relative uncertainty per tagged/antitag jet that is not a fully merged top (those keep SF 1), one nuisance 'ttag_nonmerged' for all pT bins.",
  "pt_edges": [
   0,
   400,
@@ -554,6 +554,7 @@
    "tp_result_sha256": "edc0fdeb60703376836eb67166a8d36923ef1d4d206f555ca6120d207e8dd094",
    "pt_measured_max": 1200.0,
    "applies_to": "fully_merged",
+   "nonmerged_unc": 0.25,
    "thresholds": {
     "tag": 0.9284,
     "antitag_low": 0.8571

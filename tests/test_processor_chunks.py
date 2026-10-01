@@ -20,7 +20,7 @@ QCD = os.path.expanduser(
     "~/Projects/rootfiles/ttbar/2024/mc/QCD_PT1000to1500/QCD_PT1000to1500_0.root"
 )
 CATS = ["atcen", "atfwd", "2tcen", "2tfwd"]
-WEIGHT_SYSTEMATICS = ["pileup", "isr", "fsr", "ttag_pt1", "ttag_pt2", "ttag_pt3"]
+WEIGHT_SYSTEMATICS = ["pileup", "isr", "fsr", "ttag_pt1", "ttag_pt2", "ttag_pt3", "ttag_nonmerged"]
 CHUNK = 15
 NCHUNKS = 20
 
