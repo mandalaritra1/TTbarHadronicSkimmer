@@ -292,29 +292,46 @@ def w_lepton_in_jet(genparts, jet_eta, jet_phi, dr=0.8):
 
     Flags leptonic tops whose lepton lies within dr of the jet axis -- the jets that
     GloParTv3's TopbWev / TopbWmv / TopbWtauhv classes describe. Leptons whose direct
-    mother is a W (first copies); a tau is split by whether a direct e/mu daughter is
-    also inside. WLEP_NONE for hadronic tops, QCD, or a lepton outside the jet.
+    mother is a W (first copies). A tau inside the jet is labelled by its own decay: an
+    e/mu whose tau ancestor (followed through the tau copy chain) is that tau, wherever
+    the e/mu lands. WLEP_NONE for hadronic tops, QCD, or a lepton outside the jet.
+    No common top ancestor or b inside the jet is required (a geometric label).
     """
     pdg = abs(genparts.pdgId)
     mother = genparts.genPartIdxMother
     has_mother = mother >= 0
-    mom_pdg = abs(pdg[ak.where(has_mother, mother, 0)])
+    safe_mother = ak.where(has_mother, mother, 0)
+    mom_pdg = abs(pdg[safe_mother])
+
+    def inside(parts):
+        dphi = (parts.phi - jet_phi + np.pi) % (2 * np.pi) - np.pi
+        return (parts.eta - jet_eta) ** 2 + dphi ** 2 < dr ** 2
 
     def any_inside(mask):
-        parts = genparts[mask]
-        dphi = (parts.phi - jet_phi + np.pi) % (2 * np.pi) - np.pi
-        dr2 = (parts.eta - jet_eta) ** 2 + dphi ** 2
-        return ak.to_numpy(ak.any(dr2 < dr ** 2, axis=1))
+        return ak.to_numpy(ak.any(inside(genparts[mask]), axis=1))
+
+    # first copy of every particle: walk up while the mother has the same pdgId
+    first = ak.local_index(pdg)
+    for _ in range(10):
+        m = mother[first]
+        up = (m >= 0) & (pdg[ak.where(m >= 0, m, 0)] == pdg[first])
+        first = ak.where(up, m, first)
 
     from_w = has_mother & (mom_pdg == 24)
-    from_tau = has_mother & (mom_pdg == 15)
     is_e = any_inside(from_w & (pdg == 11))
     is_mu = any_inside(from_w & (pdg == 13))
-    is_tau = any_inside(from_w & (pdg == 15))
+    w_tau = from_w & (pdg == 15)
+    tau_in = w_tau & inside(genparts)
+    is_tau = ak.to_numpy(ak.any(tau_in, axis=1))
+    tau_idx = ak.local_index(pdg)[tau_in]
     code = np.full(len(is_e), WLEP_NONE, dtype=np.int16)
     code[is_tau] = WLEP_TAUH
-    code[is_tau & any_inside(from_tau & (pdg == 11))] = WLEP_TAUE
-    code[is_tau & any_inside(from_tau & (pdg == 13))] = WLEP_TAUMU
+    for lep_pdg, lep_code in ((11, WLEP_TAUE), (13, WLEP_TAUMU)):
+        # first copy of the tau each tau-decay e/mu came from
+        parent = first[safe_mother][(pdg == lep_pdg) & has_mother & (mom_pdg == 15)]
+        pairs = ak.cartesian([tau_idx, parent], nested=True)
+        mine = ak.to_numpy(ak.any(ak.any(pairs["0"] == pairs["1"], axis=-1), axis=-1))
+        code[is_tau & mine] = lep_code
     code[is_mu] = WLEP_MU
     code[is_e] = WLEP_E
     return code

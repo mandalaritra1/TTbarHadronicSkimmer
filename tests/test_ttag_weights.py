@@ -179,6 +179,19 @@ class WLeptonInJetTest(unittest.TestCase):
         np.testing.assert_array_equal(code, [WLEP_E, WLEP_MU, WLEP_TAUH, WLEP_TAUE, WLEP_TAUMU,
                                              WLEP_NONE, WLEP_NONE, WLEP_NONE])
 
+    def test_tau_label_follows_its_own_decay(self):
+        inside, outside = (0.3, 0.3), (1.5, 0.0)
+        gp = _genparts([
+            # tau -> e with the electron outside the jet: still tau -> e
+            self._event(15, inside, [(11, 3, *outside)]),
+            # tau copy chain: tau (3) -> tau (5) -> mu
+            self._event(15, inside, [(15, 3, 0.31, 0.3), (13, 5, *outside)]),
+            # hadronic tau in the jet; an electron from a second, distant tau lands inside
+            self._event(15, inside, [(24, 0, 2.0, 2.0), (15, 5, 2.0, 2.0), (11, 6, 0.3, 0.35)]),
+        ])
+        code = w_lepton_in_jet(gp, np.zeros(3), np.zeros(3))
+        np.testing.assert_array_equal(code, [WLEP_TAUE, WLEP_TAUMU, WLEP_TAUH])
+
 
 if __name__ == "__main__":
     unittest.main()
