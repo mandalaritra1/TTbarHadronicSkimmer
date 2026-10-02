@@ -193,5 +193,26 @@ class WLeptonInJetTest(unittest.TestCase):
         np.testing.assert_array_equal(code, [WLEP_TAUE, WLEP_TAUMU, WLEP_TAUH])
 
 
+
+class LeptonicTopFractionTest(unittest.TestCase):
+    def test_flep(self):
+        from categories import leptonic_top_fraction
+        jets = ak.Array([
+            # hadronic top, leptonic e top, leptonic tau top, all heads zero
+            {"globalParT3_TopbWqq": 0.80, "globalParT3_TopbWq": 0.06, "globalParT3_TopbWev": 0.0004,
+             "globalParT3_TopbWmv": 0.0, "globalParT3_TopbWtauhv": 0.0, "globalParT3_QCD": 0.006},
+            {"globalParT3_TopbWqq": 0.0004, "globalParT3_TopbWq": 0.0002, "globalParT3_TopbWev": 0.94,
+             "globalParT3_TopbWmv": 0.0, "globalParT3_TopbWtauhv": 0.0, "globalParT3_QCD": 0.00002},
+            {"globalParT3_TopbWqq": 0.02, "globalParT3_TopbWq": 0.005, "globalParT3_TopbWev": 0.0,
+             "globalParT3_TopbWmv": 0.0, "globalParT3_TopbWtauhv": 0.83, "globalParT3_QCD": 0.0006},
+            {"globalParT3_TopbWqq": 0.0, "globalParT3_TopbWq": 0.0, "globalParT3_TopbWev": 0.0,
+             "globalParT3_TopbWmv": 0.0, "globalParT3_TopbWtauhv": 0.0, "globalParT3_QCD": 1.0},
+        ])
+        f = np.asarray(leptonic_top_fraction(jets))
+        np.testing.assert_allclose(f, [0.0004 / 0.8604, 0.94 / 0.9406, 0.83 / 0.855, 0.0], rtol=1e-6)
+        # the hadronic top passes c = 0.59, the leptonic ones do not
+        np.testing.assert_array_equal(f < 0.59, [True, False, False, True])
+
+
 if __name__ == "__main__":
     unittest.main()

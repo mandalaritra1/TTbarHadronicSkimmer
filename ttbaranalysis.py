@@ -188,6 +188,9 @@ if __name__ == "__main__":
                              'SF, ... exactly as in production) but skip the jet-variation passes '
                              '(jes, jer, jms, jmr): fast nominal-level comparisons')
     parser.add_argument('--ntuple',   action='store_true', help='collect flat ntuple in output')
+    parser.add_argument('--flep-cut', type=float, default=None,
+                        help='option A: both jets also need GloParTv3 f_lep = L/(H+L) below this '
+                             '(0.59 from the 2026-10-02 leptonic-top study; default off)')
     parser.add_argument('--ntuple-columns', default='full', choices=['full', 'slim', 'lepstudy'],
                         help="ntuple column preset; 'lepstudy' adds GloParTv3 heads, gen labels and "
                              "leptons for the leptonic-top study (implies --ntuple)")
@@ -418,6 +421,8 @@ if __name__ == "__main__":
                 if args.ntuple or args.ntuple_columns != 'full':
                     suffix = '_ntuple' if args.ntuple_columns == 'full' else f'_ntuple_{args.ntuple_columns}'
                     savefilename = savefilename.replace('.coffea', f'{suffix}.coffea')
+                if args.flep_cut is not None:
+                    savefilename = savefilename.replace('.coffea', f"_flep{args.flep_cut:g}".replace('.', 'p') + '.coffea')
                 if args.test:
                     savefilename = savefilename.replace('.coffea', '_test.coffea')
 
@@ -442,6 +447,7 @@ if __name__ == "__main__":
                     blinding=args.blind,
                     produce_ntuple=args.ntuple or args.ntuple_columns != 'full',
                     ntuple_columns=args.ntuple_columns,
+                    flep_cut=args.flep_cut,
                     store_event_list=args.event_list,
                     sample_metadata=rep_meta,
                     dataset_metadata=dataset_metadata,

@@ -46,7 +46,7 @@ from corrections import (
 )
 from btagCorrections import btagCorrections
 from functions import getRapidity
-from categories import build_analysis_categories
+from categories import leptonic_top_fraction, build_analysis_categories
 from cutflow import cutflow_step_metadata
 from jets import Run3JetManager, _AK4_PT_MIN, _AK4_ETA_MAX
 
@@ -223,6 +223,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         dataset_metadata=None,
         group_by_dataset=False,
         store_event_list=False,
+        flep_cut=None,
     ):
         self.iov = iov
         self.htCut = htCut
@@ -244,6 +245,10 @@ class TTbarResProcessor(processor.ProcessorABC):
         # it prints a block per chunk (thousands) and ships them back through the
         # scheduler. Off by default; the cutflow dict is accumulated either way.
         self.cutflow_verbose = cutflow_verbose
+        # option A: both jets also need f_lep = L/(H+L) < flep_cut (None = off)
+        if flep_cut is not None and iov not in _V15_IOVS:
+            raise ValueError(f'flep_cut needs the GloParTv3 leptonic-top heads (v15 IOVs), not {iov}')
+        self.flep_cut = flep_cut
         self.produce_ntuple = produce_ntuple
         self.ntuple_mode = ntuple_mode
         self.ntuple_output_dir = ntuple_output_dir
@@ -964,6 +969,19 @@ class TTbarResProcessor(processor.ProcessorABC):
         )
         antitag = antitag_disc & ttag_s0 & mcut_s1
 
+        # option A: GloParTv3 also has to call both jets hadronic tops -- f_lep = L/(H+L)
+        # below flep_cut -- or leptonic tops (lepton + b inside the AK8 jet) pass the score
+        if self.iov in _V15_IOVS:
+            flep0, flep1 = leptonic_top_fraction(jet0), leptonic_top_fraction(jet1)
+        else:
+            flep0 = flep1 = np.zeros(len(jet0))
+        ttag_s0_s, ttag_s1_s, antitag_s = ttag_s0, ttag_s1, antitag     # S only, for the f_lep hist
+        if self.flep_cut is not None:
+            lep_ok = (flep0 < self.flep_cut) & (flep1 < self.flep_cut)
+            ttag_s0 = ttag_s0 & (flep0 < self.flep_cut)
+            ttag_s1 = ttag_s1 & (flep1 < self.flep_cut)
+            antitag = antitag & lep_ok
+
         # back-to-back topology + subjet requirements
         dPhiCut     = np.abs(jet0.p4.delta_phi(jet1.p4)) > _DPHI_CUT
         hasSubjets0 = (jet0.subJetIdx1 > -1) & (jet0.subJetIdx2 > -1)
@@ -986,6 +1004,11 @@ class TTbarResProcessor(processor.ProcessorABC):
         antitag    = antitag[ttbarcandCuts]
         ttag_s0    = ttag_s0[ttbarcandCuts]
         ttag_s1    = ttag_s1[ttbarcandCuts]
+        antitag_s  = antitag_s[ttbarcandCuts]
+        ttag_s0_s  = ttag_s0_s[ttbarcandCuts]
+        ttag_s1_s  = ttag_s1_s[ttbarcandCuts]
+        flep0      = np.asarray(flep0)[ak.to_numpy(ttbarcandCuts)]
+        flep1      = np.asarray(flep1)[ak.to_numpy(ttbarcandCuts)]
         jet0       = jet0[ttbarcandCuts]
         jet1       = jet1[ttbarcandCuts]
         FatJets    = FatJets[ttbarcandCuts]
@@ -1124,6 +1147,27 @@ class TTbarResProcessor(processor.ProcessorABC):
             ttag2=(ttag_s0 & ttag_s1),
             antitag=antitag,
         )
+
+        # --- f_lep validation: S-only categories (before any f_lep cut); data Fail only ---
+        if isNominal:
+            pre_cats = build_analysis_categories(
+                antitag=antitag_s, ttag_s0=ttag_s0_s, ttag_s1=ttag_s1_s,
+                rapidity=rapidity, anacats=self.anacats,
+            )
+            if self.flep_cut is None:
+                w_nom = np.asarray(self.weights[correction].weight())
+            else:
+                # the top-tag SFs depend on the category: weight as the S-only selection would
+                w_nom = np.asarray(self.weight_manager.build_weights(
+                    dataset=dataset, events=events, evtweights=evtweights, is_data=isData,
+                    jet0=jet0, jet1=jet1, ttag2=(ttag_s0_s & ttag_s1_s), antitag=antitag_s,
+                ).weight())
+            for i, (lbl, cat) in enumerate(pre_cats.items()):
+                if isData and not lbl.startswith('at'):
+                    continue
+                m = ak.to_numpy(cat).astype(bool)
+                for j, fl in ((0, flep0), (1, flep1)):
+                    output['flep'].fill(**ds_kw, anacat=i, jet=j, flep=fl[m], weight=w_nom[m])
 
         # --- flat ntuple output ---
         if isNominal and self.store_ntuple_accumulator:

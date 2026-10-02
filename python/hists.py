@@ -74,6 +74,11 @@ def build_output_histograms(
     hist_tree = {
         "mass": {
             "ttbarmass": hist.Hist(*_pre,syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
+            # f_lep of jet0/jet1 in the S-only categories (before any f_lep cut), nominal;
+            # data filled in the antitag (Fail) categories only -- f_lep data/MC validation
+            "flep": hist.Hist(*_pre, cats_axis, hist.axis.IntCategory([0, 1], name="jet", label="jet"),
+                              hist.axis.Regular(20, 0, 1, name="flep", label=r"$f_{lep}$"),
+                              storage="weight", name="Counts"),
             "mtt_unwgt": hist.Hist(*_pre,syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "mtt_vs_dy_vs_chi": hist.Hist(
                 *_pre,
