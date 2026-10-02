@@ -217,7 +217,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         bkgEst=False,
         noSyst=False,
         blinding=False,
-        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep', 'toppt'],
+        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'toppt'],
         anacats=['2t0bcen'],
         debug=False,
         cutflow_verbose=False,
@@ -1155,10 +1155,12 @@ class TTbarResProcessor(processor.ProcessorABC):
                 antitag=antitag_s, ttag_s0=ttag_s0_s, ttag_s1=ttag_s1_s,
                 rapidity=rapidity, anacats=self.anacats,
             )
-            # the top-tag SFs depend on the category: weight as the score-only selection would
+            # the top-tag SFs depend on the category: weight as the score-only selection would;
+            # no SF_flep, which is for jets that pass the f_lep cut
             w_nom = np.asarray(self.weight_manager.build_weights(
                 dataset=dataset, events=events, evtweights=evtweights, is_data=isData,
                 jet0=jet0, jet1=jet1, ttag2=(ttag_s0_s & ttag_s1_s), antitag=antitag_s,
+                flep_sf=False,
             ).weight())
             for i, (lbl, cat) in enumerate(pre_cats.items()):
                 if isData and not lbl.startswith('at'):

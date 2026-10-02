@@ -685,6 +685,70 @@
     ],
     "nuisance": "ttag_band_hipt",
     "note": "Interim (2026-10-02) band SF for antitag jets >= 600 GeV, replacing the 600+ fit value 1.578 there. The 4-bin fits give 1.67 (600-800) and 0.50 (800+, Combine scan 68% [0.18, 0.88], 95% [0.07, 1.36]; 25 band data probes; the scipy chi2 fit sits at its bound because a Neyman chi2 is biased in sparse bins). Two reviews (Fable 5.1, GPT-6-Astra) found the per-bin pattern unstable (50 GeV sub-bins 1.81 / 0.95 at 600-700) and the T&P band sample 17% above 800 GeV vs 37% in the analysis. Values: 600-800 1.50 +- 0.30, 800+ 1.00 +- 0.50, one correlated nuisance, no doubling. To be replaced by the T&P re-run (Poisson likelihood, 2025 data, f_lep on probes)."
+   },
+   "flep": {
+    "cut": 0.59,
+    "applies_to": "fully_merged",
+    "nuisance": {
+     "tag": "ttag_flep_tag",
+     "antitag": "ttag_flep_band"
+    },
+    "definition": "SF_flep = eps_data / eps_MC, eps = P(f_lep < cut | score category) for fully merged tops; f_lep = L/(H+L), H = TopbWqq + TopbWq, L = TopbWev + TopbWmv + TopbWtauhv",
+    "tag": {
+     "score": ">= 0.9284",
+     "pt_edges": [
+      400.0,
+      480.0,
+      600.0
+     ],
+     "nominal": [
+      0.99899,
+      0.99456,
+      0.99985
+     ],
+     "up": [
+      1.00135,
+      0.99825,
+      1.00384
+     ],
+     "down": [
+      0.99624,
+      0.99003,
+      0.9914
+     ],
+     "eps_mc": [
+      0.99508,
+      0.9969,
+      0.99617
+     ],
+     "extrapolate_above": 1200.0
+    },
+    "antitag": {
+     "score": "[0.8571, 0.9284)",
+     "pt_edges": [
+      400.0
+     ],
+     "nominal": [
+      0.99197
+     ],
+     "up": [
+      1.00061
+     ],
+     "down": [
+      0.98182
+     ],
+     "eps_mc": [
+      0.99145
+     ],
+     "extrapolate_above": 600.0
+    },
+    "source": "T&P 2026-10-02: semileptonic ttbar (mu), full 2024, v1.2 objects + f_lep heads; mSD fit in A (f_lep < 0.59) and R per score category and pT bin (Combine, Poisson + autoMCStats, jms profiled, k_part tied to k_full); up/down = stat (+) syst (JES/JER exact, JMR 2%, PU, model). Band inclusive (per-bin values consistent with flat, 600+ unconstrained).",
+    "tp_commit": "toptag-sf-derivation d98a7f9 (branch aritra)",
+    "tp_result": "results/outputs/flep_sf_2024_consumer.json",
+    "tp_result_sha256": "914b55718e941ca96bd592bd67c3214cb49d7ecb78ee4384809a06e0c215a37f",
+    "tp_full_table_sha256": "8909941a23591e8b20ff8eda20dfa1579326d70ccf99e6d93c6737fb564000a3",
+    "extrapolation_factor": 2.0,
+    "skimmer_policy": "Added in the skimmer (2026-10-02, reviews by Fable 5.1 and GPT-6-Astra): one nuisance per block (tag and band are independent probes), each correlated across pT and between jets; deviations doubled for tag jets above 1200 GeV (pt_measured_max, as for SF_TopvsQCD; eps_MC of fully merged tight tops stays 0.995 above 1.2 TeV) and for band jets above 600 GeV (the inclusive band value is a 400-600 GeV measurement); up capped at 1/eps_mc. nominal/up/down/eps_mc are the T&P values unchanged."
    }
   }
  }

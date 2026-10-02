@@ -12,6 +12,9 @@ from truthstudy import MERGE_FULL, top_merge_category
 # was hard-coded here up to v1.1; v1.2 has the 2024 SFs re-measured on the v1.2 objects.
 TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.2.json"
 
+# SF_flep nuisances per block of the table's 'flep' entry
+FLEP_NUISANCES = {"tag": "ttag_flep_tag", "antitag": "ttag_flep_band"}
+
 
 def load_ttag_sf(path=TTAG_SF_FILE):
     with open(path) as f:
@@ -31,7 +34,9 @@ class Run3WeightManager:
         self.deepak8_cut = deepak8_cut
         self.ttag_sf = load_ttag_sf()
 
-    def build_weights(self, dataset, events, evtweights, is_data, jet0, jet1, ttag2, antitag):
+    def build_weights(self, dataset, events, evtweights, is_data, jet0, jet1, ttag2, antitag, flep_sf=True):
+        """flep_sf=False leaves out SF_flep (ttag_flep_*), which belongs to jets that pass the
+        f_lep cut: use it for histograms filled before that cut."""
         weights = Weights(len(evtweights))
         weights.add("genWeight", evtweights)
 
@@ -66,7 +71,8 @@ class Run3WeightManager:
                 psNom, psUp, psDown = GetPSWeights(events, ps)
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
-        if any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged", "ttag_flep")):
+        flep_on = flep_sf and any(s in self.systematics for s in FLEP_NUISANCES.values())
+        if flep_on or any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged")):
             merged = None
             if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
                 merged = tuple(
@@ -77,7 +83,7 @@ class Run3WeightManager:
                 self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
             if "ttag_nonmerged" in self.systematics:
                 self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
-            if "ttag_flep" in self.systematics:
+            if flep_on:
                 self._add_ttag_flep_weights(weights, jet0, jet1, ttag2, antitag, merged)
 
         return weights
@@ -89,15 +95,18 @@ class Run3WeightManager:
         hadronic tops, separately for tagged and band jets. jet0 and a tagged jet1 take the
         'tag' SF, an antitag jet1 the 'antitag' SF; pt_edges are the lower bin edges (last bin
         open, jets below the first edge keep 1), per block if the block has its own pt_edges
-        (e.g. an inclusive band value). One nuisance ttag_flep for all bins and both jets.
-        Tables without a 'flep' block: weight 1."""
+        (e.g. an inclusive band value). Two nuisances, one per block (independent probes),
+        each correlated across pT bins and between the jets. Above a block's extrapolate_above
+        the deviations are scaled by extrapolation_factor; up never exceeds the physical bound
+        1/eps_mc. Tables without a 'flep' block: weight 1."""
         table = self.ttag_sf["iovs"][self.iov]
         jet0_pt = ak.to_numpy(jet0.p4.pt)
         jet1_pt = ak.to_numpy(jet1.p4.pt)
         flep = table.get("flep")
         if flep is None:
             ones = np.ones(len(jet0_pt))
-            weights.add("ttag_flep", weight=ones, weightUp=ones, weightDown=ones)
+            for name in FLEP_NUISANCES.values():
+                weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
             return
         if table.get("applies_to", "all") == "fully_merged":
             if merged is None:
@@ -108,18 +117,26 @@ class Run3WeightManager:
             merged0 = merged1 = np.ones(len(jet0_pt), bool)
         ttag2 = np.asarray(ak.to_numpy(ttag2), dtype=bool)
         antitag = np.asarray(ak.to_numpy(antitag), dtype=bool)
+        factor = flep.get("extrapolation_factor", 1.0)
+
         def jet_sf(pt, block, sel):
-            edges = flep[block].get("pt_edges", flep.get("pt_edges"))
+            b = flep[block]
+            edges = b.get("pt_edges", flep.get("pt_edges"))
             ib = np.digitize(pt, edges) - 1
             ibc = np.clip(ib, 0, len(edges) - 1)
-            return [np.where((ib >= 0) & sel, np.asarray(flep[block][v], dtype=float)[ibc], 1.0)
-                    for v in ("nominal", "up", "down")]
+            nom, up, down = (np.asarray(b[v], dtype=float)[ibc] for v in ("nominal", "up", "down"))
+            k = np.where(pt > b.get("extrapolate_above", np.inf), factor, 1.0)
+            up, down = nom + k * (up - nom), nom + k * (down - nom)
+            if "eps_mc" in b:
+                up = np.minimum(up, 1.0 / np.asarray(b["eps_mc"], dtype=float)[ibc])
+            return [np.where((ib >= 0) & sel, v, 1.0) for v in (nom, up, down)]
 
         sf0 = jet_sf(jet0_pt, "tag", merged0)
         sf1t = jet_sf(jet1_pt, "tag", ttag2 & merged1)
         sf1a = jet_sf(jet1_pt, "antitag", antitag & merged1)
-        nom, up, down = (a * b * c for a, b, c in zip(sf0, sf1t, sf1a))
-        weights.add("ttag_flep", weight=nom, weightUp=up, weightDown=down)
+        nom, up, down = (a * b for a, b in zip(sf0, sf1t))
+        weights.add(FLEP_NUISANCES["tag"], weight=nom, weightUp=up, weightDown=down)
+        weights.add(FLEP_NUISANCES["antitag"], weight=sf1a[0], weightUp=sf1a[1], weightDown=sf1a[2])
 
     def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
         """One flat nuisance for the tagged/antitag jets that are not fully merged tops.
