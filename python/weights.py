@@ -24,6 +24,16 @@ def load_ttag_sf(path=TTAG_SF_FILE):
     return table
 
 
+def _mc_campaign(events):
+    """'Summer24' when the chunk comes from a Summer24 file (e.g. the 2024 Z' standing in for
+    2022/2023), else None. Read from the NanoEvents metadata (input file name)."""
+    try:
+        fname = str(events.metadata.get("filename", ""))
+    except Exception:
+        return None
+    return "Summer24" if "Summer24" in fname else None
+
+
 class Run3WeightManager:
     """Handle event-weight construction and systematic variations."""
 
@@ -54,7 +64,7 @@ class Run3WeightManager:
             return weights
 
         if "pileup" in self.systematics:
-            puNom, puUp, puDown = GetPUSF(events, self.iov)
+            puNom, puUp, puDown = GetPUSF(events, self.iov, mc_campaign=_mc_campaign(events))
             weights.add("pileup", weight=puNom, weightUp=puUp, weightDown=puDown)
 
        

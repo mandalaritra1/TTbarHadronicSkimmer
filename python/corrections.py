@@ -537,9 +537,14 @@ def GetPDFWeights(events):
 
 
 
-def GetPUSF(events, IOV):
+def GetPUSF(events, IOV, mc_campaign=None):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L38
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
+    # mc_campaign="Summer24" with a 2022/2023 IOV: the 2024 Summer24 Z' standing in for 2022/2023
+    # signal. The central 2022/23 weights divide by the Summer22/23 profile (mean 0.72-1.40 on
+    # Summer24), so use data22/23 / MC_Summer24 derived from the central data profiles, validated
+    # against the central 2024 and 2025 Summer24 weights:
+    # data/corrections/puWeights/Summer24_to_2022_2023/README.md
     
     # map each IOV to its vendored puWeights.json.gz subdir + correction name
     _pu_subdir = {
@@ -572,11 +577,15 @@ def GetPUSF(events, IOV):
         "2023preBPix":  "Collisions2023_366403_369802_eraBC_GoldenJson",
         "2023postBPix": "Collisions2023_369803_370790_eraD_GoldenJson",
     }
+    name = hname[str(IOV)]
+    if mc_campaign == "Summer24" and IOV in _pu_subdir:
+        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/Summer24_to_2022_2023/puWeights.json.gz"
+        name = f"{IOV}_data_on_Summer24"
     evaluator = correctionlib.CorrectionSet.from_file(fname)
 
-    puUp = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "up")
-    puDown = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "down")
-    puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
+    puUp = evaluator[name].evaluate(np.array(events.Pileup.nTrueInt), "up")
+    puDown = evaluator[name].evaluate(np.array(events.Pileup.nTrueInt), "down")
+    puNom = evaluator[name].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
     _check_pu_mean(IOV, puNom)
 
