@@ -153,6 +153,54 @@ class TopTagSFWeightsTest(unittest.TestCase):
         np.testing.assert_allclose(up, [1.01**2])
 
 
+# made-up f_lep SF block (two bins: 400-600, >= 600 GeV), tag and band
+FLEP = {"cut": 0.59, "pt_edges": [400.0, 600.0],
+        "tag": {"nominal": [0.99, 0.98], "up": [1.00, 1.00], "down": [0.98, 0.96]},
+        "antitag": {"nominal": [0.97, 0.95], "up": [0.99, 0.99], "down": [0.95, 0.91]}}
+
+
+class FlepSFWeightsTest(unittest.TestCase):
+    def _flep(self, jet0_pt, jet1_pt, ttag2, antitag, merged, flep=FLEP, iov="2024"):
+        manager = Run3WeightManager(iov=iov, systematics=["ttag_flep"], no_syst=False, deepak8_cut="tight")
+        if flep is not None:
+            manager.ttag_sf["iovs"][iov]["flep"] = flep
+        weights = Weights(len(jet0_pt))
+        manager._add_ttag_flep_weights(weights, _jets(jet0_pt), _jets(jet1_pt),
+                                       np.asarray(ttag2), np.asarray(antitag), merged)
+        return weights.weight(), weights.weight("ttag_flepUp"), weights.weight("ttag_flepDown")
+
+    def test_tag_sf_on_jet0_and_tagged_jet1_band_sf_on_antitag_jet1(self):
+        # 0: 2t, jet0 400-600, jet1 >= 600; 1: antitag, jet0 >= 600, jet1 400-600
+        nom, up, down = self._flep([500.0, 700.0], [700.0, 450.0], [True, False], [False, True],
+                                   (np.array([True, True]), np.array([True, True])))
+        np.testing.assert_allclose(nom, [0.99 * 0.98, 0.98 * 0.97])
+        np.testing.assert_allclose(up, [1.00 * 1.00, 1.00 * 0.99])
+        np.testing.assert_allclose(down, [0.98 * 0.96, 0.96 * 0.95])
+
+    def test_sf_only_on_merged_jets_in_range_and_selected(self):
+        # 0: jet1 not merged; 1: jet0 below 400 GeV; 2: jet1 neither tagged nor antitag
+        nom, _, _ = self._flep([700.0, 380.0, 700.0], [700.0, 700.0, 700.0],
+                               [True, True, False], [False, False, False],
+                               (np.array([True, True, True]), np.array([False, True, True])))
+        np.testing.assert_allclose(nom, [0.98, 0.98, 0.98])
+
+    def test_block_pt_edges_override_for_inclusive_band(self):
+        flep = {**FLEP, "antitag": {"pt_edges": [400.0], "nominal": [0.96], "up": [0.98], "down": [0.94]}}
+        nom, up, _ = self._flep([700.0, 700.0], [450.0, 900.0], [False, False], [True, True],
+                                (np.array([True, True]), np.array([True, True])), flep=flep)
+        np.testing.assert_allclose(nom, [0.98 * 0.96, 0.98 * 0.96])
+        np.testing.assert_allclose(up, [1.00 * 0.98, 1.00 * 0.98])
+
+    def test_no_flep_block_gives_weight_one(self):
+        nom, up, down = self._flep([700.0], [700.0], [True], [False],
+                                   (np.array([True]), np.array([True])), flep=None)
+        np.testing.assert_allclose([nom[0], up[0], down[0]], [1.0, 1.0, 1.0])
+
+    def test_merge_flags_required(self):
+        with self.assertRaisesRegex(ValueError, "fully merged"):
+            self._flep([700.0], [700.0], [True], [False], None)
+
+
 def _genparts(events):
     """events: list of [(pdgId, mother index, eta, phi), ...]"""
     return ak.Array([

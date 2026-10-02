@@ -900,6 +900,7 @@ def run_analysis(args):
         "ttag_pt3",
         "ttag_nonmerged",
         "ttag_band_hipt",
+        "ttag_flep",
         "toppt",
     ]
 

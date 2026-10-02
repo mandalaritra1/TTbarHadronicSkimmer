@@ -66,7 +66,7 @@ class Run3WeightManager:
                 psNom, psUp, psDown = GetPSWeights(events, ps)
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
-        if "ttag_pt1" in self.systematics or "ttag_nonmerged" in self.systematics:
+        if any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged", "ttag_flep")):
             merged = None
             if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
                 merged = tuple(
@@ -77,8 +77,49 @@ class Run3WeightManager:
                 self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
             if "ttag_nonmerged" in self.systematics:
                 self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
+            if "ttag_flep" in self.systematics:
+                self._add_ttag_flep_weights(weights, jet0, jet1, ttag2, antitag, merged)
 
         return weights
+
+    def _add_ttag_flep_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
+        """SF of the leptonic-top cut f_lep < 0.59 (factorised: SF_total = SF_TopvsQCD x SF_flep).
+
+        The T&P measures SF_flep = data/MC of P(f_lep < cut | score passes) for fully merged
+        hadronic tops, separately for tagged and band jets. jet0 and a tagged jet1 take the
+        'tag' SF, an antitag jet1 the 'antitag' SF; pt_edges are the lower bin edges (last bin
+        open, jets below the first edge keep 1), per block if the block has its own pt_edges
+        (e.g. an inclusive band value). One nuisance ttag_flep for all bins and both jets.
+        Tables without a 'flep' block: weight 1."""
+        table = self.ttag_sf["iovs"][self.iov]
+        jet0_pt = ak.to_numpy(jet0.p4.pt)
+        jet1_pt = ak.to_numpy(jet1.p4.pt)
+        flep = table.get("flep")
+        if flep is None:
+            ones = np.ones(len(jet0_pt))
+            weights.add("ttag_flep", weight=ones, weightUp=ones, weightDown=ones)
+            return
+        if table.get("applies_to", "all") == "fully_merged":
+            if merged is None:
+                raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
+                                 "pass the per-jet gen merge flags")
+            merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
+        else:
+            merged0 = merged1 = np.ones(len(jet0_pt), bool)
+        ttag2 = np.asarray(ak.to_numpy(ttag2), dtype=bool)
+        antitag = np.asarray(ak.to_numpy(antitag), dtype=bool)
+        def jet_sf(pt, block, sel):
+            edges = flep[block].get("pt_edges", flep.get("pt_edges"))
+            ib = np.digitize(pt, edges) - 1
+            ibc = np.clip(ib, 0, len(edges) - 1)
+            return [np.where((ib >= 0) & sel, np.asarray(flep[block][v], dtype=float)[ibc], 1.0)
+                    for v in ("nominal", "up", "down")]
+
+        sf0 = jet_sf(jet0_pt, "tag", merged0)
+        sf1t = jet_sf(jet1_pt, "tag", ttag2 & merged1)
+        sf1a = jet_sf(jet1_pt, "antitag", antitag & merged1)
+        nom, up, down = (a * b * c for a, b, c in zip(sf0, sf1t, sf1a))
+        weights.add("ttag_flep", weight=nom, weightUp=up, weightDown=down)
 
     def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
         """One flat nuisance for the tagged/antitag jets that are not fully merged tops.
