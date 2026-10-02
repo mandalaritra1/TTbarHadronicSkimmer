@@ -136,7 +136,7 @@ if __name__ == "__main__":
                                  'ZPrime30', 'ZPrimeDM', 'RSGluon', 'ZPrimeLocal'],
                         default=default_datastets, action='append')
     parser.add_argument('--iov',
-                        choices=['2022', '2023', '2024', '2025',
+                        choices=['2022', '2023', '2024', '2025', '2026',
                                  '2022preEE', '2022postEE',
                                  '2023preBPix', '2023postBPix'],
                         default='2024')

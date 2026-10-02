@@ -44,6 +44,9 @@ _JSONPOG_JME_DIR = {
     # Run3-25Prompt-Summer24-NanoAODv15 (Summer24Prompt25 JEC/JER, 2025 data
     # residuals, veto map, jet ID), vendored here.
     "2025":         "2025_Summer24Prompt25",
+    # 2026 PromptReco with Summer24 MC: JME Run3-26Prompt-Summer24-NanoAODv15
+    # (Summer24Prompt26_V1 JEC, JRV1 JER, veto map and jet ID cloned from 2025).
+    "2026":         "2026_Summer24Prompt26",
 }
 
 # Jet-veto payloads follow the data-taking campaign (kept separate from
@@ -55,6 +58,7 @@ _JSONPOG_JETVETO_DIR = {
     "2023postBPix": "2023_Summer23BPix",
     "2024":         "2024_Summer24",
     "2025":         "2025_Summer24Prompt25",
+    "2026":         "2026_Summer24Prompt26",
 }
 
 _JSONPOG_JETID_DIR = {
@@ -68,6 +72,7 @@ _JSONPOG_JETID_DIR = {
     "2023postBPix": "2023_Summer23BPix",
     "2024": "2024_Summer24",
     "2025": "2025_Summer24Prompt25",
+    "2026": "2026_Summer24Prompt26",
 }
 
 
@@ -555,7 +560,7 @@ def GetPUSF(events, IOV, mc_campaign=None):
     }
     if IOV.endswith("UL"):
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
-    elif IOV in ("2024", "2025"):
+    elif IOV in ("2024", "2025", "2026"):
         # Real 2024 PU weights: CAT/LUM Run3-24CDEReprocessingFGHIPrompt-Summer24
         # -NanoAODv15 @2026-04-15, file puWeights_CDEFGHI.json.gz, vendored from
         # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . Replaces the former
@@ -572,6 +577,7 @@ def GetPUSF(events, IOV, mc_campaign=None):
         "2018"   : "Collisions18_UltraLegacy_goldenJSON",
         "2024"   : "Collisions24_CDEFGHI_goldenJSON",
         "2025"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file
+        "2026"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file (as 2025)
         "2022preEE":    "Collisions2022_355100_357900_eraBCD_GoldenJson",
         "2022postEE":   "Collisions2022_359022_362760_eraEFG_GoldenJson",
         "2023preBPix":  "Collisions2023_366403_369802_eraBC_GoldenJson",
@@ -627,12 +633,15 @@ def getLumiMask(IOV):
     golden_json_path_2023 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2023_366442_370790_Golden.json"
     golden_json_path_2024 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2024_378981_386951_Golden.json"
     golden_json_path_2025 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2025_391658_398903_Golden.json"
+    # 2026: DQM certification, runs 401624-403937 (eras A, B, D; the low-PU era C has its own JSON)
+    golden_json_path_2026 = str(_PROJECT_ROOT)+"/data/corrections/goldenJsons/Cert_Collisions2026_401624_403937_golden.json"
     
 
     masks = {"2022":LumiMask(golden_json_path_2022),
              "2023":LumiMask(golden_json_path_2023),
              "2024":LumiMask(golden_json_path_2024),
              "2025":LumiMask(golden_json_path_2025),
+             "2026":LumiMask(golden_json_path_2026),
             }
 
     # sub-era keys (2022preEE, 2023postBPix, ...) share the full-year golden JSON
@@ -669,6 +678,14 @@ def getMETFilter(IOV, events):
                                   "eeBadScFilter",
                                   "ecalBadCalibFilter"],
                        '2025'   :["goodVertices",
+                                  "globalSuperTightHalo2016Filter",
+                                  "EcalDeadCellTriggerPrimitiveFilter",
+                                  "BadPFMuonFilter",
+                                  "BadPFMuonDzFilter",
+                                  "hfNoisyHitsFilter",
+                                  "eeBadScFilter",
+                                  "ecalBadCalibFilter"],
+                       '2026'   :["goodVertices",
                                   "globalSuperTightHalo2016Filter",
                                   "EcalDeadCellTriggerPrimitiveFilter",
                                   "BadPFMuonFilter",

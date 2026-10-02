@@ -16,6 +16,11 @@ LUMI_PB = {
     # 110.37 fb^-1. Reproduced 2026-09-24 with brilcalc --normtag normtag_BRIL on
     # Cert_Collisions2025_391658_398903_Golden.json. Re-check whenever either changes.
     '2025':    110370.,
+    # 2026 PromptReco, eras B + D (nominal PU). PdmV Run-3 TWiki 2026 table (r223,
+    # 2026-09-07, preliminary golden-JSON values): B 15.28 + D 10.03 = 25.31 fb^-1.
+    # Era A (0.64, first collisions, not in the PPD analysis table) and the low-PU era C
+    # (2.11) are not used. Golden JSON Cert_Collisions2026_401624_403937_golden.json.
+    '2026':    25310.,
     # Run-3 sub-era keys (NanoAODv15). Preliminary golden-JSON values; refine
     # with brilcalc on data/corrections/goldenJsons/.
     '2022preEE':    7980.,   # Run2022 C,D

@@ -40,7 +40,7 @@ from ttbarprocessor import _LUMI_PB
 # Keep this in lockstep with the corrections/weights/WP wiring: an entry here asserts
 # "running the source-IOV MC and the target-IOV MC gives the same histograms up to
 # the lumi factor". Only add an IOV once that is actually true.
-_MC_LUMI_EQUIVALENT = {"2025": "2024"}
+_MC_LUMI_EQUIVALENT = {"2025": "2024", "2026": "2024"}
 
 
 def _scale_mapping(m, factor, power=1):

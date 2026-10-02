@@ -94,7 +94,7 @@ _LUMI_PB = LUMI_PB
 
 # Run-3 sub-era IOV keys: all are NanoAODv15 and carry the GloParTv3 top tagger,
 # so they share the 2024 GloParTv3 scoring/WP path.
-_V15_IOVS = {'2022preEE', '2022postEE', '2023preBPix', '2023postBPix', '2024', '2025'}
+_V15_IOVS = {'2022preEE', '2022postEE', '2023preBPix', '2023postBPix', '2024', '2025', '2026'}
 
 
 def _base_year(iov):
@@ -127,6 +127,7 @@ _TAGGER_WPS = {
         '2023': 0.435,
         '2024': 0.6488,
         '2025': 0.6488,
+        '2026': 0.6488,
         '2022preEE': 0.6488, '2022postEE': 0.6488,
         '2023preBPix': 0.6488, '2023postBPix': 0.6488,
     },
@@ -135,6 +136,7 @@ _TAGGER_WPS = {
         '2023': 0.632,
         '2024': 0.8571,
         '2025': 0.8571,
+        '2026': 0.8571,
         '2022preEE': 0.8571, '2022postEE': 0.8571,
         '2023preBPix': 0.8571, '2023postBPix': 0.8571,
     },
@@ -145,6 +147,7 @@ _TAGGER_WPS = {
         '2018':    0.920,
         '2024':    0.9284,
         '2025':    0.9284,
+        '2026':    0.9284,
         '2022preEE': 0.9284, '2022postEE': 0.9284,
         '2023preBPix': 0.9284, '2023postBPix': 0.9284,
     },
@@ -344,6 +347,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             '2023': ['PFHT1050'],
             '2024': ['PFHT1050'],
             '2025': ['PFHT1050'],
+            '2026': ['PFHT1050'],
             '2022preEE': ['PFHT1050'], '2022postEE': ['PFHT1050'],
             '2023preBPix': ['PFHT1050'], '2023postBPix': ['PFHT1050'],
         }

@@ -159,7 +159,7 @@ _redirector_opts = [
 ]
 _redirector_vals = [v for _, v in _redirector_opts]
 _env_opts = ["casa", "lpc", "winterfell", "local"]
-_iov_opts = ["2022", "2023", "2024", "2025"]
+_iov_opts = ["2022", "2023", "2024", "2025", "2026"]
 _bkgest_opts = [("None", None), "2dalphabet", "mistag"]
 _toptagger_opts = ["topvsqcd", "cmsv2", "recomb"]
 _ttagWP_opts = ["loose", "medium", "tight"]
