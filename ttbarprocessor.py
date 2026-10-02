@@ -110,6 +110,13 @@ def _base_year(iov):
 #   verytight 0.1% | tight 0.5% | medium 1.0% | loose 2.5% | veryloose 5.0%
 # (the recomb tagger hits these exactly per pT bin; the baseline scalar thresholds
 #  below approximate them inclusively.)
+# Leptonic-top rejection (2026-10-02 study): both tagged/antitag jets also need GloParTv3
+# f_lep = L/(H+L) below this. The score H/(H+QCD) ignores the leptonic-top heads, so a jet
+# holding a leptonic top (lepton + b inside the AK8 jet) passes it. 0.59 = tightest value
+# keeping >= 99% of truth fully merged hadronic tops in every pT x tight/band row (MC).
+# IOVs without GloParTv3 have f_lep = 0 (no cut).
+_FLEP_CUT = 0.59
+
 _TAGGER_WPS = {
     # 2022/2023/2025 WPs are placeholders set to the 2024 GloParTv3 values (same
     # tagger; 2025 MC is Summer24 per PPD); replace with per-year derivations when
@@ -223,7 +230,6 @@ class TTbarResProcessor(processor.ProcessorABC):
         dataset_metadata=None,
         group_by_dataset=False,
         store_event_list=False,
-        flep_cut=None,
     ):
         self.iov = iov
         self.htCut = htCut
@@ -245,10 +251,6 @@ class TTbarResProcessor(processor.ProcessorABC):
         # it prints a block per chunk (thousands) and ships them back through the
         # scheduler. Off by default; the cutflow dict is accumulated either way.
         self.cutflow_verbose = cutflow_verbose
-        # option A: both jets also need f_lep = L/(H+L) < flep_cut (None = off)
-        if flep_cut is not None and iov not in _V15_IOVS:
-            raise ValueError(f'flep_cut needs the GloParTv3 leptonic-top heads (v15 IOVs), not {iov}')
-        self.flep_cut = flep_cut
         self.produce_ntuple = produce_ntuple
         self.ntuple_mode = ntuple_mode
         self.ntuple_output_dir = ntuple_output_dir
@@ -516,8 +518,9 @@ class TTbarResProcessor(processor.ProcessorABC):
         Per jet: the GloParTv3 heads (the leptonic-top classes the tagger score ignores)
         and, in MC, the gen merge category and W-lepton flavour. Per event: the two
         leading loose muons and veto electrons (for a lepton veto) and the full nominal
-        weight. MC keeps events with a tight-tagged jet0 (Pass, Fail and single-tag);
-        data keep only the antitag (Fail) region, so no Pass-region data are stored.
+        weight. Rows come from the score-only selection (before the f_lep cut, so the cut
+        can be re-derived): MC keeps events with a tight-tagged jet0 (Pass, Fail and
+        single-tag); data keep only the antitag (Fail) region, so no Pass data are stored.
         """
         n = len(events)
         cols = {"weight_nominal": np.asarray(weight_nominal, dtype=np.float32)}
@@ -969,18 +972,16 @@ class TTbarResProcessor(processor.ProcessorABC):
         )
         antitag = antitag_disc & ttag_s0 & mcut_s1
 
-        # option A: GloParTv3 also has to call both jets hadronic tops -- f_lep = L/(H+L)
-        # below flep_cut -- or leptonic tops (lepton + b inside the AK8 jet) pass the score
+        # GloParTv3 also has to call both jets hadronic tops (f_lep < _FLEP_CUT), or leptonic
+        # tops (lepton + b inside the AK8 jet) pass the score
         if self.iov in _V15_IOVS:
             flep0, flep1 = leptonic_top_fraction(jet0), leptonic_top_fraction(jet1)
         else:
             flep0 = flep1 = np.zeros(len(jet0))
-        ttag_s0_s, ttag_s1_s, antitag_s = ttag_s0, ttag_s1, antitag     # S only, for the f_lep hist
-        if self.flep_cut is not None:
-            lep_ok = (flep0 < self.flep_cut) & (flep1 < self.flep_cut)
-            ttag_s0 = ttag_s0 & (flep0 < self.flep_cut)
-            ttag_s1 = ttag_s1 & (flep1 < self.flep_cut)
-            antitag = antitag & lep_ok
+        ttag_s0_s, ttag_s1_s, antitag_s = ttag_s0, ttag_s1, antitag     # score only: flep hist, lepstudy
+        ttag_s0 = ttag_s0 & (flep0 < _FLEP_CUT)
+        ttag_s1 = ttag_s1 & (flep1 < _FLEP_CUT)
+        antitag = antitag & (flep0 < _FLEP_CUT) & (flep1 < _FLEP_CUT)
 
         # back-to-back topology + subjet requirements
         dPhiCut     = np.abs(jet0.p4.delta_phi(jet1.p4)) > _DPHI_CUT
@@ -1154,14 +1155,11 @@ class TTbarResProcessor(processor.ProcessorABC):
                 antitag=antitag_s, ttag_s0=ttag_s0_s, ttag_s1=ttag_s1_s,
                 rapidity=rapidity, anacats=self.anacats,
             )
-            if self.flep_cut is None:
-                w_nom = np.asarray(self.weights[correction].weight())
-            else:
-                # the top-tag SFs depend on the category: weight as the S-only selection would
-                w_nom = np.asarray(self.weight_manager.build_weights(
-                    dataset=dataset, events=events, evtweights=evtweights, is_data=isData,
-                    jet0=jet0, jet1=jet1, ttag2=(ttag_s0_s & ttag_s1_s), antitag=antitag_s,
-                ).weight())
+            # the top-tag SFs depend on the category: weight as the score-only selection would
+            w_nom = np.asarray(self.weight_manager.build_weights(
+                dataset=dataset, events=events, evtweights=evtweights, is_data=isData,
+                jet0=jet0, jet1=jet1, ttag2=(ttag_s0_s & ttag_s1_s), antitag=antitag_s,
+            ).weight())
             for i, (lbl, cat) in enumerate(pre_cats.items()):
                 if isData and not lbl.startswith('at'):
                     continue
@@ -1175,7 +1173,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             if "jet0_TopbWev" in self.ntuple_columns:
                 extra, row_mask = self._lepstudy_columns(
                     events, jet0, jet1, self.weights[correction].weight(), isData,
-                    ttag_s0, antitag,
+                    ttag_s0_s, antitag_s,
                 )
             self._fill_ntuple(
                 output, correction, events, labels_and_categories,
