@@ -442,6 +442,11 @@ as the golden JSON evolves. 2025 (version 20 Jan 2026): C 21.56, D 25.82, E 14.0
 G 22.25 = 110.37 fb⁻¹, reproduced per era to <0.01 fb⁻¹ with brilcalc --normtag
 normtag_BRIL on `Cert_Collisions2025_391658_398903_Golden.json`. Re-check both before
 the v1.2 production.
+2026 (PdmV table, preliminary): B 15.28 + D 10.03 = 25.31 fb⁻¹. Our JSON
+`Cert_Collisions2026_401624_403937_golden.json` (identical to DC `latest`, md5 6d235d34…) gives
+B 15.27 and D 9.88 fb⁻¹ (brilcalc --normtag normtag_BRIL, DAS era run ranges; A 0.65 fb⁻¹, C not in
+the golden JSON), so 25.31 stands (D −1.5 %). NanoAOD holds 99.9 % (B) and 99.7 % (D) of the golden
+lumisections; there is no PromptReco-v2.
 
 ### MC availability (checked in DAS 2026-09-24)
 No 2025 (Winter25/Summer25) TTto4Q or Z'→tt̄ exists; no Summer25 campaign at all.
@@ -498,3 +503,4 @@ Summer24 stays the 2025 MC. Winter25 QCD HT bins exist (QCD is data-driven).
 | 2026-10-02 | Item 34: `tests/test_ttag_weights.py` (band below 600 uses the measured SF; band ≥ 600 uses antitag_hipt with its own nuisance and leaves ttag_pt3; only merged antitag jets; Run 2 = 1) + full suite; Z′ 4 TeV 2022postEE one-chunk run | 18/18; 82 pass, 4 skipped; ttag_band_hipt filled, Fail only |
 | 2026-10-02 | Item 35: `tests/test_toppt.py` (SF = NNLO × extrapolation held at 2 / 1 TeV; event weight from last-copy tops only, 1 without tops) + full suite; TTto4Q 2024 one-chunk streamed run | 84 pass, 4 skipped; toppt Up/Down ±9% |
 | 2026-10-02 | **v1.2.1 re-skim** (items 31–36; `outputs/tight_v1.2.1`, code `c34dbd1`, 2024 data `fa5b881` (same data path); LPC `~/nobackup/TTbarHadronicSkimmer_v121{,mc}`, casa `~/cc_scratch/ttbarhadronic_v121{,mc}`): 2024 + 2025 data and MC, 2022 + 2023 data and MC (Z′ = 2024 placeholder) | 2024/2025 data: event counts identical to v1.2 in every era; Fail drop from the f_lep cut 22.7 % / 21.6 % (2024 cen/fwd), 20.6 % / 16.9 % (2025); TTbar 2024 vs v1.2 Fail +3 %, Pass +30 % (top-pT +23 %, SF scope +7 %); Z′ smooth in mass (Pass ≈ 0.86 at 3–5 TeV, Fail ≈ 0.40–0.45 above 2.5 TeV); 2025 MC = 2024 × 1.00382; fit inputs `outputs/twodalphabet_tight{24,25}_v1.2.1` (59 files, 140 keys per MC file, not staged); 2022/23 data yield/lumi vs 2024 +6…+51 % (veto map / tagging, as in the year study); 2022/23 Z′ normalisation biased by the pileup mismatch (item 37) |
+| 2026-10-02 | **2026 D data yield** (`data_2026_D`, code `ed0a1db`; brilcalc in lxplus `~/work/ttbarhadronic/lumi_2026/`; `plots/plot_tagrate_by_era.py` → `plots/out/tagrate_by_era/`) | The low yield per fb⁻¹ (Fail 0.78× 2024; 2025: 0.94×) is not luminosity or missing data: lumi checked above, and the tt̄ candidates per fb⁻¹ are 1.03× 2024 (2025: 1.005×). It enters at the top tag: the leading-jet tag rate (tag_jet0 / ttbarcand, QCD dominated) is 1.41 % against 1.67–1.73 % in 2024 C–G (0.83×), 1.51 % in 2024 H/I and 1.52–1.61 % in 2025. Mean pileup rises over the same eras (44–46 in 2024 C–E, 50–52 in 2024 F–I and 2025, 54.6 in 2026 D), but 2022/23 eras differ by up to ±15 % at fixed pileup, so pileup is not established as the cause. 2026 runs CMSSW_16_0 PromptReco (2025: 15_0). The QCD estimate is data driven, but tt̄ and Z′ in 2025/2026 use the 2024 top-tag SFs (2024 MC × lumi); a true-top efficiency drift of this size would need a 2025/2026 T&P check before 2026 enters a fit. 2026 B still running |
