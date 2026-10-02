@@ -21,11 +21,14 @@ def _jets(pts):
 
 # data/toptag/ttag_sf_v1.2.json, 2024 tight, pT bin 3 (>= 600 GeV): tagged jet, antitag band
 TIGHT3 = (0.821, 0.8956, 0.7486)
-BAND3 = (1.578, 1.7657, 1.3895)
+BAND3 = (1.578, 1.7657, 1.3895)          # Run-2 style band entry; 2024 band jets >= 600 use HIPT
+BAND2 = (1.254, 1.384, 1.1278)           # 2024 band, 480-600 GeV
+# interim antitag_hipt (2024): (nominal, up, down) for 600-800 and >= 800 GeV, nuisance ttag_band_hipt
+HIPT = {700.0: (1.50, 1.80, 1.20), 900.0: (1.00, 1.50, 0.50), 1500.0: (1.00, 1.50, 0.50)}
 
 
 class TopTagSFWeightsTest(unittest.TestCase):
-    def _variations(self, iov, jet0_pt, jet1_pt, ttag2, antitag, merged=None):
+    def _variations(self, iov, jet0_pt, jet1_pt, ttag2, antitag, merged=None, nuisance="ttag_pt3"):
         manager = Run3WeightManager(iov=iov, systematics=["ttag_pt3"], no_syst=False, deepak8_cut="tight")
         weights = Weights(len(jet0_pt))
         if merged is None:
@@ -33,7 +36,7 @@ class TopTagSFWeightsTest(unittest.TestCase):
         manager._add_ttag_pt_weights(
             weights, _jets(jet0_pt), _jets(jet1_pt), np.asarray(ttag2), np.asarray(antitag), merged
         )
-        return weights.weight(), weights.weight("ttag_pt3Up"), weights.weight("ttag_pt3Down")
+        return weights.weight(), weights.weight(f"{nuisance}Up"), weights.weight(f"{nuisance}Down")
 
     def test_uncertainty_doubled_only_above_measured_range(self):
         # event 0: both jets inside the measured range; event 1: both beyond 1.2 TeV
@@ -43,10 +46,37 @@ class TopTagSFWeightsTest(unittest.TestCase):
         np.testing.assert_allclose(up, [sf_up**2, (sf + 2 * (sf_up - sf)) ** 2])
         np.testing.assert_allclose(down, [sf_down**2, (sf - 2 * (sf - sf_down)) ** 2])
 
-    def test_antitag_jet_uses_band_sf_with_same_extrapolation(self):
-        nom, up, _ = self._variations("2025", [700.0], [1500.0], [False], [True])
-        np.testing.assert_allclose(nom, [TIGHT3[0] * BAND3[0]])
-        np.testing.assert_allclose(up, [TIGHT3[1] * (BAND3[0] + 2 * (BAND3[1] - BAND3[0]))])
+    def test_antitag_jet_below_600_uses_measured_band_sf(self):
+        nom, up, down = self._variations("2024", [700.0], [500.0], [False], [True], nuisance="ttag_pt2")
+        np.testing.assert_allclose(nom, [TIGHT3[0] * BAND2[0]])
+        np.testing.assert_allclose(up, [TIGHT3[0] * BAND2[1]])
+        np.testing.assert_allclose(down, [TIGHT3[0] * BAND2[2]])
+
+    def test_high_pt_antitag_jet_uses_interim_band_sf(self):
+        # band jets >= 600 GeV (2024, aliased by 2025): antitag_hipt SF, own nuisance, no doubling;
+        # they drop out of the ttag_pt3 band variation (jet0 keeps its tag SF and doubling)
+        jet1 = [700.0, 900.0, 1500.0]
+        nom, up, down = self._variations("2025", [700.0] * 3, jet1, [False] * 3, [True] * 3,
+                                         nuisance="ttag_band_hipt")
+        np.testing.assert_allclose(nom, [TIGHT3[0] * HIPT[p][0] for p in jet1])
+        np.testing.assert_allclose(up, [TIGHT3[0] * HIPT[p][1] for p in jet1])
+        np.testing.assert_allclose(down, [TIGHT3[0] * HIPT[p][2] for p in jet1])
+        _, up3, _ = self._variations("2025", [700.0] * 3, jet1, [False] * 3, [True] * 3)
+        np.testing.assert_allclose(up3, [TIGHT3[1] * HIPT[p][0] for p in jet1])
+
+    def test_interim_band_sf_only_on_merged_antitag_jets(self):
+        # tagged jet1 (2t) keeps the tag SF; a not-merged antitag jet keeps SF 1
+        nom, up, _ = self._variations(
+            "2024", [700.0, 700.0], [900.0, 900.0], [True, False], [False, True],
+            merged=(np.array([True, True]), np.array([True, False])), nuisance="ttag_band_hipt",
+        )
+        np.testing.assert_allclose(nom, [TIGHT3[0] ** 2, TIGHT3[0]])
+        np.testing.assert_allclose(up, [TIGHT3[0] ** 2, TIGHT3[0]])
+
+    def test_run2_tables_have_no_interim_band_sf(self):
+        nom, up, down = self._variations("2018", [700.0], [900.0], [False], [True], nuisance="ttag_band_hipt")
+        np.testing.assert_allclose(up / nom, [1.0])
+        np.testing.assert_allclose(down / nom, [1.0])
 
     def test_sf_only_on_fully_merged_jets(self):
         # 2024 SFs were measured for fully merged tops: other jets keep SF 1
@@ -56,8 +86,8 @@ class TopTagSFWeightsTest(unittest.TestCase):
             [False, False, True], [True, True, False],
             merged=(np.array([True, False, True]), np.array([False, True, False])),
         )
-        np.testing.assert_allclose(nom, [TIGHT3[0], BAND3[0], TIGHT3[0]])
-        np.testing.assert_allclose(up, [TIGHT3[1], BAND3[1], TIGHT3[1]])
+        np.testing.assert_allclose(nom, [TIGHT3[0], HIPT[700.0][0], TIGHT3[0]])
+        np.testing.assert_allclose(up, [TIGHT3[1], HIPT[700.0][0], TIGHT3[1]])
 
     def test_merge_flags_required_for_fully_merged_tables(self):
         manager = Run3WeightManager(iov="2025", systematics=["ttag_pt1"], no_syst=False, deepak8_cut="tight")

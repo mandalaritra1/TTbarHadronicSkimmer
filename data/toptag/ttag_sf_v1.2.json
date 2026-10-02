@@ -1,6 +1,6 @@
 {
  "version": "v1.2",
- "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment). 'nonmerged_unc': flat relative uncertainty per tagged/antitag jet that is not a fully merged top (those keep SF 1), one nuisance 'ttag_nonmerged' for all pT bins.",
+ "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment). 'nonmerged_unc': flat relative uncertainty per tagged/antitag jet that is not a fully merged top (those keep SF 1), one nuisance 'ttag_nonmerged' for all pT bins. 'antitag_hipt' (optional): band SF for antitag jets at or above its first pT edge, overriding the 'antitag' entry there, with its own nuisance (name in 'nuisance', no doubling); those jets drop out of the ttag_pt band variation.",
  "pt_edges": [
   0,
   400,
@@ -665,6 +665,26 @@
     "tag": 0.909,
     "antitag": 0.504,
     "note": "800+ GeV check bin, not applied: SF 0.909 +0.28/-0.26 agrees with 600+; the band fit sits at its lower bound in every variation (no usable syst)."
+   },
+   "antitag_hipt": {
+    "pt_edges": [
+     600.0,
+     800.0
+    ],
+    "nominal": [
+     1.5,
+     1.0
+    ],
+    "up": [
+     1.8,
+     1.5
+    ],
+    "down": [
+     1.2,
+     0.5
+    ],
+    "nuisance": "ttag_band_hipt",
+    "note": "Interim (2026-10-02) band SF for antitag jets >= 600 GeV, replacing the 600+ fit value 1.578 there. The 4-bin fits give 1.67 (600-800) and 0.50 (800+, Combine scan 68% [0.18, 0.88], 95% [0.07, 1.36]; 25 band data probes; the scipy chi2 fit sits at its bound because a Neyman chi2 is biased in sparse bins). Two reviews (Fable 5.1, GPT-6-Astra) found the per-bin pattern unstable (50 GeV sub-bins 1.81 / 0.95 at 600-700) and the T&P band sample 17% above 800 GeV vs 37% in the analysis. Values: 600-800 1.50 +- 0.30, 800+ 1.00 +- 0.50, one correlated nuisance, no doubling. To be replaced by the T&P re-run (Poisson likelihood, 2025 data, f_lep on probes)."
    }
   }
  }

@@ -135,6 +135,12 @@ class Run3WeightManager:
         jet0_k = np.where(jet0_pt > pt_measured_max, 2.0, 1.0)
         jet1_k = np.where(jet1_pt > pt_measured_max, 2.0, 1.0)
 
+        # Interim high-pT band SF (antitag_hipt): band jets at or above its first edge take
+        # its SF and its own nuisance instead of the ttag_pt band term.
+        hipt = table.get("antitag_hipt")
+        antitag = np.asarray(ak.to_numpy(antitag), dtype=bool)
+        jet1_hipt = np.zeros(len(jet1_pt), bool) if hipt is None else jet1_pt >= hipt["pt_edges"][0]
+
         def jet_sf(jet_ptbins, k, ibin, sf_nom, sf_var, sel=True):
             # per-jet SF in pT bin ibin: nominal + k * (variation - nominal)
             return np.where((jet_ptbins == ibin) & sel, sf_nom[ibin] + k * (sf_var[ibin] - sf_nom[ibin]), 1.0)
@@ -143,7 +149,18 @@ class Run3WeightManager:
             nom, up, down = (
                 jet_sf(jet0_ptbins, jet0_k, ibin, nomsf, var, merged0)
                 * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf, var, ttag2 & merged1)
-                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag & merged1)
+                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag & ~jet1_hipt & merged1)
                 for var, var_fail in ((nomsf, nomsf_fail), (upsf, upsf_fail), (downsf, downsf_fail))
             )
             weights.add(f"ttag_pt{ibin}", weight=nom, weightUp=up, weightDown=down)
+
+        name = "ttag_band_hipt" if hipt is None else hipt["nuisance"]
+        if hipt is None:
+            ones = np.ones(len(jet1_pt))
+            weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
+        else:
+            ib = np.clip(np.digitize(jet1_pt, hipt["pt_edges"]) - 1, 0, len(hipt["nominal"]) - 1)
+            sel = antitag & jet1_hipt & merged1
+            nom, up, down = (np.where(sel, np.asarray(hipt[v], dtype=float)[ib], 1.0)
+                             for v in ("nominal", "up", "down"))
+            weights.add(name, weight=nom, weightUp=up, weightDown=down)
