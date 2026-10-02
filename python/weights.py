@@ -5,7 +5,7 @@ import awkward as ak
 import numpy as np
 from coffea.analysis_tools import Weights
 
-from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, pTReweighting
+from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, GetTopPtWeight
 from truthstudy import MERGE_FULL, top_merge_category
 
 # Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.1 is the table that
@@ -36,8 +36,14 @@ class Run3WeightManager:
         weights.add("genWeight", evtweights)
 
         if "TTbar" in dataset:
-            ttbar_wgt = pTReweighting(jet0.pt, jet1.pt)
-            weights.add("ptReweighting", ttbar_wgt)
+            # top-pT reweighting on the gen last-copy tops (Run-3 TOP practice, TOP-23-008);
+            # uncertainty = with vs without, symmetrised (down = 2w - 1)
+            ttbar_wgt = GetTopPtWeight(events.GenPart)
+            if self.no_syst or "toppt" not in self.systematics:
+                weights.add("toppt", ttbar_wgt)
+            else:
+                weights.add("toppt", weight=ttbar_wgt, weightUp=np.ones_like(ttbar_wgt),
+                            weightDown=2.0 * ttbar_wgt - 1.0)
 
         if self.no_syst or is_data:
             return weights

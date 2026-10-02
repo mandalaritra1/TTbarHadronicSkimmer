@@ -675,12 +675,47 @@ def getMETFilter(IOV, events):
     return metfilter
 
 
-def pTReweighting(pt0, pt1):
-        topcand0_wgt = np.exp(0.0615 - 0.0005*pt0)
-        topcand1_wgt = np.exp(0.0615 - 0.0005*pt1)
-        ttbar_wgt = np.sqrt(topcand0_wgt*topcand1_wgt) # used for re-weighting ttbar MC
-        
-        return ttbar_wgt
+_IS_LAST_COPY = 1 << 13          # NanoAOD GenPart statusFlags bit
+
+
+def top_pt_sf(pt):
+    """Per-top tt reweighting SF, following the Run-3 TOP PAG practice.
+
+        SF(pT) = [0.103 exp(-0.0118 pT) - 0.000134 pT + 0.973] * [0.991 + 0.000075 pT]
+
+    First factor: NNLO QCD + NLO EW / POWHEG+Pythia8 (CP5) at 13 TeV, fitted for top pT up to
+    2 TeV. Second factor: 13 -> 13.6 TeV extrapolation from the ratio of the POWHEG (hvq) top pT
+    (status 62) at 13.6 and 13 TeV, fitted up to 1 TeV. pT is the parton-level top (isLastCopy,
+    after radiation, before decay); each factor is held at the edge of its fit range. The event
+    weight is sqrt(SF(t) SF(tbar)); the uncertainty is the difference to no reweighting,
+    symmetrised (as in TOP-23-008).
+
+    References:
+    - TOP PAG TWiki TopPtReweighting (formula, isLastCopy pT, use cases):
+      https://twiki.cern.ch/twiki/bin/viewauth/CMS/TopPtReweighting
+    - CMS AN-2024/019 v9, sec. 5.7 eqs. (3)-(4) and Fig. 25 (TOP-23-008, tW at 13.6 TeV):
+      https://cms-alcm.web.cern.ch/notes/CMS-AN-2024-019/AN2024_019_v9.pdf
+    - TOP-23-008 paper (top quark pT uncertainty, sec. 7): arXiv:2409.06444
+    - TOP PAG recommendation to use the TOP-23-008 treatment in Run 3 (CMS Talk, Oct 2025):
+      https://cms-talk.web.cern.ch/t/top-pt-reweighting-recommendations-for-run-3-analyses/133877
+    - 13 -> 13.6 TeV extrapolation recipe from the TOP conveners (CMS PubTalk, TOP-23-008, Apr 2024):
+      https://cms-pub-talk.web.cern.ch/t/new-version-of-the-paper-v6-an-v8-and-supplementary-material/23359
+    """
+    pt = np.asarray(pt, dtype=float)
+    p_nnlo = np.minimum(pt, 2000.0)
+    p_ext = np.minimum(pt, 1000.0)
+    return (0.103 * np.exp(-0.0118 * p_nnlo) - 0.000134 * p_nnlo + 0.973) * (0.991 + 0.000075 * p_ext)
+
+
+def GetTopPtWeight(genparts):
+    """Event weight sqrt(SF(t) SF(tbar)) from the last-copy gen tops (1 if there are none);
+    SF from top_pt_sf (see its docstring for the references). Apply to tt only: the TWiki
+    excludes single top and ttX."""
+    pdg = abs(genparts.pdgId)
+    tops = genparts[(pdg == 6) & ((genparts.statusFlags & _IS_LAST_COPY) != 0)]
+    counts = ak.num(tops.pt, axis=1)
+    sf = ak.unflatten(top_pt_sf(ak.to_numpy(ak.flatten(tops.pt))), counts)
+    return np.sqrt(ak.to_numpy(ak.prod(sf, axis=1)))
     
     
 def GetQ2weights(events):

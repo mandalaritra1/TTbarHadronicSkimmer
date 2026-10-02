@@ -217,7 +217,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         bkgEst=False,
         noSyst=False,
         blinding=False,
-        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt'],
+        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'toppt'],
         anacats=['2t0bcen'],
         debug=False,
         cutflow_verbose=False,

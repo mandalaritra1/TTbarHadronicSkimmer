@@ -900,6 +900,7 @@ def run_analysis(args):
         "ttag_pt3",
         "ttag_nonmerged",
         "ttag_band_hipt",
+        "toppt",
     ]
 
     if ("2016" in IOV) or ("2017" in IOV):
