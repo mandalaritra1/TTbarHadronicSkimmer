@@ -270,13 +270,19 @@ def _category_ids(label_to_int: dict[str, int], region: str, cat: str) -> list[i
 
 
 def _available_systematics(outputs: list[dict], hist_name: str) -> list[str]:
+    """Union of the systematic labels over the inputs, in first-seen order. Data outputs
+    can carry fewer labels than MC (data is written nominal-only); an MC input that lacks
+    a label still fails when its template is built."""
+    labels: list[str] = []
     for output in outputs:
         if hist_name not in output:
             continue
         for axis in output[hist_name].axes:
             if axis.name == "systematic":
-                return [str(value) for value in axis]
-    raise KeyError(f"Could not find histogram {hist_name!r} with a systematic axis")
+                labels += [str(value) for value in axis if str(value) not in labels]
+    if not labels:
+        raise KeyError(f"Could not find histogram {hist_name!r} with a systematic axis")
+    return labels
 
 
 def _sum_hists(outputs: list[dict], hist_name: str, anacat_ids: list[int], syst: str):
