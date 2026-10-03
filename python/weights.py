@@ -82,7 +82,7 @@ class Run3WeightManager:
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
         flep_on = flep_sf and any(s in self.systematics for s in FLEP_NUISANCES.values())
-        if flep_on or any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged")):
+        if flep_on or any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged", "ttag_drift")):
             merged = None
             if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
                 merged = tuple(
@@ -95,6 +95,8 @@ class Run3WeightManager:
                 self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
             if flep_on:
                 self._add_ttag_flep_weights(weights, jet0, jet1, ttag2, antitag, merged)
+            if "ttag_drift" in self.systematics:
+                self._add_ttag_drift_weights(weights, jet0, jet1, ttag2, antitag, merged)
 
         return weights
 
@@ -147,6 +149,49 @@ class Run3WeightManager:
         nom, up, down = (a * b for a, b in zip(sf0, sf1t))
         weights.add(FLEP_NUISANCES["tag"], weight=nom, weightUp=up, weightDown=down)
         weights.add(FLEP_NUISANCES["antitag"], weight=sf1a[0], weightUp=sf1a[1], weightDown=sf1a[2])
+
+    def _add_ttag_drift_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
+        """Year-specific drift of the real-top tag efficiency against the year the SFs were
+        measured in (table entry 'drift', keyed by IOV). 2026 aliases the 2024 SFs, but the T&P
+        finds the 2026 data efficiency lower with the same Summer24 MC, so the aliased SFs of
+        fully merged jets are multiplied by the drift factor: jet0 and a tagged jet1 by 'tag',
+        an antitag jet1 by 'antitag' (factor 1 if the block is absent), per pT bin (pt_edges are
+        lower edges, last bin open, jets below the first edge keep 1). One nuisance, correlated
+        across pT bins, between the jets and between tag and antitag; deviations scaled by
+        extrapolation_factor above extrapolate_above. IOVs without a drift entry: weight 1."""
+        drift = self.ttag_sf.get("drift", {}).get(self.iov)
+        jet0_pt = ak.to_numpy(jet0.p4.pt)
+        jet1_pt = ak.to_numpy(jet1.p4.pt)
+        if drift is None:
+            ones = np.ones(len(jet0_pt))
+            weights.add("ttag_drift", weight=ones, weightUp=ones, weightDown=ones)
+            return
+        if merged is None:
+            raise ValueError(f"the {self.iov} top-tag drift applies to fully merged tops only: "
+                             "pass the per-jet gen merge flags")
+        merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
+        ttag2 = np.asarray(ak.to_numpy(ttag2), dtype=bool)
+        antitag = np.asarray(ak.to_numpy(antitag), dtype=bool)
+        edges = drift["pt_edges"]
+        factor = drift.get("extrapolation_factor", 1.0)
+
+        def jet_f(pt, block, sel):
+            ones = np.ones(len(pt))
+            if block not in drift:
+                return [ones, ones, ones]
+            b = drift[block]
+            ib = np.digitize(pt, edges) - 1
+            ibc = np.clip(ib, 0, len(edges) - 1)
+            nom, up, down = (np.asarray(b[v], dtype=float)[ibc] for v in ("nominal", "up", "down"))
+            k = np.where(pt > drift.get("extrapolate_above", np.inf), factor, 1.0)
+            up, down = nom + k * (up - nom), nom + k * (down - nom)
+            return [np.where((ib >= 0) & sel, v, 1.0) for v in (nom, up, down)]
+
+        f0 = jet_f(jet0_pt, "tag", merged0)
+        f1t = jet_f(jet1_pt, "tag", ttag2 & merged1)
+        f1a = jet_f(jet1_pt, "antitag", antitag & merged1)
+        nom, up, down = (a * b * c for a, b, c in zip(f0, f1t, f1a))
+        weights.add("ttag_drift", weight=nom, weightUp=up, weightDown=down)
 
     def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
         """One flat nuisance for the tagged/antitag jets that are not fully merged tops.
