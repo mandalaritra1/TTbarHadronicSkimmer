@@ -902,7 +902,10 @@ def run_analysis(args):
         "ttag_band_hipt",
         "ttag_flep_tag",
         "ttag_flep_band",
-        "ttag_drift",
+        "ttag_drift_pt1",
+        "ttag_drift_pt2",
+        "ttag_drift_pt3",
+        "ttag_drift_band",
         "toppt",
     ]
 

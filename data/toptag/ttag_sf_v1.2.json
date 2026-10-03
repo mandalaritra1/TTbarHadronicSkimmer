@@ -752,5 +752,100 @@
     "skimmer_policy": "Added in the skimmer (2026-10-02, reviews by Fable 5.1 and GPT-6-Astra): one nuisance per block (tag and band are independent probes), each correlated across pT and between jets; deviations doubled for tag jets above 1200 GeV (pt_measured_max, as for SF_TopvsQCD; eps_MC of fully merged tight tops stays 0.995 above 1.2 TeV) and for band jets above 600 GeV (the inclusive band value is a 400-600 GeV measurement); up capped at 1/eps_mc. nominal/up/down/eps_mc are the T&P values unchanged."
    }
   }
+ },
+ "drift": {
+  "2026": {
+   "source": "2026/2024 real-top tight-tag efficiency ratio from a joint 2024+2026 semileptonic tt-bar T&P fit with shared Summer24 MC templates (no parameter floors, profile intervals, paired-bootstrap covariance, f_lep < 0.59 in the categories; systematics JMS, JMR, JES, JER, pileup, rest tag rates, composition). Multiplies the 2024 SFs that 2026 aliases. 2026 eras B+D (25.3/fb).",
+   "tp_commit": "toptag-sf-derivation f0cc036 (branch aritra)",
+   "tp_result": "outputs/drift_joint_2026_summary.json",
+   "tp_result_sha256": "ec7169014e445805df683e71e16277cfd63b63b1ebdaa898c497af1abff26daf",
+   "pt_edges": [
+    400.0,
+    480.0,
+    600.0
+   ],
+   "extrapolate_above": 1200.0,
+   "extrapolation_factor": 2.0,
+   "tag": {
+    "nominal": [
+     0.9428,
+     0.8265,
+     0.8165
+    ],
+    "up": [
+     0.9977,
+     0.885,
+     0.9148
+    ],
+    "down": [
+     0.8879,
+     0.768,
+     0.7181
+    ],
+    "nuisances": [
+     "ttag_drift_pt1",
+     "ttag_drift_pt2",
+     "ttag_drift_pt3"
+    ]
+   },
+   "antitag": {
+    "nominal": [
+     0.9463,
+     0.9463,
+     0.9463
+    ],
+    "up": [
+     1.0489,
+     1.0489,
+     1.0489
+    ],
+    "down": [
+     0.8438,
+     0.8438,
+     0.8438
+    ],
+    "nuisances": [
+     "ttag_drift_band",
+     "ttag_drift_band",
+     "ttag_drift_band"
+    ],
+    "extrapolate": false
+   },
+   "correlation_tight_bins_and_band": {
+    "order": [
+     "r[400-480]",
+     "r[480-600]",
+     "r[600+]",
+     "rB[incl]"
+    ],
+    "matrix": [
+     [
+      1.0,
+      -0.08164132414325845,
+      0.14181022166447133,
+      -0.23423161071726456
+     ],
+     [
+      -0.08164132414325845,
+      1.0,
+      -0.2769744051921835,
+      -0.07369761981116218
+     ],
+     [
+      0.14181022166447133,
+      -0.2769744051921835,
+      1.0,
+      -0.10791060779918833
+     ],
+     [
+      -0.23423161071726456,
+      -0.07369761981116218,
+      -0.10791060779918833,
+      1.0000000000000002
+     ]
+    ]
+   },
+   "note": "Most of the deficit sits in PromptReco CMSSW_16_0_6 (runs 403441-403684, 4.9/fb): ratio 0.73 +- 0.06 vs about 0.92 in the other release periods. Without those runs the T&P gives tight ratio 0.996/0.853/0.824 and band x 0.876 (not applied; pending the per-run check and a decision on those runs)."
+  }
  }
 }

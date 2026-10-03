@@ -220,7 +220,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         bkgEst=False,
         noSyst=False,
         blinding=False,
-        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'ttag_drift', 'toppt'],
+        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt'],
         anacats=['2t0bcen'],
         debug=False,
         cutflow_verbose=False,

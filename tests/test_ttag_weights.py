@@ -341,43 +341,67 @@ class LeptonicTopFractionTest(unittest.TestCase):
 
 
 DRIFT = {"pt_edges": [400.0, 480.0, 600.0], "extrapolate_above": 1200.0, "extrapolation_factor": 2.0,
-         "tag": {"nominal": [0.93, 0.83, 0.75], "up": [0.98, 0.90, 0.85], "down": [0.88, 0.76, 0.65]},
-         "antitag": {"nominal": [0.94, 0.94, 0.94], "up": [1.04, 1.04, 1.04], "down": [0.84, 0.84, 0.84]}}
+         "tag": {"nominal": [0.93, 0.83, 0.75], "up": [0.98, 0.90, 0.85], "down": [0.88, 0.76, 0.65],
+                 "nuisances": ["ttag_drift_pt1", "ttag_drift_pt2", "ttag_drift_pt3"]},
+         "antitag": {"nominal": [0.94, 0.94, 0.94], "up": [1.04, 1.04, 1.04], "down": [0.84, 0.84, 0.84],
+                     "nuisances": ["ttag_drift_band"] * 3, "extrapolate": False}}
+DRIFT_NAMES = weights.DRIFT_NUISANCES
 
 
 class DriftWeightsTest(unittest.TestCase):
     def _drift(self, jet0_pt, jet1_pt, ttag2, antitag, merged, drift=DRIFT, iov="2026"):
-        manager = Run3WeightManager(iov=iov, systematics=["ttag_drift"], no_syst=False, deepak8_cut="tight")
+        """returns (nominal, {nuisance: (up, down)}) of the full event weight"""
+        manager = Run3WeightManager(iov=iov, systematics=list(DRIFT_NAMES), no_syst=False, deepak8_cut="tight")
         manager.ttag_sf["drift"] = {} if drift is None else {"2026": drift}
-        weights = Weights(len(jet0_pt), storeIndividual=True)
-        manager._add_ttag_drift_weights(weights, _jets(jet0_pt), _jets(jet1_pt),
+        w = Weights(len(jet0_pt), storeIndividual=True)
+        manager._add_ttag_drift_weights(w, _jets(jet0_pt), _jets(jet1_pt),
                                         np.asarray(ttag2), np.asarray(antitag), merged)
-        return weights.weight(), weights.weight("ttag_driftUp"), weights.weight("ttag_driftDown")
+        return w.weight(), {n: (w.weight(f"{n}Up"), w.weight(f"{n}Down")) for n in DRIFT_NAMES}
 
     def test_tag_factor_on_jet0_and_tagged_jet1_band_factor_on_antitag_jet1(self):
         # 0: 2t, jet0 450 (bin 0), jet1 700 (bin 2); 1: antitag, jet0 500 (bin 1), jet1 450
-        nom, up, down = self._drift([450.0, 500.0], [700.0, 450.0], [True, False], [False, True],
-                                    (np.array([True, True]), np.array([True, True])))
+        nom, v = self._drift([450.0, 500.0], [700.0, 450.0], [True, False], [False, True],
+                             (np.array([True, True]), np.array([True, True])))
         np.testing.assert_allclose(nom, [0.93 * 0.75, 0.83 * 0.94])
-        np.testing.assert_allclose(up, [0.98 * 0.85, 0.90 * 1.04])
-        np.testing.assert_allclose(down, [0.88 * 0.65, 0.76 * 0.84])
+        # each tag nuisance moves only the jets in its own bin
+        np.testing.assert_allclose(v["ttag_drift_pt1"][0], [0.98 * 0.75, 0.83 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_pt2"][1], [0.93 * 0.75, 0.76 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_pt3"][0], [0.93 * 0.85, 0.83 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_band"][0], [0.93 * 0.75, 0.83 * 1.04])
+
+    def test_same_bin_jets_move_together(self):
+        # both jets tagged in bin 2: the bin-2 nuisance moves both (correlated between jets)
+        nom, v = self._drift([700.0], [650.0], [True], [False], (np.array([True]), np.array([True])))
+        np.testing.assert_allclose(nom, [0.75 * 0.75])
+        np.testing.assert_allclose(v["ttag_drift_pt3"][0], [0.85 * 0.85])
+        np.testing.assert_allclose(v["ttag_drift_pt1"][0], [0.75 * 0.75])
 
     def test_only_fully_merged_selected_jets_in_range(self):
         # 0: jet1 not merged; 1: jet0 below 400 GeV; 2: jet1 neither tagged nor antitag
-        nom, _, _ = self._drift([700.0, 380.0, 700.0], [700.0, 700.0, 700.0],
-                                [True, True, False], [False, False, False],
-                                (np.array([True, True, True]), np.array([False, True, True])))
+        nom, _ = self._drift([700.0, 380.0, 700.0], [700.0, 700.0, 700.0],
+                             [True, True, False], [False, False, False],
+                             (np.array([True, True, True]), np.array([False, True, True])))
         np.testing.assert_allclose(nom, [0.75, 0.75, 0.75])
 
-    def test_extrapolation_scales_the_deviation_above_threshold(self):
-        nom, up, down = self._drift([1500.0], [300.0], [False], [False], (np.array([True]), np.array([True])))
-        np.testing.assert_allclose([nom[0], up[0], down[0]], [0.75, 0.95, 0.55])
+    def test_extrapolation_scales_tag_deviation_not_band(self):
+        nom, v = self._drift([1500.0], [1500.0], [False], [True], (np.array([True]), np.array([True])))
+        np.testing.assert_allclose(nom, [0.75 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_pt3"][0], [0.95 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_pt3"][1], [0.55 * 0.94])
+        np.testing.assert_allclose(v["ttag_drift_band"][0], [0.75 * 1.04])
 
     def test_iov_without_drift_entry_gets_weight_one(self):
         for drift, iov in ((None, "2026"), (DRIFT, "2024")):
-            nom, up, down = self._drift([500.0], [700.0], [True], [False],
-                                        (np.array([True]), np.array([True])), drift=drift, iov=iov)
-            np.testing.assert_allclose([nom[0], up[0], down[0]], [1.0, 1.0, 1.0])
+            nom, v = self._drift([500.0], [700.0], [True], [False],
+                                 (np.array([True]), np.array([True])), drift=drift, iov=iov)
+            np.testing.assert_allclose(nom, [1.0])
+            for n in DRIFT_NAMES:
+                np.testing.assert_allclose([v[n][0][0], v[n][1][0]], [1.0, 1.0])
+
+    def test_unknown_nuisance_name_is_rejected(self):
+        bad = {**DRIFT, "tag": {**DRIFT["tag"], "nuisances": ["ttag_drift_pt1", "oops", "ttag_drift_pt3"]}}
+        with self.assertRaises(KeyError):
+            self._drift([500.0], [700.0], [True], [False], (np.array([True]), np.array([True])), drift=bad)
 
 
 if __name__ == "__main__":
