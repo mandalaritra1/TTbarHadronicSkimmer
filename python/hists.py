@@ -3,7 +3,12 @@ import numpy as np
 from coffea import processor
 
 
-manual_bins = [400, 500, 600, 800, 1000, 1500, 2000, 3000, 7000, 10000]
+# Calorimeter-tower eta edges of the Run-3 jet-veto maps (identical in every 2022-2026 payload),
+# |eta| < 3.139, so each eta-phi bin of jet_eta_phi is one veto-map cell (phi: 72 bins of 2pi/72).
+_VETO_ETA_EDGES_POS = [0.0, 0.087, 0.174, 0.261, 0.348, 0.435, 0.522, 0.609, 0.696, 0.783, 0.879,
+                       0.957, 1.044, 1.131, 1.218, 1.305, 1.392, 1.479, 1.566, 1.653, 1.74, 1.83,
+                       1.93, 2.043, 2.172, 2.322, 2.5, 2.65, 2.853, 2.964, 3.139]
+VETO_ETA_EDGES = [-e for e in _VETO_ETA_EDGES_POS[:0:-1]] + _VETO_ETA_EDGES_POS
 
 
 def _flatten_hist_tree(tree):
@@ -47,7 +52,6 @@ def build_output_histograms(
     jetmass2D_axis = hist.axis.Regular(100, 0, 500, name="jetmass", label=r"Jet $m_{SD}$ [GeV]")
     jetmsd_axis = hist.axis.Regular(100, 0, 500, name="jetmsd", label=r"Jet $m_{SD}$ [GeV]")
     ht_axis = hist.axis.Regular(40, 400, 4400, name="ht", label=r"$H_T$ [GeV]")
-    manual_axis = hist.axis.Variable(manual_bins, name="jetp", label=r"Jet Momentum [GeV]")
     jetdy_axis = hist.axis.Regular(50, 0, 3, name="jetdy", label=r"$|\Delta y|$")
     chi_axis   = hist.axis.Regular(100, 1, 30, name="chi",   label=r"$\chi_\mathrm{dijet}$")
     jetpt_axis = hist.axis.Regular(50, 300, 2000, name="jetpt", label=r"Jet $p_T$ [GeV]")
@@ -79,7 +83,6 @@ def build_output_histograms(
             "flep": hist.Hist(*_pre, cats_axis, hist.axis.IntCategory([0, 1], name="jet", label="jet"),
                               hist.axis.Regular(20, 0, 1, name="flep", label=r"$f_{lep}$"),
                               storage="weight", name="Counts"),
-            "mtt_unwgt": hist.Hist(*_pre,syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "mtt_vs_dy_vs_chi": hist.Hist(
                 *_pre,
                 ttbarmass2D_axis,
@@ -92,16 +95,10 @@ def build_output_histograms(
                 *_pre, syst_axis, cats_axis, jetmass2D_axis, ttbarmass2D_axis, storage="weight", name="Counts"
             ),
         },
-        "mistag": {
-            "numerator": hist.Hist(*_pre,cats_axis, manual_axis, storage="weight", name="Counts"),
-            "denominator": hist.Hist(*_pre,cats_axis, manual_axis, storage="weight", name="Counts"),
-        },
         "jets": {
-            "jetmass": hist.Hist(*_pre,syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"), # Selected jet mass
             "jetmsd": hist.Hist(*_pre,syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"), # Selected jet softdrop mass
             "jetdy": hist.Hist(*_pre,syst_axis, cats_axis, jetdy_axis, storage="weight", name="Counts"),
             "chi":   hist.Hist(*_pre,syst_axis, cats_axis, chi_axis,   storage="weight", name="Counts"),
-            "jetmass1": hist.Hist(*_pre,syst_axis, cats_axis, jetmass2D_axis, storage="weight", name="Counts"),
             "jetmsd1": hist.Hist(*_pre,syst_axis, cats_axis, jetmsd_axis, storage="weight", name="Counts"),
             "dR_min_jet2": hist.Hist(*_pre,syst_axis, cats_axis, jetdr_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "jet0_pt": hist.Hist(*_pre,syst_axis, cats_axis, jetpt_axis, storage="weight", name="Counts"),
@@ -114,6 +111,14 @@ def build_output_histograms(
             "jet1_rapidity": hist.Hist(*_pre,syst_axis, cats_axis, jety_axis, storage="weight", name="Counts"),
             "jet0_tdisc": hist.Hist(*_pre,syst_axis, cats_axis, top_score_axis, storage="weight", name="Counts"),
             "jet1_tdisc": hist.Hist(*_pre,syst_axis, cats_axis, top_score_axis, storage="weight", name="Counts"),
+            # eta-phi occupancy of jet0/jet1 on the jet-veto-map cells (nominal): holes where the
+            # veto removed events, and any hot region it misses shows up as a data/MC excess
+            "jet_eta_phi": hist.Hist(
+                *_pre, cats_axis, hist.axis.IntCategory([0, 1], name="jet", label="jet"),
+                hist.axis.Variable(VETO_ETA_EDGES, name="eta", label=r"Jet $\eta$"),
+                hist.axis.Regular(72, -np.pi, np.pi, name="phi", label=r"Jet $\phi$"),
+                storage="weight", name="Counts",
+            ),
         },
         "truth": {
             "gen_mt": hist.Hist(*_pre,syst_axis, cats_axis, gentopmass_axis, storage="weight", name="Counts"),

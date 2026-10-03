@@ -621,7 +621,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         output['ttbarmass'].fill(   **kw, ttbarmass=ttbarmass[icat],   weight=w)
         output['mtt_vs_mt'].fill(   **kw, jetmass=jetmsd[icat], ttbarmass=ttbarmass[icat], weight=w)
         output['jetmsd1'].fill(     **kw, jetmsd=jetmsd1[icat],        weight=w)
-        output['jetdy'].fill(       **kw, jetdy=rapidity[icat],         weight=w)
+        output['jetdy'].fill(       **kw, jetdy=np.abs(rapidity[icat]), weight=w)  # axis is |Δy|, 0-3
         output['chi'].fill(         **kw, chi=chi[icat],                weight=w)
         output['ht'].fill(          **kw, ht=ht[icat],                  weight=w)
         output['jet0_pt'].fill(     **kw, jetpt=jetpt[icat],            weight=w)
@@ -1213,6 +1213,11 @@ class TTbarResProcessor(processor.ProcessorABC):
                     anacat=i,
                     weight=self.weights[correction].weight()[third_jet_mask],
                 )
+                for j, (eta, phi) in enumerate(((jeteta, jetphi), (jeteta1, jetphi1))):
+                    output['jet_eta_phi'].fill(
+                        **ds_kw, anacat=i, jet=j, eta=eta[icat], phi=phi[icat],
+                        weight=self.weights[correction].weight()[icat],
+                    )
 
             self._fill_kinematic_hists(
                 output, ds_kw, correction, i, icat,
