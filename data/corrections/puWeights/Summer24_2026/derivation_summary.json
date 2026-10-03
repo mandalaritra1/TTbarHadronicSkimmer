@@ -1,0 +1,71 @@
+{
+ "bunch_spread_rel_2025_quantiles_10_30_50_70_90": [
+  0.05267211903360345,
+  0.06081338916420166,
+  0.06799799883265238,
+  0.076425179172783,
+  0.0899485596707819
+ ],
+ "mu_scale_k": 1.0050760635691314,
+ "mean_weight_on_summer24": {
+  "nominal": 0.9999,
+  "up": 0.9996,
+  "down": 1.0
+ },
+ "validation_2025": {
+  "2025_nominal_pileupcalc_reimpl_vs_central": {
+   "mean_w_mine": 0.9999,
+   "mean_w_ref": 0.9999,
+   "weighted_mean_abs_dev": 0.0003,
+   "max_abs_dev": 0.0005,
+   "max_dev_at_n": 62,
+   "mean_pu_mine": 51.78,
+   "mean_pu_ref": 51.77
+  },
+  "2025_nominal_brilcalc_approx_vs_central": {
+   "mean_w_mine": 1.0,
+   "mean_w_ref": 0.9999,
+   "weighted_mean_abs_dev": 0.0311,
+   "max_abs_dev": 0.0727,
+   "max_dev_at_n": 64,
+   "mean_pu_mine": 51.78,
+   "mean_pu_ref": 51.77
+  },
+  "2025_up_pileupcalc_reimpl_vs_central": {
+   "mean_w_mine": 0.9996,
+   "mean_w_ref": 0.9996,
+   "weighted_mean_abs_dev": 0.0003,
+   "max_abs_dev": 0.0005,
+   "max_dev_at_n": 64,
+   "mean_pu_mine": 54.18,
+   "mean_pu_ref": 54.16
+  },
+  "2025_up_brilcalc_approx_vs_central": {
+   "mean_w_mine": 0.9998,
+   "mean_w_ref": 0.9996,
+   "weighted_mean_abs_dev": 0.0323,
+   "max_abs_dev": 0.065,
+   "max_dev_at_n": 49,
+   "mean_pu_mine": 54.18,
+   "mean_pu_ref": 54.16
+  },
+  "2025_down_pileupcalc_reimpl_vs_central": {
+   "mean_w_mine": 1.0,
+   "mean_w_ref": 1.0,
+   "weighted_mean_abs_dev": 0.0003,
+   "max_abs_dev": 0.0007,
+   "max_dev_at_n": 64,
+   "mean_pu_mine": 49.39,
+   "mean_pu_ref": 49.38
+  },
+  "2025_down_brilcalc_approx_vs_central": {
+   "mean_w_mine": 1.0,
+   "mean_w_ref": 1.0,
+   "weighted_mean_abs_dev": 0.031,
+   "max_abs_dev": 0.103,
+   "max_dev_at_n": 64,
+   "mean_pu_mine": 49.39,
+   "mean_pu_ref": 49.38
+  }
+ }
+}

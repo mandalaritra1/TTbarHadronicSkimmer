@@ -560,7 +560,12 @@ def GetPUSF(events, IOV, mc_campaign=None):
     }
     if IOV.endswith("UL"):
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
-    elif IOV in ("2024", "2025", "2026"):
+    elif IOV == "2026":
+        # No central 2026 product: data26 / MC_Summer24, data profile pileupCalc-style from
+        # brilcalc per-LS pileup, validated on 2025 against the central histogram:
+        # data/corrections/puWeights/Summer24_2026/README.md
+        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/Summer24_2026/puWeights.json.gz"
+    elif IOV in ("2024", "2025"):
         # Real 2024 PU weights: CAT/LUM Run3-24CDEReprocessingFGHIPrompt-Summer24
         # -NanoAODv15 @2026-04-15, file puWeights_CDEFGHI.json.gz, vendored from
         # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . Replaces the former
@@ -577,7 +582,7 @@ def GetPUSF(events, IOV, mc_campaign=None):
         "2018"   : "Collisions18_UltraLegacy_goldenJSON",
         "2024"   : "Collisions24_CDEFGHI_goldenJSON",
         "2025"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file
-        "2026"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file (as 2025)
+        "2026"   : "2026_data_on_Summer24",  # derived, see Summer24_2026/README.md
         "2022preEE":    "Collisions2022_355100_357900_eraBCD_GoldenJson",
         "2022postEE":   "Collisions2022_359022_362760_eraEFG_GoldenJson",
         "2023preBPix":  "Collisions2023_366403_369802_eraBC_GoldenJson",
