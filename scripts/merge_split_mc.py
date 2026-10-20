@@ -16,8 +16,6 @@ import copy
 import sys
 
 import hist
-import numpy as np
-from coffea.processor import defaultdict_accumulator
 from coffea.util import load, save
 
 SUMMED = ("cutflow", "cutflow_unweighted", "cutflow_weighted", "cutflow_weighted2", "weights", "systematics",

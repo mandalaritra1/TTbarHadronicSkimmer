@@ -6,7 +6,7 @@ def _has_flag(status_flags, bit):
     return (status_flags & (1 << bit)) != 0
 
 
-def get_hadronic_tops(genparts, verbose=False):
+def get_hadronic_tops(genparts):
     """Return generator-level top quarks that decay hadronically.
 
     Selects the last-copy top (statusFlags bit 13) from each event, then
@@ -17,8 +17,6 @@ def get_hadronic_tops(genparts, verbose=False):
     ----------
     genparts : awkward array
         NanoAOD GenPart collection (must contain pdgId, statusFlags, genPartIdxMother).
-    verbose : bool
-        If True, print all-had / semi-lep / di-lep event counts.
 
     Returns
     -------
@@ -59,12 +57,6 @@ def get_hadronic_tops(genparts, verbose=False):
     n_quarks = ak.sum(is_quark, axis=2)
 
     hadronic = n_quarks >= 2  # [events, nTop] bool
-    n_had = ak.num(hadronic[hadronic], axis=1)
-
-    if verbose:
-        print("all-had:",  int(ak.sum(n_had == 2)))
-        print("semi-lep:", int(ak.sum(n_had == 1)))
-        print("di-lep:",   int(ak.sum(n_had == 0)))
 
     tops = genparts[is_top]
     return tops[hadronic]
@@ -79,7 +71,7 @@ def _ensure_p4(collection):
     return collection
 
 
-def get_groomed_jet(jet, subjets, verbose=False):
+def get_groomed_jet(jet, subjets):
     """Match subjets to a FatJet via dR < 0.8 and return their four-vector sum.
 
     Subjet association via index is unreliable in some NanoAOD versions, so we
@@ -337,33 +329,20 @@ def w_lepton_in_jet(genparts, jet_eta, jet_phi, dr=0.8):
     return code
 
 
-# Working-point thresholds used in the diagnostic verbose block of truthstudy_counts.
-# These are for exploration only — not used in any analysis selection.
-_BTAG_WP = 0.5   # DeepFlavB medium WP
-_TTAG_WP = 0.4   # globalParT3 loose WP
-
-
-def truthstudy_counts(genparts, fatjets, subJets, jets, dr_ak8=0.8, dr_ak4=1.2, verbose=False):
+def truthstudy_counts(genparts, fatjets, jets, dr_ak8=0.8, dr_ak4=1.2):
     """Count gen-level hadronic tops and their geometric overlap with reco jets.
 
     Restricts to all-hadronic events (exactly 2 hadronic tops). Returns:
       n_hadtop          — total top slots across all all-had events
       n_hadtop_ak8      — tops matched to a FatJet within dr_ak8
       n_hadtop_ak8_ak4  — above, also having an AK4 outside the AK8 cone but within dr_ak4 of the top
-
-    Parameters
-    ----------
-    verbose : bool
-        Print extended diagnostic counts (top-tag rate, subjet distributions).
-        Uses _BTAG_WP and _TTAG_WP thresholds — exploratory only.
     """
-    tops = get_hadronic_tops(genparts, verbose=verbose)
+    tops = get_hadronic_tops(genparts)
     mask = ak.num(tops, axis=1) == 2
 
     tops    = tops[mask]
     fatjets = fatjets[mask]
     jets    = jets[mask]
-    subJets = subJets[mask]
 
     if ak.sum(mask) == 0:
         return {"n_hadtop": 0, "n_hadtop_ak8": 0, "n_hadtop_ak8_ak4": 0}
@@ -393,32 +372,6 @@ def truthstudy_counts(genparts, fatjets, subJets, jets, dr_ak8=0.8, dr_ak4=1.2, 
 
     ak4_outside_ak8 = dr_fat_ak4 > dr_ak8
     has_ak4_outside = ak.any(ak4_near_top & ak4_outside_ak8, axis=2)
-
-    is_btag = jets.btagDeepFlavB > _BTAG_WP
-    has_btag_outside = ak.any(
-        ak4_near_top & ak4_outside_ak8 & is_btag[:, None, :], axis=2
-    )
-
-    if verbose:
-        print("number of TRUE AK8  jets:   ", int(ak.sum(ak.ones_like(has_ak8))))
-        print("number of MATCHED AK8 jets: ", int(ak.sum(has_ak8)))
-        print("number of AK4 close to AK8: ", int(ak.sum(has_ak8 & has_ak4_outside)))
-        print("number of AK8 + AK4(btag):  ", int(ak.sum(has_ak8 & has_btag_outside)))
-
-        evt_has_btag = ak.any(has_btag_outside, axis=1)
-        matched_fat = fatjets[closest_fat_idx]
-        is_tagged = (matched_fat.globalParT3_TopbWqq > _TTAG_WP) & has_ak8
-        print("matched+tagged WITH extra AK4 btag:", int(ak.sum(is_tagged & has_ak4_outside)))
-
-        fat_sel = fatjets[evt_has_btag]
-        fat_sel = fat_sel[ak.num(fat_sel, axis=1) >= 2]
-        fat2 = fat_sel[ak.argsort(fat_sel.pt, ascending=False)][:, :2]
-        nsub_ak8 = (
-            ak.values_astype(fat2.subJetIdx1 >= 0, np.int32)
-            + ak.values_astype(fat2.subJetIdx2 >= 0, np.int32)
-        )
-        print("nsubjets in AK8(lead, sublead) per event:", nsub_ak8[:10])
-        print("mean nsubjets per AK8:", ak.mean(ak.flatten(nsub_ak8)))
 
     return {
         "n_hadtop":         int(ak.sum(ak.ones_like(has_ak8))),

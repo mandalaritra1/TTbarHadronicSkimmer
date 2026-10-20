@@ -59,13 +59,6 @@ def setup(
 
     plt.rcParams["axes.prop_cycle"] = cycler(color=CMS_COLORS)
 
-    # Optional nice defaults
-    # plt.rcParams["figure.dpi"] = 110
-    # plt.rcParams["savefig.bbox"] = "tight"
-    # plt.rcParams["axes.labelsize"] = 14
-    # plt.rcParams["axes.titlesize"] = 16
-    # plt.rcParams["legend.fontsize"] = 12
-
     OUTDIR.mkdir(parents=True, exist_ok=True)
     _INITIALIZED = True
 

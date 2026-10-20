@@ -8,7 +8,7 @@ run_analysis, so the notebook only shows the interface. Use:
 """
 
 from coffea import util
-from coffea.nanoevents import NanoAODSchema, BaseSchema
+from coffea.nanoevents import NanoAODSchema
 import coffea.processor as processor
 
 import itertools
@@ -18,7 +18,7 @@ import json
 import os
 from types import SimpleNamespace
 
-from dask.distributed import Client, performance_report, Security
+from dask.distributed import Client, Security
 
 import warnings
 
@@ -75,7 +75,6 @@ from python import provenance
 # ── Widgets for interactive configuration ─────────────────────────────────────
 import ipywidgets as widgets
 from IPython.display import clear_output, display
-import json, os
 
 CONFIG_FILE = ".last_config.json"
 
@@ -469,9 +468,6 @@ btn_reset.on_click(reset_to_defaults)
 
 
 
-from types import SimpleNamespace
-
-
 def build_args():
     selected_datasets = list(w_dataset.value)
     if w_signals.value:
@@ -792,16 +788,15 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
             security=Security(),
         )
     elif args.env == "lpc":
-        if not args.nocluster:
-            from lpcjobqueue import LPCCondorCluster
+        from lpcjobqueue import LPCCondorCluster
 
-            cluster = LPCCondorCluster(
-                memory=dask_memory,
-                transfer_input_files=upload_to_dask,
-                scheduler_options={"dashboard_address": ":8787"},
-            )
-            # starts small; run_analysis re-sizes it per fileset (cap LPC_WORKERS)
-            cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
+        cluster = LPCCondorCluster(
+            memory=dask_memory,
+            transfer_input_files=upload_to_dask,
+            scheduler_options={"dashboard_address": ":8787"},
+        )
+        # starts small; run_analysis re-sizes it per fileset (cap LPC_WORKERS)
+        cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
     elif args.env == "casa":
         from coffea_casa import CoffeaCasaCluster
 
@@ -869,18 +864,17 @@ def _pool_cap(args):
 def run_analysis(args):
     tic = time.time()
 
-    savedir = f"outputs/dy/"
+    savedir = "outputs/dy/"
     if args.outdir:
         savedir = "outputs/" + args.outdir.strip("/") + "/"
 
     samples = args.dataset
     IOV = args.iov
-    useDeepAK8 = args.toptagger in ("topvsqcd", "recomb")
     htCut = 1400.0 if args.ht == "1400" else 950.0
     dask_memory = f"{int(args.daskMemory)}GB"
     chunksize_dask = 100000
     chunksize_futures = 200000
-    maxchunks = 10 if args.test else None
+    maxchunks = 1 if args.test else None
 
     systematics = [
         "nominal",
@@ -906,9 +900,6 @@ def run_analysis(args):
         "ttag_drift_band",
         "toppt",
     ]
-
-    if ("2016" in IOV) or ("2017" in IOV):
-        systematics.append("prefiring")
 
     if args.bkgest == "2dalphabet":
         systematics.append("transferFunction")
@@ -1002,8 +993,6 @@ def run_analysis(args):
     nworkers = 1 if args.test else 4
 
     # ── Dask cluster/client: created once and reused across all samples ────────
-    client = None
-    cluster = None
     client, cluster = _start_dask_resources(
         args=args,
         repo_root=repo_root,
@@ -1037,8 +1026,6 @@ def run_analysis(args):
             )
 
             file_savedir = savedir
-            if args.test:
-                maxchunks = 1
 
             # signals: ONE grouped job per width (masses on the dataset axis,
             # each scaled to 1 pb); everything else one job per subsection.
@@ -1160,10 +1147,8 @@ def run_analysis(args):
                             treename="Events",
                             processor_instance=TTbarResProcessor(
                                 iov=IOV,
-                                bkgEst=args.bkgest,
                                 noSyst=args.noSyst,
                                 deepAK8Cut=args.ttagWP,
-                                useDeepAK8=useDeepAK8,
                                 topTagger=args.toptagger,
                                 recomb_weights=("data/recomb/recomb_deploy_2024.json" if args.toptagger == "recomb" else ("data/recomb/baseline_deploy_2024.json" if (args.toptagger == "topvsqcd" and getattr(args, "ttag_ptbinned", False)) else None)),
                                 htCut=htCut,
@@ -1204,10 +1189,8 @@ def run_analysis(args):
                             treename="Events",
                             processor_instance=TTbarResProcessor(
                                 iov=IOV,
-                                bkgEst=args.bkgest,
                                 noSyst=args.noSyst,
                                 deepAK8Cut=args.ttagWP,
-                                useDeepAK8=useDeepAK8,
                                 topTagger=args.toptagger,
                                 recomb_weights=("data/recomb/recomb_deploy_2024.json" if args.toptagger == "recomb" else ("data/recomb/baseline_deploy_2024.json" if (args.toptagger == "topvsqcd" and getattr(args, "ttag_ptbinned", False)) else None)),
                                 htCut=htCut,

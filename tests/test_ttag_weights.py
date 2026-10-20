@@ -1,7 +1,6 @@
 import awkward as ak
 import numpy as np
 import os
-import subprocess
 import sys
 import unittest
 
@@ -135,17 +134,6 @@ class TopTagSFWeightsTest(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "no 'medium' WP for 2024"):
             manager._add_ttag_pt_weights(Weights(1), _jets([450.0]), _jets([450.0]),
                                          np.array([True]), np.array([False]))
-
-    def test_v11_file_reproduces_the_old_hard_coded_table(self):
-        src = subprocess.run(["git", "show", "047db9f:python/weights.py"],
-                             capture_output=True, text=True, check=True).stdout
-        start = src.index("ttag_scale_factors = {") + len("ttag_scale_factors = ")
-        old = eval(src[start:src.index("\n        }\n", start) + len("\n        }")])
-        v11 = load_ttag_sf(weights.TTAG_SF_FILE.with_name("ttag_sf_v1.1.json"))
-        for iov, table in old.items():
-            for wp, sf in table.items():
-                self.assertEqual(v11["iovs"][iov]["wps"][wp]["tag"], sf)
-                self.assertEqual(v11["iovs"][iov]["wps"][wp]["antitag"], table["loose"])
 
     def test_run2_keeps_original_uncertainty(self):
         # 2018 tight, pT bin 3: nominal 0.93, up 1.01

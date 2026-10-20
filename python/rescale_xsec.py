@@ -21,8 +21,6 @@ CLI:
         --old-xsec 350.6 --new-xsec 419.9
 """
 
-import os
-import sys
 
 import numpy as np
 import hist

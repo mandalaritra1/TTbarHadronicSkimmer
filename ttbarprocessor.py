@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from coffea import processor, nanoevents
-from coffea import util
-from coffea.btag_tools import BTagScaleFactor
-from coffea.nanoevents.methods import candidate
+from coffea import processor
 from coffea.nanoevents.methods import vector
-from coffea.jetmet_tools import JetResolutionScaleFactor
-from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
-from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
-from coffea.lookup_tools import extractor
 from coffea.analysis_tools import PackedSelection
 from collections import defaultdict
 import hashlib
@@ -20,16 +13,9 @@ import shutil
 import subprocess
 import tempfile
 import hist
-import scipy.stats as ss
 import numpy as np
 import pandas as pd
-from numpy.random import RandomState
-import random
-import correctionlib
 import json
-import logging
-import psutil
-import time
 
 import awkward as ak
 
@@ -37,14 +23,12 @@ import awkward as ak
 sys.path.append(os.getcwd() + '/python/')
 
 from corrections import (
-    GetFlavorEfficiency,
     GetPDFWeights,
     GetPSWeights,
     GetQ2weights,
     getLumiMask,
     getMETFilter,
 )
-from btagCorrections import btagCorrections
 from functions import getRapidity
 from categories import leptonic_top_fraction, build_analysis_categories
 from cutflow import cutflow_step_metadata
@@ -77,14 +61,9 @@ import glopart_recomb as gr
 from truthstudy import truthstudy_counts, build_gen_top_match_info, build_top_aligned_genjetak8_match_info
 from truthstudy import top_merge_category, w_lepton_in_jet
 
-
-logger = logging.getLogger('__main__')
-logger.setLevel(logging.DEBUG)
-
 ak.behavior.update(vector.behavior)
 
 # --- analysis-level constants ---
-_QCD_BINVAR_MIN  = 400   # GeV — QCD HT bin lower edge; events below are below-threshold
 _DPHI_CUT        = 2.1   # min |Δφ| between the two leading FatJets (back-to-back topology)
 _DR_AK8          = 0.8   # standard AK8 cone radius used for dR matching
 _DR_AK4          = 1.2   # dR cone for AK4 jets "near" a top (larger than the AK8 cone)
@@ -96,13 +75,6 @@ _LUMI_PB = LUMI_PB
 # so they share the 2024 GloParTv3 scoring/WP path.
 _V15_IOVS = {'2022preEE', '2022postEE', '2023preBPix', '2023postBPix', '2024', '2025', '2026'}
 
-
-def _base_year(iov):
-    """Strip Run-3 sub-era suffixes: 2022preEE->2022, 2023postBPix->2023."""
-    for suffix in ('preEE', 'postEE', 'preBPix', 'postBPix'):
-        if iov.endswith(suffix):
-            return iov[:-len(suffix)]
-    return iov
 
 # Leptonic-top rejection: both tagged/antitag jets also need GloParTv3
 # f_lep = L/(H+L) below this. The score H/(H+QCD) ignores the leptonic-top heads, so a jet
@@ -151,13 +123,8 @@ _TAGGER_WPS = {
 }
 
 
-def get_memory_usage(human_readable=True, precision=2):
-    process = psutil.Process(os.getpid())
-    memory_usage_bytes = process.memory_info().rss
-
-    if not human_readable:
-        return memory_usage_bytes / (1024 * 1024)
-
+def get_memory_usage():
+    memory_usage_bytes = psutil.Process(os.getpid()).memory_info().rss
     units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
     size = float(memory_usage_bytes)
     unit_index = 0
@@ -165,7 +132,7 @@ def get_memory_usage(human_readable=True, precision=2):
         size /= 1024.0
         unit_index += 1
 
-    return f"{size:.{precision}f} {units[unit_index]}"
+    return f"{size:.2f} {units[unit_index]}"
 
 
 class Logger:
@@ -178,10 +145,6 @@ class Logger:
     def debug(self, msg, *args):
         if self.level <= self.DEBUG:
             print('[DEBUG]', msg % args if args else msg)
-
-    def info(self, msg, *args):
-        if self.level <= self.INFO:
-            print('[INFO]', msg % args if args else msg)
 
 
 def update(events, collections):
@@ -206,15 +169,10 @@ class TTbarResProcessor(processor.ProcessorABC):
         ak8PtMin=400.,
         minMSD=105.,
         maxMSD=210.,
-        tau32Cut=0.65,
-        bdisc=0.5847,
         deepAK8Cut='medium',
-        useDeepAK8=True,
-        useDeepCSV=True,
         topTagger='topvsqcd',
         recomb_weights=None,
         iov='2024',
-        bkgEst=False,
         noSyst=False,
         blinding=False,
         systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt'],
@@ -235,14 +193,9 @@ class TTbarResProcessor(processor.ProcessorABC):
         self.htCut = htCut
         self.minMSD = minMSD
         self.maxMSD = maxMSD
-        self.tau32Cut = tau32Cut
         self.ak8PtMin = ak8PtMin
-        self.bdisc = bdisc
         self.deepAK8Cut = deepAK8Cut
-        self.useDeepAK8 = useDeepAK8
-        self.useDeepCSV = useDeepCSV
         self.means_stddevs = defaultdict()
-        self.bkgEst = bkgEst
         self.noSyst = noSyst
         self.systematics = systematics
         self.blinding = blinding
@@ -348,8 +301,6 @@ class TTbarResProcessor(processor.ProcessorABC):
         }
 
         self.anacats = anacats
-        self.label_dict = {i: label for i, label in enumerate(self.anacats)}
-        self.label_to_int_dict = {label: i for i, label in enumerate(self.anacats)}
 
         self.histo_dict = build_output_histograms(
             anacats=self.anacats,
@@ -693,16 +644,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         output['cutflow_weighted'][key] += self._sum_weight_array(weights, mask=mask)
         output['cutflow_weighted2'][key] += self._sum_weight_array(weights, mask=mask, square=True)
 
-    @property
-    def accumulator(self):
-        return self._accumulator
-
     def process(self, events):
-        logger.debug(
-            'memory:%s:start %s preprocessor: %s',
-            time.time(), events.metadata['dataset'], get_memory_usage(),
-        )
-
         dataset = events.metadata['dataset']
         nEvents = len(events.event)
         self.logger.debug('preprocessor input: dataset=%s, events=%d', dataset, nEvents)
@@ -828,13 +770,9 @@ class TTbarResProcessor(processor.ProcessorABC):
         evt  = events.event.to_numpy()
 
         if 'globalParT3_TopbWqq' not in events.FatJet.fields:
-            print("\n--- FatJet variables (globalParT3_TopbWqq missing) ---")
-            for var in events.FatJet.fields:
-                print("FatJet_" + var)
             raise RuntimeError(
                 f"globalParT3_TopbWqq not found in FatJet fields for dataset {dataset}"
             )
-        logger.debug('memory:%s: get nanoAOD objects %s:%s', time.time(), correction, get_memory_usage())
 
         if len(events) == 0:
             self.logger.debug(
@@ -873,7 +811,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             )
 
         # --- baseline jet selection ---
-        FatJets, jet_masks = self.jet_manager.baseline_masks(events, FatJets, Jets)
+        FatJets, jet_masks = self.jet_manager.baseline_masks(FatJets, Jets)
         selection.add('htCut',      jet_masks['htCut'])
         selection.add('metfilter',  getMETFilter(self.iov, events))
         selection.add('jetVetoMap', jet_masks['jetVetoMap'])
@@ -915,7 +853,6 @@ class TTbarResProcessor(processor.ProcessorABC):
             )
             if self.cutflow_verbose:
                 print(f"[CUTFLOW] after all preselection (eventCut): {len(events)}")
-        logger.debug(f"Length of event {len(events)}")
         # Only an empty chunk may return here: sumw is already recorded, so
         # dropping a chunk with a few selected events (formerly < 10) removed
         # them from the templates but not from the normalization.
@@ -939,7 +876,6 @@ class TTbarResProcessor(processor.ProcessorABC):
             truth_counts = truthstudy_counts(
                 genparts=events.GenPart,
                 fatjets=FatJets,
-                subJets=SubJets,
                 jets=Jets,
                 dr_ak8=_DR_AK8,
                 dr_ak4=_DR_AK4,
@@ -957,7 +893,6 @@ class TTbarResProcessor(processor.ProcessorABC):
         jet0 = score_sorted_jets[:, 0]
         jet1 = score_sorted_jets[:, 1]
 
-        mcut_s0 = (self.minMSD < jet0.msoftdrop) & (jet0.msoftdrop < self.maxMSD)
         mcut_s1 = (self.minMSD < jet1.msoftdrop) & (jet1.msoftdrop < self.maxMSD)
 
         # signal region: both jets pass the tagger (per-pT thresholds in recomb mode)
@@ -1022,10 +957,10 @@ class TTbarResProcessor(processor.ProcessorABC):
 
         if isNominal:
             output['cutflow']['after_ttbarcandCuts'] += len(events)
-            n_dPhi    = int(ak.sum(dPhiCut))
-            n_subjets = int(ak.sum(GoodSubjets))
-            n_both    = int(ak.sum(dPhiCut & GoodSubjets))
             if self.cutflow_verbose:
+                n_dPhi    = int(ak.sum(dPhiCut))
+                n_subjets = int(ak.sum(GoodSubjets))
+                n_both    = int(ak.sum(dPhiCut & GoodSubjets))
                 print(f"[CUTFLOW] after ttbarcandCuts: {len(events)}  "
                       f"(dPhiCut alone: {n_dPhi}, GoodSubjets alone: {n_subjets}, both: {n_both})")
 
@@ -1048,7 +983,6 @@ class TTbarResProcessor(processor.ProcessorABC):
             if SubGenJetAK8 is not None:
                 SubGenJetAK8 = SubGenJetAK8[ttbarcandCuts]
 
-        logger.debug('memory:%s: apply event cuts %s:%s', time.time(), correction, get_memory_usage())
 
         # --- derived kinematic quantities ---
         third_jet_mask = ak.num(FatJets) > 2
@@ -1342,7 +1276,6 @@ class TTbarResProcessor(processor.ProcessorABC):
                         tdisc_s0, tdisc_s1,
                     )
 
-        logger.debug('memory:%s: fill histograms %s:%s', time.time(), correction, get_memory_usage())
         del self.weights[correction]
 
         return output
@@ -1444,7 +1377,6 @@ class TTbarResProcessor(processor.ProcessorABC):
         view['variance'][idx] *= sf * sf
 
     def postprocess(self, accumulator):
-        logger.debug('memory:%s: finish processor:%s', time.time(), get_memory_usage())
         if self.group_by_dataset:
             return self._postprocess_grouped(accumulator)
         return self._postprocess_single(accumulator)

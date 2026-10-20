@@ -200,10 +200,10 @@ def _read_projection(root_file: Path, hist_key: str, mt_min: float, mt_max: floa
 
 
 def _rebin_projection(projection: Projection, factor: int) -> Projection:
-    if factor <= 1:
-        return projection
     if factor < 1:
         raise ValueError("--mtt-rebin must be a positive integer")
+    if factor == 1:
+        return projection
 
     n_bins = len(projection.values)
     n_full_groups = n_bins // factor
@@ -631,7 +631,7 @@ def main() -> None:
     for category in args.categories:
         nominal_key = _hist_key(category, args.year, args.region)
         for window_name in args.mass_windows:
-            window_title, mt_min, mt_max = MASS_WINDOWS[window_name]
+            _, mt_min, mt_max = MASS_WINDOWS[window_name]
             data_native = _read_projection(data_file, nominal_key, mt_min, mt_max)
             bkg_pieces, total_bkg, total_unc, qcd_scale = _make_background(
                 ttbar_file,

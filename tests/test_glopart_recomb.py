@@ -8,7 +8,6 @@ by a non-negative/finite check, and the transform test proves no NaN on P>1).
 
 import os
 import sys
-import json
 import tempfile
 import unittest
 
@@ -176,7 +175,6 @@ class MetricsTest(unittest.TestCase):
         rng = np.random.default_rng(6)
         edges = np.linspace(0, 1, 201)
         n_axis = 10
-        flat_mistag, corr_mistag = [], []
         flat2d, corr2d = [], []
         thr = 0.8
         for i in range(n_axis):

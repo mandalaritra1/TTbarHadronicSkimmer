@@ -2,65 +2,23 @@ import numpy as np
 from coffea import util
 import glob
 import os
-import matplotlib.pyplot as plt
 import mplhep as hep
 hep.style.use("CMS")
 
 
+# re-exported as functions.lumi
 try:
     from .lumi import LUMI_PB as lumi
 except ImportError:  # imported as a top-level module (python/ on sys.path)
     from lumi import LUMI_PB as lumi
 
-t_BR = 0.6741
-ttbar_BR = 0.4544 #PDG 2019
-ttbar_xs1 = 833.9 * (0.09210) # NNLO correction # pb For ttbar mass from 700 to 1000
-ttbar_xs2 = 833.9 * (0.02474) # NNLO corrections # pb For ttbar mass from 1000 to Inf
 toptag_sf = 0.9
-toptag_kf = 1.0 #0.7
 qcd_xs = 1370.0 #pb From https://cms-gen-dev.cern.ch/xsdb
 
 ttbar_xs = {'700to1000': 833.9 * (0.09210), #pb For ttbar mass from 700 to 1000 # 65.49 in xsdb
             '1000toInf': 833.9 * (0.02474) #pb For ttbar mass from 1000 to Inf # 16.36 in xsdb
            }
 
-# zprimeDM_xs = {
-#     '1000': 2.222,
-#     '1500': 0.387,
-#     '2000': 0.09428,
-#     '2500': 0.0279,
-#     '3000': 0.009327,
-#     '3500': 0.003507,
-#     '4000': 0.001484,
-#     '4500': 0.0007087,
-#     '5000': 0.0003801,
-# }
-
-# zprime10_xs = {
-#     '1000': 0.3622,
-#     '2000': 0.01895,
-#     '3000': 0.002112,
-#     '4000': 0.0003889,
-# }
-
-# zprime30_xs = {
-#     '1000': 0.1081,
-#     '2000': 0.006689,
-#     '3000': 0.0009523,
-#     '4000': 0.0002273,
-# }
-
-# rsgluon_xs = {
-#     '1000': 21.03,
-#     '1500': 3.656,
-#     '2000': 0.9417,
-#     '2500': 0.3039,
-#     '3000': 0.1163,
-#     '3500': 0.05138,
-#     '4000': 0.02556,
-#     '4500': 0.01422,
-#     '5000': 0.008631,
-# }
 
 zprimeDM_xs = {
     '1000': 1.0,
@@ -193,82 +151,6 @@ def loadCoffeaFile(dataset='QCD', year='2016', tag='', bkgest=False):
     
     
     
-def getHist(hname, ds, bkgest, year, sum_axes=['anacat'], integrate_axes={}):
-    
-    ######################################################################################
-    # hname = histogram name (example: 'ttbarmass')                                      #
-    # ds = dataset name (example: 'JetHT')                                               #
-    # bkgest = boolean, True if bkg estimate applied                                     #
-    # year = '2016APV' or '2016' or '2017' or '2018'                                     #
-    # sum_axes = names of axes to sum over for scikit-hep/hist histogram                 #
-    # integrate_axes = range to integrate over axis (example: {'anacat': [0,1,2,3,4,5]}) #
-    ######################################################################################    
-
-    
-    # load histograms and get scale factors
-    coffeaFiles = getCoffeaFilenames()
-    
-    
-   
-    cfiles = []
-    sf = []
-    bkgest_str = 'weighted' if bkgest else 'unweighted'
-    
-    try:
-        
-        coffeaFiles[ds][bkgest_str][year].items()
-    
-        for key, file in coffeaFiles[ds][bkgest_str][year].items():
-            loaded_file = util.load(file)
-            cfiles.append(loaded_file)
-
-            if 'TTbar' in ds and '700to1000' in key:
-                sf.append(lumi[year] * ttbar_xs1 * toptag_sf**2 / loaded_file['cutflow']['sumw'])
-            elif 'TTbar' in ds and '1000toInf' in key:
-                sf.append(lumi[year] * ttbar_xs2 * toptag_sf**2 / loaded_file['cutflow']['sumw'])     
-            elif 'QCD' in ds:
-                sf.append(lumi[IOV] * qcd_xs / loaded_file['cutflow']['sumw'])  
-            else:
-                sf.append(1.)
-    
-    except:
-        
-        file = coffeaFiles[ds][bkgest_str][year]
-        loaded_file = util.load(file)
-        cfiles.append(loaded_file)
-
-        if 'TTbar' in ds and '700to1000' in key:
-            sf.append(lumi[year] * ttbar_xs1 * toptag_sf**2 / loaded_file['cutflow']['sumw'])
-        elif 'TTbar' in ds and '1000toInf' in key:
-            sf.append(lumi[year] * ttbar_xs2 * toptag_sf**2 / loaded_file['cutflow']['sumw'])     
-        elif 'QCD' in ds:
-            sf.append(lumi[IOV] * qcd_xs / loaded_file['cutflow']['sumw'])  
-        else:
-            sf.append(1.)
-        
-        
-    
-    
-    # sum or integrate axes for all hists from dataset eras or pt bins
-    sum_axes_dict = {ax:sum for ax in sum_axes}
-    
-    hists = []
-    for cfile in cfiles:
-            hists.append(cfile[hname][integrate_axes][sum_axes_dict])
-    
-    
-    # sum all hists from dataset eras or pt bins
-    histo = hists[0]*sf[0]
-    if len(hists) > 1:
-        for i in range(len(hists) - 1): 
-            histo = histo + hists[i+1]*sf[i+1]
-            
-            
-    return histo
-
-
-
-
 def getHist2(hname, ds, year, sum_axes=['anacat'], integrate_axes={}, tag='', coffea_dir='/srv/outputs/tight_jetid1_ak8pftrigger/scale/'):
     
     ######################################################################################
@@ -300,37 +182,6 @@ def getHist2(hname, ds, year, sum_axes=['anacat'], integrate_axes={}, tag='', co
     return histo
     
             
-def plotBackgroundEstimate(hdata, hntmj, httbar, year, text=''):
-    
-    hbkg = hntmj + httbar
-    
-    fig, (ax1, ax2) = plt.subplots(nrows=2, height_ratios=[3, 1])
-
-    
-    hep.cms.label('', data=True, lumi='{0:0.1f}'.format(lumi[year]/1000.), year=year, loc=2, fontsize=20, ax=ax1)
-    hep.cms.text(text, loc=2, fontsize=20, ax=ax1)
-
-    hep.histplot(hdata,  ax=ax1, histtype='errorbar', color='black', label='Data')
-    hep.histplot(hbkg,   ax=ax1, histtype='fill', color='xkcd:pale gold', label='NTMJ')
-    hep.histplot(httbar, ax=ax1, histtype='fill', color='xkcd:deep red', label='TTbar')
-
-
-    ratio_plot =  hdata / hbkg.values()
-    hep.histplot(ratio_plot, ax=ax2, histtype='errorbar', color='black')
-    ax2.set_ylim(0,2)
-    ax2.axhline(1, color='black', ls='--')
-    ax2.set_ylabel('Data/Bkg')
-
-    ax1.legend()
-    ax1.set_yscale('log')
-    ax1.set_ylabel('Events')
-    ax1.set_xlabel('')
-    ax1.set_ylim(1e-1, 1e7)
-    ax1.set_xlim(900, 6000)
-    ax2.set_xlim(900, 6000)            
-    
-
-    
 def makeSaveDirectories(coffea_dir='outputs/'):
     
         

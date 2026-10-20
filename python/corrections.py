@@ -1,19 +1,13 @@
-# corrections.py
-
 import re
 import numpy as np
 import awkward as ak
 from coffea.lumi_tools import LumiMask
 import correctionlib
-from coffea.jetmet_tools import JetResolutionScaleFactor
-from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
-from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
+from coffea.jetmet_tools import CorrectedJetsFactory
 from coffea.jetmet_tools import (
     CorrectionLibJECStack, CorrectionLibJEC, CorrectionLibJUNC,
     CorrectionLibJER, CorrectionLibJERSF,
 )
-from coffea.lookup_tools import extractor
-import copy
 import gzip
 import json as _json
 from functools import lru_cache
@@ -293,217 +287,17 @@ def _GetJECUncertainties_jsonpog(FatJets, events, IOV, R="AK8", isData=False):
     name_map["Rho"] = "jec_rho"
     if isData:
         name_map["run"] = "run"
-    else:
-        name_map["ptGenJet"] = "pt_gen"
 
     factory = CorrectedJetsFactory(name_map, jec_stack)
     return factory.build(FatJets)
 
-def GetFlavorEfficiency(Subjet, Flavor, bdisc): # Return "Flavor" efficiency numerator and denominator
-    '''
-    Subjet --> awkward array object after preselection i.e. SubJetXY
-    Flavor --> integer i.e 5, 4, or 0 (b, c, or udsg)
-    '''
-    # --- Define pT and Eta for Both Candidates' Subjets (for simplicity) --- #
-    pT = ak.flatten(Subjet.pt) # pT of subjet in ttbarcand 
-    eta = np.abs(ak.flatten(Subjet.eta)) # eta of 1st subjet in ttbarcand 
-    flav = np.abs(ak.flatten(Subjet.hadronFlavour)) # either 'normal' or 'anti' quark
-    btag = ak.flatten(Subjet.btagCSVV2) 
-
-    #subjet_btagged = (btag > bdisc)
-    
-    mask_num = (btag > bdisc) & (flav == Flavor)
-    mask_den = (flav == Flavor)
-
-    Eff_Num_pT = pT[mask_num]
-    Eff_Denom_pT = pT[mask_den]
-
-    Eff_Num_eta = eta[mask_num]
-    Eff_Denom_eta = eta[mask_den]
-    
-    
-    '''
-    Eff_Num_pT = np.where(subjet_btagged & (flav == Flavor), pT, -1) # if not collecting pT of subjet, then put non exisitent bin, i.e. -1
-    Eff_Num_eta = np.where(subjet_btagged & (flav == Flavor), eta, -1) # if not collecting eta of subjet, then put non exisitent bin, i.e. 5
-
-    Eff_Num_pT = ak.flatten(Eff_Num_pT) # extra step needed for numerator to gaurantee proper shape for filling hists
-    Eff_Num_eta = ak.flatten(Eff_Num_eta)
-
-    Eff_Denom_pT = np.where(flav == Flavor, pT, -1)
-    Eff_Denom_eta = np.where(flav == Flavor, eta, -1)
-    '''
-    EffStuff = {
-        'Num_pT' : Eff_Num_pT,
-        'Num_eta' : Eff_Num_eta,
-        'Denom_pT' : Eff_Denom_pT,
-        'Denom_eta' : Eff_Denom_eta,
-    }
-
-    return EffStuff
-
-
-    
 def GetJECUncertainties(FatJets, events, IOV, R='AK8', isData=False):
 
-    # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
-
-    # Run-3 MC (2022/2023 sub-eras + 2024) uses the modern correctionlib (JSON-POG)
-    # path; the legacy txt branches below are kept for Run-2 (and for data, which
-    # does not re-apply JEC in this analysis).
-    if IOV in _JSONPOG_JME_DIR:
-        # CMS recommendation is JEC on BOTH data and MC (data carries the
-        # run-dependent L2L3Residual); JER smearing stays MC-only inside.
-        return _GetJECUncertainties_jsonpog(FatJets, events, IOV, R=R, isData=isData)
-
-    #chspuppi = 'Puppi' if 'AK8' in R else 'chs'
-    chspuppi = "Puppi" # always puppi in run3
-
-    jer_tag=None
-    if (IOV=='2018'):
-        jec_tag="Summer19UL18_V5_MC"
-        jec_tag_data={
-            "RunA": "Summer19UL18_RunA_V5_DATA",
-            "RunB": "Summer19UL18_RunB_V5_DATA",
-            "RunC": "Summer19UL18_RunC_V5_DATA",
-            "RunD": "Summer19UL18_RunD_V5_DATA",
-        }
-        jer_tag = "Summer19UL18_JRV2_MC"
-    elif (IOV=='2017'):
-        jec_tag="Summer19UL17_V5_MC"
-        jec_tag_data={
-            "RunB": "Summer19UL17_RunB_V5_DATA",
-            "RunC": "Summer19UL17_RunC_V5_DATA",
-            "RunD": "Summer19UL17_RunD_V5_DATA",
-            "RunE": "Summer19UL17_RunE_V5_DATA",
-            "RunF": "Summer19UL17_RunF_V5_DATA",
-        }
-        jer_tag = "Summer19UL17_JRV3_MC"
-    elif (IOV=='2016'):
-        jec_tag="Summer19UL16_V7_MC"
-        jec_tag_data={
-            "RunF": "Summer19UL16_RunFGH_V7_DATA",
-            "RunG": "Summer19UL16_RunFGH_V7_DATA",
-            "RunH": "Summer19UL16_RunFGH_V7_DATA",
-        }
-        jer_tag = "Summer20UL16_JRV3_MC"
-    
-    elif (IOV=='2016APV'):
-        jec_tag="Summer19UL16_V7_MC"
-        ## HIPM/APV     : B_ver1, B_ver2, C, D, E, F
-        ## non HIPM/APV : F, G, H
-
-        jec_tag_data={
-            "RunB_ver1": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunB_ver2": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunC": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunD": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunE": "Summer19UL16APV_RunEF_V7_DATA",
-            "RunF": "Summer19UL16APV_RunEF_V7_DATA",
-        }
-        jer_tag = "Summer20UL16APV_JRV3_MC"
-    elif (IOV=="2024"):
-        jec_tag = "Summer24Prompt24_V2_MC"
-
-        jec_tag_data= {}
-
-        jer_tag = "Summer23BPixPrompt23RunD_JRV1_MC"
-    else:
-        raise ValueError(f"Error: Unknown year \"{IOV}\".")
-
-
-
-    ext = extractor()
-    if not isData:
-        # For MC
-        ext.add_weight_sets([
-            '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L1FastJet_{1}PF{2}.jec.txt'.format(jec_tag, R, chspuppi),
-            '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L2Relative_{1}PF{2}.jec.txt'.format(jec_tag, R, chspuppi),
-            '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L3Absolute_{1}PF{2}.jec.txt'.format(jec_tag, R, chspuppi),
-            '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_UncertaintySources_{1}PF{2}.junc.txt'.format(jec_tag, R, chspuppi),
-            '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_Uncertainty_{1}PF{2}.junc.txt'.format(jec_tag, R, chspuppi),
-        ])
-    
-        if jer_tag:
-            ext.add_weight_sets([
-                '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JER/{0}/{0}_PtResolution_{1}PF{2}.jr.txt'.format(jer_tag, R, chspuppi),
-                '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JER/{0}/{0}_SF_{1}PF{2}.jersf.txt'.format(jer_tag, R, chspuppi),
-            ])
-    
-    else:
-        # For data, make sure we don't duplicate
-        tags_done = []
-        for run, tag in jec_tag_data.items():
-            if tag not in tags_done:
-                ext.add_weight_sets([
-                    '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L1FastJet_{1}PF{2}.jec.txt'.format(tag, R, chspuppi),
-                    '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L2Relative_{1}PF{2}.jec.txt'.format(tag, R, chspuppi),
-                    '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L3Absolute_{1}PF{2}.jec.txt'.format(tag, R, chspuppi),
-                    '* * ' + str(_PROJECT_ROOT) + '/data/corrections/JEC/{0}/{0}_L2L3Residual_{1}PF{2}.jec.txt'.format(tag, R, chspuppi),
-                ])
-                tags_done += [tag]
-
-    ext.finalize()
-    evaluator = ext.make_evaluator()
-
-    if (not isData):
-        jec_names = [
-            '{0}_L1FastJet_{1}PF{2}'.format(jec_tag, R, chspuppi),
-            '{0}_L2Relative_{1}PF{2}'.format(jec_tag, R, chspuppi),
-            '{0}_L3Absolute_{1}PF{2}'.format(jec_tag, R, chspuppi),
-            '{0}_Uncertainty_{1}PF{2}'.format(jec_tag, R, chspuppi)]
-
-        if jer_tag: 
-            jec_names.extend(['{0}_PtResolution_{1}PF{2}'.format(jer_tag, R, chspuppi),
-                              '{0}_SF_{1}PF{2}'.format(jer_tag, R, chspuppi)])
-
-    else:
-        jec_names={}
-        for run, tag in jec_tag_data.items():
-            jec_names[run] = [
-                '{0}_L1FastJet_{1}PF{2}'.format(tag, R, chspuppi),
-                '{0}_L3Absolute_{1}PF{2}'.format(tag, R, chspuppi),
-                '{0}_L2Relative_{1}PF{2}'.format(tag, R, chspuppi),
-                '{0}_L2L3Residual_{1}PF{2}'.format(tag, R, chspuppi),]
-    #typelist = [t for type(evaluator[name]) for name in jec_names]
-    #print("Typelist ", typelist)
-
-    if not isData:
-        jec_inputs = {name: evaluator[name] for name in jec_names}
-        
-        
-    else:
-        jec_names_data = []
-        for era in self.eras:
-            jec_names_data += jec_names[f'Run{era}']
-
-        jec_inputs = {name: evaluator[name] for name in jec_names_data}
-    #print("jec_inputs: ", jec_inputs)
-    jec_stack = JECStack(jec_inputs)
-
-    FatJets['pt_raw'] = (1 - FatJets['rawFactor']) * FatJets['pt']
-    FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
-    FatJets['jec_rho'] = ak.broadcast_arrays(events.Rho.fixedGridRhoFastjetAll, FatJets.pt)[0]
-    if "pt_gen" not in FatJets.fields:
-        FatJets['pt_gen'] = ak.values_astype(ak.fill_none(FatJets.matched_gen.pt, 0), np.float32)
-
-    name_map = jec_stack.blank_name_map
-    name_map['JetPt'] = 'pt'
-    name_map['JetMass'] = 'mass'
-    name_map['JetEta'] = 'eta'
-    name_map['JetA'] = 'area'
-    name_map['JetPhi'] = 'phi'
-    name_map['ptGenJet'] = 'pt_gen'
-    name_map['ptRaw'] = 'pt_raw'
-    name_map['massRaw'] = 'mass_raw'
-    name_map['Rho'] = 'jec_rho'
-
-
-
-    #events_cache = events.caches[0]
-    jet_factory = CorrectedJetsFactory(name_map, jec_stack)
-    corrected_jets = jet_factory.build(FatJets)#, lazy_cache=events_cache)
-
-    return corrected_jets
+    # Run-3 v15 IOVs use the correctionlib (JSON-POG) payloads. JEC goes on BOTH data
+    # and MC (data carries the run-dependent L2L3Residual); JER smearing stays MC-only.
+    if IOV not in _JSONPOG_JME_DIR:
+        raise ValueError(f"no JEC/JER payloads for IOV {IOV!r}; have {sorted(_JSONPOG_JME_DIR)}")
+    return _GetJECUncertainties_jsonpog(FatJets, events, IOV, R=R, isData=isData)
 
 
 def GetPDFWeights(events):
@@ -523,15 +317,6 @@ def GetPDFWeights(events):
         
         pdf_up = pdf_nom + pdfUnc
         pdf_down = pdf_nom - pdfUnc
-        
-        
-#         arg = events.LHEPdfWeight[:, 1:-2] - np.ones((len(events), 100))
-#         summed = ak.sum(np.square(arg), axis=1)
-#         pdf_unc = np.sqrt((1. / 99.) * summed)
-        
-#         pdf_nom = np.ones(len(events))
-#         pdf_up = pdf_nom + pdf_unc
-#         pdf_down = np.ones(len(events))
 
     else:
         
@@ -559,9 +344,7 @@ def GetPUSF(events, IOV, mc_campaign=None):
         "2023preBPix":  "2023_Summer23",
         "2023postBPix": "2023_Summer23BPix",
     }
-    if IOV.endswith("UL"):
-        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
-    elif IOV == "2026":
+    if IOV == "2026":
         # No central 2026 product: data26 / MC_Summer24, data profile pileupCalc-style from
         # brilcalc per-LS pileup, validated on 2025 against the central histogram:
         # data/corrections/puWeights/Summer24_2026/README.md
@@ -576,11 +359,9 @@ def GetPUSF(events, IOV, mc_campaign=None):
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2024_Summer24/puWeights.json.gz"
     elif IOV in _pu_subdir:
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}/puWeights.json.gz".format(_pu_subdir[IOV])
+    else:
+        raise ValueError(f"no pileup weights for IOV {IOV!r}")
     hname = {
-        "2016APV": "Collisions16_UltraLegacy_goldenJSON",
-        "2016"   : "Collisions16_UltraLegacy_goldenJSON",
-        "2017"   : "Collisions17_UltraLegacy_goldenJSON",
-        "2018"   : "Collisions18_UltraLegacy_goldenJSON",
         "2024"   : "Collisions24_CDEFGHI_goldenJSON",
         "2025"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file
         "2026"   : "2026_data_on_Summer24",  # derived, see Summer24_2026/README.md

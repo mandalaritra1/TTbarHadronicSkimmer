@@ -173,7 +173,7 @@ class Run3JetManager:
                 subgenjetak8 = self._add_p4(events.SubGenJetAK8)
         return fatjets, subjets, jets, genjets, genjetak8, subgenjetak8
 
-    def baseline_masks(self, events, fatjets, jets):
+    def baseline_masks(self, fatjets, jets):
         jet_veto_map_mask = GetJetVetoMapMask(jets, self.iov)
         ht_mask = (
             ak.sum(jets[(jets.pt > _AK4_PT_MIN) & (np.abs(jets.eta) < _AK4_ETA_MAX)].pt, axis=1)

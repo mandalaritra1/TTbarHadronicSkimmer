@@ -12,7 +12,6 @@ range; LS with avgpu > 120 dropped) for 2024-2026, computed 2026-10-02 on lxplus
 """
 import argparse
 import datetime
-import glob
 import os
 import subprocess
 

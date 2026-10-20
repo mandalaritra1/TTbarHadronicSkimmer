@@ -27,7 +27,6 @@ import argparse
 import csv
 import datetime
 import glob
-import gzip
 import json
 import os
 import subprocess

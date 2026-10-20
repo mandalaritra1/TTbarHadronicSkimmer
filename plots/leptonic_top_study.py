@@ -42,13 +42,11 @@ from coffea import util
 
 hep.style.use(hep.style.CMS)
 
-TIGHT, LOW = 0.9284, 0.8571
-CATS = ["atcen", "atfwd", "2tcen", "2tfwd"]
+TIGHT = 0.9284
 FAIL, PASS = (0, 1), (2, 3)
 PT_EDGES = [400, 480, 600, 800, 1200, np.inf]
 TARGET = 0.99
 MIN_JETS = 2000         # rows with fewer reference jets (< 20 above q99) do not set c
-WLEP = {11: "e", 13: "μ", 15: "τ→had", 1511: "τ→e", 1513: "τ→μ"}
 SELECTIONS = ["current", "A", "C", "D"]
 VETO_DEFAULT = dict(pt=30.0, iso=0.1)
 

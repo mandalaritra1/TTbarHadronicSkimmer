@@ -333,8 +333,7 @@ def _draw_ratio(rax: plt.Axes, data: Hist1D, mc_total: np.ndarray, mc_err: np.nd
     ratio_err[mask] = _poisson_errors(data.values[mask]) / mc_total[mask]
 
     rel_unc = np.zeros_like(mc_total, dtype=float)
-    rel_mask = mc_total > 0.0
-    rel_unc[rel_mask] = mc_err[rel_mask] / mc_total[rel_mask]
+    rel_unc[mask] = mc_err[mask] / mc_total[mask]
     _draw_uncertainty_band(rax, data.edges, np.ones_like(mc_total), rel_unc)
     rax.errorbar(
         centers,

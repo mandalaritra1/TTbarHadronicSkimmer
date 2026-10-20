@@ -331,8 +331,6 @@ def _clip_negative_bins(histo, label: str, name: str):
     standard template-hygiene fix and changes integrals at the per-mille level.
     Data is never clipped (and never negative).
     """
-    import numpy as np
-
     view = histo.view(flow=True)
     values = view["value"] if view.dtype.names else view
     neg = values < 0

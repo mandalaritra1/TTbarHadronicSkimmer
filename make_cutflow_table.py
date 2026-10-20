@@ -34,12 +34,6 @@ def _load_coffea(path):
     return util.load(path)
 
 
-def _default_title(path, title):
-    if title:
-        return title
-    return Path(path).name
-
-
 def _render_one(path, args, output_format):
     output = _load_coffea(path)
     rows = build_cutflow_rows(
@@ -50,7 +44,7 @@ def _render_one(path, args, output_format):
     normalization = None
     if not args.no_normalization_note and args.weight_mode == "scaled":
         normalization = cutflow_normalization_text(output)
-    title = _default_title(path, args.title)
+    title = args.title or Path(path).name
 
     if output_format == "markdown":
         return format_markdown_table(rows, title=title, normalization=normalization)
@@ -65,9 +59,7 @@ def _render_one(path, args, output_format):
 
 
 def _render_all(paths, args, output_format):
-    rendered = [_render_one(path, args, output_format) for path in paths]
-    separator = "\n\n" if output_format == "markdown" else "\n\n"
-    return separator.join(rendered)
+    return "\n\n".join(_render_one(path, args, output_format) for path in paths)
 
 
 def _derive_column_label(path):

@@ -16,7 +16,7 @@ import mplhep as hep
 import numpy as np
 import pandas as pd
 import streamlit as st
-from coffea import processor, util
+from coffea import util
 from hist import Hist
 
 
@@ -239,9 +239,6 @@ def render_histograms(loaded_files: list[LoadedFile]) -> None:
     with top_cols[0]:
         primary_source = st.selectbox("Source", source_options)
     histograms = histograms_by_file[primary_source]
-    if not histograms:
-        st.info("No `hist.Hist` objects found at the top level of this file.")
-        return
 
     with top_cols[1]:
         hist_key = st.selectbox("Histogram", list(histograms))
@@ -819,8 +816,6 @@ def ntuple_to_frame(ntuple: dict[Any, Any]) -> pd.DataFrame:
 
 
 def to_numpy(value: Any) -> np.ndarray:
-    if isinstance(value, processor.column_accumulator):
-        return np.asarray(value.value)
     if hasattr(value, "value") and not callable(value.value):
         return np.asarray(value.value)
     return np.asarray(value)

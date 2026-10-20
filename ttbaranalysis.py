@@ -216,7 +216,6 @@ if __name__ == "__main__":
     if args.manifest and len(samples) != 1:
         parser.error('--manifest replaces one dataset\'s file lists: pass exactly one --dataset')
     IOV               = args.iov
-    useDeepAK8        = args.toptagger in ('topvsqcd', 'recomb')
     htCut             = 1400.0 if args.ht == '1400' else 950.0
     dask_memory       = '5GB'
     chunksize_dask    = 100000
@@ -230,8 +229,6 @@ if __name__ == "__main__":
 
     ##### systematics #####
     systematics = ['nominal', 'jes', 'jer', 'jms', 'jmr', 'pileup', 'pdf', 'q2', 'isr', 'fsr', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt']
-    if '2016' in IOV or '2017' in IOV:
-        systematics.append('prefiring')
     if args.bkgest == '2dalphabet':
         systematics.append('transferFunction')
     if args.weights_only:
@@ -336,7 +333,7 @@ if __name__ == "__main__":
 
             jobs = []  # each: (fileset, dataset_metadata, base_savefilename)
             if is_signal:
-                batch_size = max(1, int(getattr(args, 'signal_batch', 4)))
+                batch_size = max(1, args.signal_batch)
                 built = []  # (subsection, ds_key, files, sample_metadata)
                 for subsection, files, sample_metadata in sections:
                     files = [redirector + f for f in files]
@@ -411,10 +408,8 @@ if __name__ == "__main__":
 
                 processor_instance = TTbarResProcessor(
                     iov=IOV,
-                    bkgEst=args.bkgest,
                     noSyst=args.noSyst,
                     deepAK8Cut=args.ttagWP,
-                    useDeepAK8=useDeepAK8,
                     topTagger=args.toptagger,
                     recomb_weights=ttag_weights,
                     htCut=htCut,

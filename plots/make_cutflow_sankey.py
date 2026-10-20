@@ -75,8 +75,6 @@ def fmt(x):
         return f"{x/1e9:.2f}B"
     if x >= 1e6:
         return f"{x/1e6:.2f}M"
-    if x >= 1e4:
-        return f"{int(round(x)):,}"
     return f"{int(round(x)):,}"
 
 
@@ -108,8 +106,8 @@ def build_svg(title, vals, total_sub=None):
         spans.append((CX - ww / 2, CX + ww / 2, t))
 
     p = []
-    p.append(f'<svg width="100%" viewBox="0 0 680 575" role="img" '
-             f'xmlns="http://www.w3.org/2000/svg">')
+    p.append('<svg width="100%" viewBox="0 0 680 575" role="img" '
+             'xmlns="http://www.w3.org/2000/svg">')
     p.append(f'<title>{esc(title)}</title><desc>Cutflow funnel.</desc>')
     p.append('<rect x="0" y="0" width="680" height="575" fill="#ffffff"/>')
     p.append(f'<text x="40" y="42" font-family="{FONT}" font-size="18" '
@@ -138,7 +136,6 @@ def build_svg(title, vals, total_sub=None):
                  f'{ox1:.1f},{by} Z" fill="{col}" opacity="0.4"/>')
 
     # funnel bars + right-side labels
-    total = counts[0]
     prev = None
     for (k, label), c, (l, r, t) in zip(STEPS, counts, spans):
         p.append(f'<rect x="{l:.1f}" y="{t}" width="{(r-l):.1f}" height="{BH}" '

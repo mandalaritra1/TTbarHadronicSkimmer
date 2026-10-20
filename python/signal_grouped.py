@@ -61,11 +61,6 @@ def select_mass(output, mass_label):
     return result
 
 
-def load_mass(path, mass_label):
-    """Load a grouped width-file from ``path`` and return the per-mass view."""
-    return select_mass(util.load(path), mass_label)
-
-
 def find_signal_mass(coffea_dir, mass, width="1", year="2024"):
     """Per-mass output for one ZPrime point, from either a legacy per-mass file
     (``ZPrime<mass>_<width>_<year>*.coffea``) or a grouped width-file
