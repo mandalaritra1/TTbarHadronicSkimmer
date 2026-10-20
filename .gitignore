@@ -62,3 +62,7 @@ node_modules/
 
 # coffea dataset-discovery cache
 .sites_map.json
+
+# talk decks and generated plot outputs (local only)
+presentations/
+plots/out/
