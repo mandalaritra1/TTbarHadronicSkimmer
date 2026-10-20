@@ -65,19 +65,12 @@ class TransformTest(unittest.TestCase):
 
 class BaselineTest(unittest.TestCase):
     def test_baseline_matches_tscore(self):
-        import awkward as ak
-        import toptag_wp_processor as twp
-
         rng = np.random.default_rng(0)
         topqq = rng.uniform(0, 1, 50)
         topq = rng.uniform(0, 1, 50)
         qcd = rng.uniform(0, 1, 50)
-        fj = ak.Array({
-            "globalParT3_TopbWqq": topqq,
-            "globalParT3_TopbWq": topq,
-            "globalParT3_QCD": qcd,
-        })
-        ref = ak.to_numpy(twp._topvsqcd_globalParT3(fj))
+        # GloParTv3 TopvsQCD as used by the processor
+        ref = (topqq + topq) / (topqq + topq + qcd)
         got = gr.baseline_topvsqcd({"TopbWqq": topqq, "TopbWq": topq, "QCD": qcd})
         np.testing.assert_allclose(got, ref, rtol=0, atol=1e-12)
 

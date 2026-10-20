@@ -163,7 +163,7 @@ if __name__ == "__main__":
                         help="'topvsqcd' = GloParTv3 TopvsQCD baseline (default); "
                              "'recomb' = learned per-pT GloParTv3 recombination; 'cmsv2' = legacy")
     parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
-                        help='deploy JSON for --toptagger recomb (build_recomb_deploy.py)')
+                        help='deploy JSON for --toptagger recomb')
     parser.add_argument('--ttag-ptbinned', action='store_true',
                         help='use per-pT WP thresholds for the baseline tagger too (flat '
                              'target mis-tag per pT bin); recomb is always per-pT. Makes '
