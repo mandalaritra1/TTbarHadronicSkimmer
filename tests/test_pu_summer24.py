@@ -60,7 +60,7 @@ class Summer24PileupTest(unittest.TestCase):
         for w in (nom, up, down):
             self.assertAlmostEqual(float(np.sum(w * self.profile)), 1.0, delta=0.003)
         central24, _, _ = GetPUSF(_events(self.x), "2024")
-        self.assertFalse(np.allclose(nom, central24))   # 2026 no longer borrows the 2024 weights
+        self.assertFalse(np.allclose(nom, central24))   # 2026 has its own weights
         derived = correctionlib.CorrectionSet.from_file(
             os.path.join(ROOT, "data/corrections/puWeights/Summer24_2026/puWeights.json.gz"))
         np.testing.assert_allclose(nom, derived["2026_data_on_Summer24"].evaluate(self.x, "nominal"))

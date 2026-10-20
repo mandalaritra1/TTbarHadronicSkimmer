@@ -10,8 +10,7 @@ class SignalXsecTest(unittest.TestCase):
     def test_mass_outside_the_table_uses_the_1pb_reference(self):
         from ttbaranalysis import _signal_xsec
 
-        # functions.xs covers ZPrime1 1000-4500 only; 400 GeV used to return None,
-        # which saved the template at raw weighted counts
+        # functions.xs covers ZPrime1 1000-4500 only
         self.assertEqual(_signal_xsec("ZPrime1", "400"), 1.0)
 
     def test_notebook_runner_uses_the_cli_helper(self):

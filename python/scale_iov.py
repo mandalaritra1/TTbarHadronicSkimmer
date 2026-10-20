@@ -68,7 +68,7 @@ def scale_mc_output(input_path, dst_iov, output_path=None):
     grouped = (isinstance(norm, dict) and norm
                and all(isinstance(v, dict) for v in norm.values()))
 
-    # validate, and read the lumi actually used (more robust than re-looking it up)
+    # validate, and take the source lumi recorded in the output, not the current table
     if grouped:
         src_lumis = {_check_source(v, dst_iov, src_iov) for v in norm.values()}
         src_lumi = next(iter(src_lumis))

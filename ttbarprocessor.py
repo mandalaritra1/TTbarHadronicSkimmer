@@ -216,8 +216,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         # so a grouped run (many datasets in one fileset) can normalize each one
         # by its own xsec. Falls back to sample_metadata for single-dataset runs.
         self.dataset_metadata = copy.deepcopy(dataset_metadata or {})
-        # when True, add a 'dataset' axis to every hist and normalize per dataset
-        # (used for signals grouped one-file-per-width). Off => unchanged schema.
+        # grouped signal runs: 'dataset' axis on every hist, per-dataset normalization
         self.group_by_dataset = bool(group_by_dataset)
 
         self.logger = Logger(mode='debug' if debug else 'info')
@@ -853,9 +852,9 @@ class TTbarResProcessor(processor.ProcessorABC):
             )
             if self.cutflow_verbose:
                 print(f"[CUTFLOW] after all preselection (eventCut): {len(events)}")
-        # Only an empty chunk may return here: sumw is already recorded, so
-        # dropping a chunk with a few selected events (formerly < 10) removed
-        # them from the templates but not from the normalization.
+        # Only an empty chunk may return here: sumw is already recorded, so dropping
+        # a chunk with selected events would remove them from the templates but not
+        # from the normalization.
         if len(events) == 0:
             self.logger.debug(
                 'early return after baseline eventCut: events=%d '
@@ -1172,8 +1171,7 @@ class TTbarResProcessor(processor.ProcessorABC):
                 truth_weights       = truth_event_weights[truth_cat_mask]
 
                 # No gen-matched event in this category: skip only these truth
-                # fills. A `continue` here also skipped the weight-variation fills
-                # below, so pileup/PDF/Q2/ISR/FSR/ttag_pt came out low.
+                # fills. Do not `continue`: the weight-variation fills below must run.
                 if ak.any(truth_cat_mask):
                     output["gen_mt"].fill(
                         **ds_kw, systematic=correction, anacat=i,
@@ -1251,7 +1249,7 @@ class TTbarResProcessor(processor.ProcessorABC):
             output['systematics'][correction] += len(events.event[icat])
 
             # A systematic missing from the axis would be filled into its overflow
-            # bin and silently lost (how ttag_pt2/3 went missing through v1.1).
+            # bin and silently lost.
             if correction not in output['mtt_vs_mt'].axes['systematic']:
                 raise ValueError(
                     f"Jet variation {correction!r} is not on the systematic axis; "
@@ -1382,7 +1380,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         return self._postprocess_single(accumulator)
 
     def _postprocess_single(self, accumulator):
-        """Original behaviour: one sample per run, one global lumi*xsec/sumw scale."""
+        """Single-dataset run: one global lumi*xsec/sumw scale."""
         sample_metadata = copy.deepcopy(self.sample_metadata)
         cutflow = accumulator.get('cutflow', {})
         sumw_raw = float(cutflow.get('sumw', 0.0))

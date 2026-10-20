@@ -44,7 +44,7 @@ def _softdrop_mass(fatjets, subjets):
 
 
 class Run3JetManager:
-    """Utility class to keep jet/fatjet preparation, corrections, and baseline selections together."""
+    """Jet preparation, JEC/JER variations and baseline jet masks for one IOV."""
 
     def __init__(self, iov, systematics, no_syst, ak8_pt_min, ht_cut):
         self.iov = iov
@@ -65,9 +65,8 @@ class Run3JetManager:
         fatjets = self._add_p4(events.FatJet)
         jets = self._add_p4(events.Jet)
         # MC gen pT for the JER smearing is set in GetJECUncertainties from each
-        # collection's own matched_gen (GenJetAK8 for FatJet, GenJet for Jet).
-        # Matching AK8 jets to AK4 GenJets here put pt_gen ~8% below the reco pT
-        # (GenJetAK8: -0.6%) and raised the smeared AK8 pT by ~0.2% (Z' 2 TeV).
+        # collection's own matched_gen (GenJetAK8 for FatJet, GenJet for Jet). Do not
+        # match AK8 jets to AK4 GenJets here: that pt_gen sits ~8% below the reco pT.
         return fatjets, jets
 
     def build_corrections(self, events, is_data):

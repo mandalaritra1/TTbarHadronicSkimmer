@@ -1,9 +1,7 @@
-"""Unit tests for python/glopart_recomb.py (pure, no grid/xrootd access).
+"""Unit tests for python/glopart_recomb.py on small synthetic NumPy inputs.
 
-Mirrors the style of tests/test_toptag_wp_processor.py. Tiny synthetic NumPy /
-awkward fixtures only. The §9 test list from the plan, adapted to the log-score
-transform (the heads are NOT a softmax, so the original "sum==1" test is replaced
-by a non-negative/finite check, and the transform test proves no NaN on P>1).
+The GloParTv3 heads are not a softmax, so the head check is non-negative/finite
+and the transform test checks for no NaN when a head exceeds 1.
 """
 
 import os

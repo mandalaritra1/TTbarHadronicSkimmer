@@ -7,7 +7,7 @@ def leptonic_top_fraction(jet):
 
     H = TopbWqq + TopbWq (hadronic top), L = TopbWev + TopbWmv + TopbWtauhv (leptonic
     top). The tagger score H / (H + QCD) ignores L, so leptonic tops (lepton and b inside
-    the AK8 jet) pass it; f_lep < c removes them (option A, leptonic-top study 2026-10-02).
+    the AK8 jet) pass it; f_lep < c removes them.
     0 where H + L = 0.
     """
     H = jet.globalParT3_TopbWqq + jet.globalParT3_TopbWq

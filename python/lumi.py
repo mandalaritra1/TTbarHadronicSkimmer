@@ -1,6 +1,5 @@
 """Integrated luminosity per IOV [pb^-1]: the one table the processor, the
-normalization helpers and the plot scripts read (a copy in functions.py had
-kept 2025 at 110.59 fb^-1 after the processor moved to 110.37)."""
+normalization helpers and the plot scripts read."""
 
 LUMI_PB = {
     '2016APV': 19800.,

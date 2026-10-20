@@ -39,11 +39,8 @@ def build_output_histograms(
             else:
                 syst_category_strings.extend([s + "Down", s + "Up"])
 
-    # dataset axis (FIRST on every hist) — ONLY added when group_by_dataset is set
-    # (signal runs grouped one-file-per-width). It lets one output file hold many
-    # datasets (e.g. all mass points of a width) on a growth StrCategory, each
-    # scaled by its own xsec in postprocess. When off, the schema is unchanged so
-    # all existing (TTbar/QCD/data) outputs and plotters are untouched.
+    # dataset axis, first on every hist, only for grouped signal runs: one output
+    # holds several mass points, each scaled by its own xsec in postprocess.
     dataset_axis = hist.axis.StrCategory([], growth=True, name="dataset", label="dataset")
     _pre = (dataset_axis,) if group_by_dataset else ()
     syst_axis = hist.axis.StrCategory(syst_category_strings, name="systematic")
@@ -125,9 +122,8 @@ def build_output_histograms(
             "gen_mttbar": hist.Hist(*_pre,syst_axis, cats_axis, ttbarmass2D_axis, storage="weight", name="Counts"),
             "jet0_gen_dr": hist.Hist(*_pre,syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
             "jet1_gen_dr": hist.Hist(*_pre,syst_axis, cats_axis, jetdr_axis, storage="weight", name="Counts"),
-            # Gen-matched AK8 response: filled on the nominal MC pass only (the
-            # gen matching runs there), so no systematic axis -- with it this
-            # hist was 21.6M bins, 346 MB per chunk output, 24/25 slices empty.
+            # Gen-matched AK8 response: filled on the nominal MC pass only, so no
+            # systematic axis (with it the hist would be ~350 MB per chunk).
             "jet_mass_resolution": hist.Hist(
                 *_pre, cats_axis, abs_eta_axis, jet_nearby_axis, massres_axis, storage="weight", name="Counts"
             ),

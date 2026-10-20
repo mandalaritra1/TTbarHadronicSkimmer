@@ -224,7 +224,7 @@ class FlepSFWeightsTest(unittest.TestCase):
         np.testing.assert_allclose(manager.build_weights(**kw, flep_sf=False).weight(), [1.0])
 
     def test_2024_table_carries_the_tp_flep_sf(self):
-        # T&P toptag-sf-derivation d98a7f9: tag per pT bin, band inclusive; aliased for 2025.
+        # T&P f_lep SF: tag per pT bin, band inclusive; read through the 2025 alias.
         # Band jet at 700 GeV: doubled deviations, up capped at 1/eps_mc
         flep = load_ttag_sf()["iovs"]["2025"]["flep"]
         self.assertEqual(flep["tag"]["pt_edges"], [400.0, 480.0, 600.0])

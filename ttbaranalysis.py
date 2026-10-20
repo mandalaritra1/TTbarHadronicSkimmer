@@ -223,7 +223,6 @@ if __name__ == "__main__":
     nworkers          = 1 if args.test else 4
     maxchunks         = 1 if args.test else None
 
-    # optional custom output subfolder: outputs/<outdir>/  (default outputs/dy/)
     if args.outdir:
         savedir = 'outputs/' + args.outdir.strip('/') + '/'
 
@@ -402,8 +401,8 @@ if __name__ == "__main__":
 
                 print(f'running {IOV} {sample}: {len(fileset)} dataset(s) -> {savefilename}')
 
-                # single-dataset runs keep passing sample_metadata (back-compat);
-                # grouped runs leave it empty and rely on dataset_metadata per mass.
+                # single-dataset runs pass sample_metadata; grouped runs leave it
+                # empty and rely on dataset_metadata per mass.
                 rep_meta = next(iter(dataset_metadata.values())) if len(dataset_metadata) == 1 else {}
 
                 processor_instance = TTbarResProcessor(
@@ -455,9 +454,8 @@ if __name__ == "__main__":
                             cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
                         pool_cap = args.lpc_workers
                     elif args.env in ('casa', 'C') and not args.nocluster:
-                        # scalable coffea-casa gateway cluster. Without this the casa
-                        # path fell through to Client(None) = a LocalCluster bound to
-                        # the notebook pod's ~4 cores (hence "only 4 workers").
+                        # coffea-casa gateway cluster; Client(None) would be a
+                        # LocalCluster on the notebook pod's ~4 cores.
                         from coffea_casa import CoffeaCasaCluster
                         cluster = CoffeaCasaCluster(memory=dask_memory)
                         # adapt(n, n): fixed footprint, but retired workers are

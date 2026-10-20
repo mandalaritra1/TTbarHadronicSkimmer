@@ -1,14 +1,12 @@
-"""Helpers for reading signal outputs grouped one-file-per-width.
+"""Helpers for reading grouped signal outputs.
 
-Signal runs now write a single ``.coffea`` per width (e.g. ``ZPrime1_2024.coffea``)
-containing every mass point on a ``dataset`` histogram axis, with ``normalization``
-and ``sample_metadata`` stored as dicts keyed by the per-mass dataset label
-(e.g. ``ZPrime4000_1``, ``RSGluon3000``).
+A signal run writes one ``.coffea`` per batch of masses of one width (e.g.
+``ZPrime1_2024_1400to2000_topvsqcd.coffea``), with the masses on a ``dataset``
+histogram axis and ``normalization``/``sample_metadata`` as dicts keyed by the
+per-mass label (e.g. ``ZPrime4000_1``).
 
-``select_mass`` projects one mass back out into the *legacy* single-sample layout
-(histograms without the dataset axis, flat ``normalization``/``sample_metadata``),
-so existing per-mass plotting code keeps working with a one-line change at the
-load site instead of a rewrite.
+``select_mass`` projects one mass out into the single-sample layout (no dataset
+axis, flat ``normalization``/``sample_metadata``) that per-mass plotting code reads.
 """
 from __future__ import annotations
 

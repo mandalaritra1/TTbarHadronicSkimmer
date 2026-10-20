@@ -1,9 +1,9 @@
 """Per-chunk bookkeeping of TTbarResProcessor on a local Z' NanoAOD file.
 
-Small chunks produce the two cases where the processor used to lose events:
-a category with events but no gen-matched tops (its weight variations were
-skipped), and a chunk with only a few events after the baseline selection
-(returned early after sumw was recorded). Skipped when the file is absent.
+Small chunks produce two cases where events can be lost: a category with events
+but no gen-matched tops (its weight variations must still be filled), and a chunk
+with only a few events after the baseline selection (it must not return early
+after sumw is recorded). Skipped when the file is absent.
 """
 import copy
 import os
@@ -64,8 +64,8 @@ class ProcessorChunkBookkeepingTest(unittest.TestCase):
                         self.assertGreater(filled.variance, 0.0, f"{cat} {syst}{direction}")
 
     def test_chunk_outputs_merge(self):
-        # coffea's accumulate (futures/iterative executors) could not merge 3+
-        # outputs carrying event_list, which is now off by default
+        # coffea's accumulate (futures/iterative executors) cannot merge 3+
+        # outputs carrying event_list, so it is off by default
         from coffea.processor import accumulate
 
         merged = accumulate(copy.deepcopy(o) for o in self.outputs)

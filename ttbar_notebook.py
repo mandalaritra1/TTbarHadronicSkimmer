@@ -45,8 +45,8 @@ class _BroadcastHeavyClient:
     """DaskExecutor ships the pickled processor (heavy_input) as a single future
     on ONE worker via client.submit, and every chunk task depends on it -- the
     scheduler then piles all chunks onto that worker (dependency locality) and
-    work stealing won't move the big object. Seen as "all tasks on one worker"
-    on a hot pool between consecutive runs (2026-07-23). Bare .submit is only
+    work stealing won't move the big object (symptom: "all tasks on one worker"
+    on a hot pool between consecutive runs). Bare .submit is only
     used for heavy_input inside DaskExecutor.__call__ (chunks go through .map),
     so replicating every submitted future to the whole pool restores fan-out."""
 
@@ -104,7 +104,7 @@ DEFAULTS = dict(
     toptagger="topvsqcd",
     ttag_ptbinned=False,
     redirector="rootfiles/",
-    ttagWP="tight",   # 0.5% QCD-mistag WP (2026-06-25 meeting decision)
+    ttagWP="tight",   # 0.5% QCD-mistag WP, the analysis choice
     ht="1400",
     noSyst=False,
     ntuple=False,
@@ -523,8 +523,7 @@ def _signal_dataset_key(sample, subsection):
     return subsection or sample
 
 
-# Shared with the CLI runner: a local copy here missed the fix for masses outside
-# the functions.xs grid (fab5038), which left them at raw weighted counts.
+# shared with the CLI runner so both normalize signal masses the same way
 from ttbaranalysis import _signal_xsec
 
 
@@ -804,7 +803,7 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
         # adapt(n, n), not adapt(4, 400) and not scale(n). adapt(4, 400) on a free
         # condor pool mass-spawns then churns workers; the distributed scheduler's
         # handle_request_refresh_who_has KeyError race fires under that churn and
-        # crashed the scheduler mid-run (2026-07-23). scale(n) is stable but does
+        # crashed the scheduler mid-run. scale(n) is stable but does
         # not resubmit workers that retire at their condor walltime, so long runs
         # drain. min == max holds the footprint fixed while a fileset runs;
         # run_analysis re-sizes it per fileset from the chunk count.

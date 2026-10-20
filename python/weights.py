@@ -8,8 +8,8 @@ from coffea.analysis_tools import Weights
 from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, GetTopPtWeight
 from truthstudy import MERGE_FULL, top_merge_category
 
-# Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.1 is the table that
-# was hard-coded here up to v1.1; v1.2 has the 2024 SFs re-measured on the v1.2 objects.
+# Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json); v1.2 holds the 2024
+# SFs measured on the v1.2 objects.
 TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.2.json"
 
 # SF_flep nuisances per block of the table's 'flep' entry

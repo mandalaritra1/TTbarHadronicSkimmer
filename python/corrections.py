@@ -352,10 +352,9 @@ def GetPUSF(events, IOV, mc_campaign=None):
     elif IOV in ("2024", "2025"):
         # Real 2024 PU weights: CAT/LUM Run3-24CDEReprocessingFGHIPrompt-Summer24
         # -NanoAODv15 @2026-04-15, file puWeights_CDEFGHI.json.gz, vendored from
-        # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . Replaces the former
-        # 2023_Summer23BPix proxy, which was NOT a small correction: the Summer24
-        # MC pileup profile is far off 2024 data (weight 0.44 at nTrueInt=20,
-        # 19.7 at 70). 2025 MC is Summer24 (PPD) so it reuses the same file.
+        # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . The Summer24 MC pileup
+        # profile is far off 2024 data (weight 0.44 at nTrueInt=20, 19.7 at 70).
+        # 2025 MC is Summer24 (PPD), so it reuses the same file.
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2024_Summer24/puWeights.json.gz"
     elif IOV in _pu_subdir:
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}/puWeights.json.gz".format(_pu_subdir[IOV])
@@ -392,16 +391,12 @@ _pu_mean_warned = set()
 def _check_pu_mean(IOV, puNom, tol=0.10, min_events=500):
     """Warn if <puNom> is far from 1.
 
-    A pileup weight built from the matching MC campaign is normalization
-    preserving by construction, so the sample mean sits at 1 to within a
-    percent.  A mean far off 1 means the weight file does not match the MC --
-    which is exactly how the 2024/2025 IOVs silently ran on a 2023 proxy that
-    inflated every MC template by 40% (<puNom> was 1.40).  Nothing errors in
-    that situation, so without this check the only symptom is MC overshooting
-    data in the final fit.
+    A pileup weight built for the matching MC campaign preserves the
+    normalization, so its mean sits at 1 within a percent. A mean far from 1
+    means the weight file does not match the MC. Nothing errors then; the only
+    symptom is every MC template scaled by about that mean.
 
-    Per chunk, not per sample, so the threshold is loose and small chunks are
-    skipped -- this is a blown-fuse indicator, not a precision test.
+    Checked per chunk, so the threshold is loose and small chunks are skipped.
     """
     if len(puNom) < min_events or str(IOV) in _pu_mean_warned:
         return

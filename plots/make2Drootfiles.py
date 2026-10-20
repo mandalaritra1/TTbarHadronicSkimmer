@@ -323,13 +323,10 @@ def _template(outputs: list[dict], hist_name: str, anacat_ids: list[int], syst: 
 def _clip_negative_bins(histo, label: str, name: str):
     """Clip negative bins of an MC template to zero (variance kept).
 
-    NLO negative event weights leave slightly-negative bins in sparse corners of
-    the MC TH2s (e.g. TTbar at m_tt ~ 2-3 TeV inside the jet-mass SR window,
-    O(-0.1) events on a ~7000-event template). A binned-likelihood pdf cannot go
-    negative: Combine FASTEXITs on any channel evaluation that does, which broke
-    every unblinded fit/limit of the Pass regions. Clipping to zero is the
-    standard template-hygiene fix and changes integrals at the per-mille level.
-    Data is never clipped (and never negative).
+    NLO negative event weights leave slightly negative bins in sparse corners of
+    the MC TH2s (O(-0.1) events). A binned-likelihood pdf cannot go negative, and
+    Combine exits on any channel evaluation that does. Clipping changes integrals
+    at the per-mille level. Data is never clipped.
     """
     view = histo.view(flow=True)
     values = view["value"] if view.dtype.names else view
