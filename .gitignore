@@ -59,3 +59,6 @@ CODEX.md
 .claude/
 .paired/
 node_modules/
+
+# coffea dataset-discovery cache
+.sites_map.json
