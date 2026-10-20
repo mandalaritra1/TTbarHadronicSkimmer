@@ -159,8 +159,8 @@ python cc_run.py --name ttbar24_test --dir '~/TTbarHadronicSkimmer' \
 python cc_run.py --tail ttbar24_test
 ```
 
-With `--dask --env casa` the runner starts its own casa Dask cluster
-(`--casa-workers`, default 64).
+With `--dask --env casa` the runner starts its own casa Dask cluster and sizes
+it per fileset from the chunk count, up to `--casa-workers` (default 64).
 
 The other tools:
 

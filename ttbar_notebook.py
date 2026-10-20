@@ -69,6 +69,7 @@ class _BroadcastHeavyClient:
 
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories
+from python.dask_pool import POOL_MIN_WORKERS, size_pool_for_fileset
 from python import provenance
 
 # ── Widgets for interactive configuration ─────────────────────────────────────
@@ -88,8 +89,10 @@ for _old_widget in list(globals().get("WIDGETS", {}).values()) + [
             pass
 clear_output(wait=True)
 
-# casa Dask pool size (fixed; see _start_dask_resources for why not adaptive)
+# worker caps for the condor Dask pools; the pool itself is sized per fileset
+# from its chunk count (python/dask_pool.py)
 CASA_WORKERS = 64
+LPC_WORKERS = 100
 
 DEFAULTS = dict(
     dataset=["ZPrimeLocal"],
@@ -813,19 +816,23 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
                 transfer_input_files=upload_to_dask,
                 scheduler_options={"dashboard_address": ":8787"},
             )
-            cluster.adapt(minimum=1, maximum=100)
+            # starts small; run_analysis re-sizes it per fileset (cap LPC_WORKERS)
+            cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
     elif args.env == "casa":
         from coffea_casa import CoffeaCasaCluster
 
         cluster = CoffeaCasaCluster(memory=dask_memory)
-        # Fixed pool instead of adapt(4, 400): adaptive scaling on a free condor
-        # pool mass-spawns then churns workers; the distributed scheduler's
-        # handle_request_refresh_who_has KeyError race fires continuously under
-        # that churn and can crash the scheduler mid-run ("Client lost the
-        # connection to the scheduler", 2026-07-23). A fixed-size pool is stable.
+        # adapt(n, n), not adapt(4, 400) and not scale(n). adapt(4, 400) on a free
+        # condor pool mass-spawns then churns workers; the distributed scheduler's
+        # handle_request_refresh_who_has KeyError race fires under that churn and
+        # crashed the scheduler mid-run (2026-07-23). scale(n) is stable but does
+        # not resubmit workers that retire at their condor walltime, so long runs
+        # drain. min == max holds the footprint fixed while a fileset runs;
+        # run_analysis re-sizes it per fileset from the chunk count.
         n_casa = int(getattr(args, "casa_workers", CASA_WORKERS))
-        print(f"[dask] requesting fixed pool of {n_casa} casa workers")
-        cluster.scale(n_casa)
+        print(f"[dask] casa pool starts at {POOL_MIN_WORKERS} workers, "
+              f"sized per fileset from its chunk count (cap {n_casa})")
+        cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
     else:
         cluster = dask.distributed.LocalCluster(
             n_workers=nworkers,
@@ -865,6 +872,14 @@ def _start_dask_resources(args, repo_root, upload_to_dask, dask_memory, nworkers
         client.upload_file(os.path.join(repo_root, "ttbarprocessor.py"))
 
     return client, cluster
+
+
+def _pool_cap(args):
+    if args.env == "casa":
+        return int(getattr(args, "casa_workers", CASA_WORKERS))
+    if args.env == "lpc":
+        return int(getattr(args, "lpc_workers", LPC_WORKERS))
+    return None
 
 
 def run_analysis(args):
@@ -1196,6 +1211,11 @@ def run_analysis(args):
                             ),
                         )
                     else:
+                        if not args.test:
+                            size_pool_for_fileset(
+                                client, fileset, chunksize_dask,
+                                cap=_pool_cap(args), label=section_label,
+                            )
                         run_instance = processor.Runner(
                             metadata_cache={},
                             executor=processor.DaskExecutor(client=_BroadcastHeavyClient(client), retries=12, treereduction=6, status=args.progress),

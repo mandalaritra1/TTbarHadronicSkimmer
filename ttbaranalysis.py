@@ -22,6 +22,7 @@ default_signals = ['RSGluon', 'ZPrime10', 'ZPrime30', 'ZPrimeDM', 'ZPrime1']
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
 from python import provenance
+from python.dask_pool import POOL_MIN_WORKERS, size_pool_for_fileset
 
 
 def _build_sample_metadata(sample, subsection, iov, metadata):
@@ -176,8 +177,11 @@ if __name__ == "__main__":
                              'in one file (fast, high merge memory -> can OOM workers). '
                              'Middle values balance merge memory vs job count.')
     parser.add_argument('--casa-workers', type=int, default=64,
-                        help='fixed casa worker pool size (default 64; adaptive scaling '
-                             'is avoided because worker churn can crash the scheduler)')
+                        help='casa worker cap (default 64); the pool is sized per fileset '
+                             'as min(cap, max(4, nchunks // 2)) with adapt(n, n)')
+    parser.add_argument('--lpc-workers', type=int, default=100,
+                        help='LPC condor worker cap (default 100), sized per fileset as '
+                             'for --casa-workers')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
     parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
@@ -476,18 +480,21 @@ if __name__ == "__main__":
                             scheduler_options={"dashboard_address": ":8787"},
                         )
                         if cluster:
-                            cluster.adapt(minimum=1, maximum=100)
+                            cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
+                        pool_cap = args.lpc_workers
                     elif args.env in ('casa', 'C') and not args.nocluster:
                         # scalable coffea-casa gateway cluster. Without this the casa
                         # path fell through to Client(None) = a LocalCluster bound to
                         # the notebook pod's ~4 cores (hence "only 4 workers").
                         from coffea_casa import CoffeaCasaCluster
                         cluster = CoffeaCasaCluster(memory=dask_memory)
-                        # fixed pool: adaptive churn can crash the scheduler
-                        # (see ttbar_notebook._start_dask_resources)
-                        cluster.scale(args.casa_workers)
+                        # adapt(n, n): fixed footprint, but retired workers are
+                        # resubmitted (see ttbar_notebook._start_dask_resources)
+                        cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
+                        pool_cap = args.casa_workers
                     else:
                         cluster = None
+                        pool_cap = None
 
                     with Client(cluster) as client:
                         # DaskExecutor ships the pickled processor (heavy_input) as a
@@ -522,6 +529,11 @@ if __name__ == "__main__":
                             client.register_worker_plugin(
                                 UploadDirectory('python', restart=True, update_path=True), nanny=True)
                             client.upload_file('ttbarprocessor.py')
+                        if not args.test:
+                            size_pool_for_fileset(
+                                client, fileset, chunksize_dask, cap=pool_cap,
+                                label=os.path.basename(savefilename),
+                            )
                         run_instance = processor.Runner(
                             metadata_cache={},
                             executor=processor.DaskExecutor(client=_BroadcastHeavyClient(client), retries=12, treereduction=6, status=args.progress),
