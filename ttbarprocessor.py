@@ -104,24 +104,21 @@ def _base_year(iov):
             return iov[:-len(suffix)]
     return iov
 
-# Per-IOV top-tagger score thresholds.
-# Run-3 uses globalParT3; these keys are historically called "deepAK8" in the code.
-# WP names follow the standard CMS AK8 top-tagger targeted QCD mis-tag nomenclature:
-#   verytight 0.1% | tight 0.5% | medium 1.0% | loose 2.5% | veryloose 5.0%
-# (the recomb tagger hits these exactly per pT bin; the baseline scalar thresholds
-#  below approximate them inclusively.)
-# Leptonic-top rejection (2026-10-02 study): both tagged/antitag jets also need GloParTv3
+# Leptonic-top rejection: both tagged/antitag jets also need GloParTv3
 # f_lep = L/(H+L) below this. The score H/(H+QCD) ignores the leptonic-top heads, so a jet
 # holding a leptonic top (lepton + b inside the AK8 jet) passes it. 0.59 = tightest value
 # keeping >= 99% of truth fully merged hadronic tops in every pT x tight/band row (MC).
 # IOVs without GloParTv3 have f_lep = 0 (no cut).
 _FLEP_CUT = 0.59
 
+# Per-IOV top-tagger score thresholds (the code calls them "deepAK8" for historical
+# reasons). WP names follow the CMS AK8 top-tagger targeted QCD mis-tag:
+#   verytight 0.1% | tight 0.5% | medium 1.0% | loose 2.5% | veryloose 5.0%
+# These inclusive thresholds approximate the targets; the per-pT deploy JSONs in
+# data/recomb/ hit them in every pT bin. All v15 IOVs use the 2024 GloParTv3 values.
+# The flat '2022'/'2023' keys serve the legacy pre-v15 path, and 'tight' also keeps
+# the Run-2 values.
 _TAGGER_WPS = {
-    # 2022/2023/2025 WPs are placeholders set to the 2024 GloParTv3 values (same
-    # tagger; 2025 MC is Summer24 per PPD); replace with per-year derivations when
-    # available. (The old stand-alone 2025 loose/medium values 0.470/0.685 predated
-    # the GloParTv3 WP work and were inconsistent with the 2024 placeholders.)
     'loose': {
         '2022': 0.435,
         '2023': 0.435,
@@ -205,7 +202,7 @@ class TTbarResProcessor(processor.ProcessorABC):
 
     def __init__(
         self,
-        htCut=1500,
+        htCut=1400.,
         ak8PtMin=400.,
         minMSD=105.,
         maxMSD=210.,
@@ -214,14 +211,14 @@ class TTbarResProcessor(processor.ProcessorABC):
         deepAK8Cut='medium',
         useDeepAK8=True,
         useDeepCSV=True,
-        topTagger='baseline',
+        topTagger='topvsqcd',
         recomb_weights=None,
-        iov='2016',
+        iov='2024',
         bkgEst=False,
         noSyst=False,
         blinding=False,
         systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_nonmerged', 'ttag_band_hipt', 'ttag_flep_tag', 'ttag_flep_band', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt'],
-        anacats=['2t0bcen'],
+        anacats=['atcen', 'atfwd', '2tcen', '2tfwd'],
         debug=False,
         cutflow_verbose=False,
         produce_ntuple=False,
@@ -296,12 +293,10 @@ class TTbarResProcessor(processor.ProcessorABC):
             self.deepAK8low = 0.2
 
         # --- per-pT working points + GloParTv3 recombination tagger (opt-in) -----
-        # A deploy JSON (build_recomb_deploy.py) supplies per-pT WP thresholds at the
-        # standard CMS targeted QCD mis-tag (flat vs pT). It is used for BOTH taggers:
-        #   topTagger='recomb'   -> learned per-pT logistic score (needs 'params')
-        #   topTagger='baseline' -> the TopvsQCD ratio, but pT-binned WP thresholds
-        # so baseline and recomb are directly comparable at each --ttagWP. Without a
-        # deploy the baseline falls back to the legacy global scalar _TAGGER_WPS.
+        # A deploy JSON (data/recomb/) holds per-pT WP thresholds at the targeted QCD
+        # mis-tag. topTagger='recomb' also takes its per-pT logistic params from it;
+        # the TopvsQCD baseline uses only the thresholds (--ttag-ptbinned). Without a
+        # deploy JSON the baseline uses the inclusive _TAGGER_WPS.
         self.topTagger = topTagger
         self._recomb = (topTagger == 'recomb')
         self._ptbinned_wp = False
@@ -371,7 +366,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         """Return the top-tagger discriminant for one or more jets.
 
         topTagger='recomb': learned per-pT GloParTv3 recombination score (sigmoid).
-        Else 2024: mass-decorrelated GloParTv3 TopvsQCD =
+        Else, v15 IOVs: mass-decorrelated GloParTv3 TopvsQCD =
               (TopbWqq + TopbWq) / (TopbWqq + TopbWq + QCD)
         Other IOVs: single NanoAOD field stored in self.tagger_field.
         Works on flat (one jet/event) or jagged (lists of jets) inputs.

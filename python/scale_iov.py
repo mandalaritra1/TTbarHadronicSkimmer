@@ -1,23 +1,15 @@
-"""scale_iov.py -- derive an MC output for a "stand-in" IOV from an already-produced
-one by pure luminosity rescaling, without re-running the processor.
+"""scale_iov.py -- derive an MC output for a stand-in IOV from an already-produced
+one by luminosity rescaling, without re-running the processor:
 
-This is valid ONLY when the target IOV's MC processing is identical to the source's
-up to the integrated-luminosity normalization: same files, same JEC/JER, pileup,
-top-tag SF and tagger WPs. That holds for the current Summer24 stand-in -- 2025 MC IS
-the 2024 Summer24 MC (see corrections._JSONPOG_JME_DIR, corrections.GetPUSF,
-weights.py top-tag SF, ttbarprocessor._TAGGER_WPS), so
+    output_2025 = output_2024 * (L_2025 / L_2024)
 
-    output_2025 == output_2024 * (L_2025 / L_2024)
-
-bin-by-bin and across every systematic-axis slice (the processor applies one global
-lumi*xsec/sumw factor: `hist * scale_factor`). If 2025 ever gets its own MC or its
-own pileup/JEC/SF, this shortcut is no longer valid -- re-run instead.
-
-CAVEAT (2026-09-24): since 2025 moved to the dedicated JME campaign
-(2025_Summer24Prompt25), 2025 MC has the same MC JEC and JES uncertainty as 2024
-but its own JER scale factor (Summer24Prompt25_JRV2). The SFs agree within their
-uncertainty for |eta| < ~1.5 but differ at |eta| ~ 2.3 (e.g. 1.36 -> 1.17 at 1 TeV),
-so this rescaling is an approximation for forward jets. Prefer a real 2025 MC run.
+bin by bin and in every systematic slice (the processor applies one global
+lumi*xsec/sumw factor). This is exact only when both IOVs share the MC files and
+every MC-side correction. 2025 MC is the 2024 Summer24 MC with the same JEC, pileup,
+top-tag SF and WPs, but 2025 has its own JER scale factor (Summer24Prompt25_JRV2).
+It agrees with 2024 within uncertainty for |eta| < ~1.5 and differs at |eta| ~ 2.3
+(1.36 vs 1.17 at 1 TeV), so the rescaled 2025 output is an approximation for forward
+jets. A real 2025 MC run is better.
 
 Data is never rescaled: real per-year data must be processed for real.
 
@@ -36,11 +28,10 @@ from coffea.util import load, save
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from ttbarprocessor import _LUMI_PB
 
-# target IOV -> source IOV whose MC processing is byte-identical to it (lumi aside).
-# Keep this in lockstep with the corrections/weights/WP wiring: an entry here asserts
-# "running the source-IOV MC and the target-IOV MC gives the same histograms up to
-# the lumi factor". Only add an IOV once that is actually true.
-_MC_LUMI_EQUIVALENT = {"2025": "2024", "2026": "2024"}
+# target IOV -> source IOV whose MC output it reuses. Only add an IOV whose MC
+# processing matches the source's up to the lumi factor (2025: see the JER caveat
+# above). 2026 has its own MC, pileup and top-tag drift, so it is not here.
+_MC_LUMI_EQUIVALENT = {"2025": "2024"}
 
 
 def _scale_mapping(m, factor, power=1):

@@ -26,7 +26,7 @@ import signal_grouped as sg  # noqa: E402  (needs python/ on sys.path above)
 
 OUTDIR = REPO / "plots" / "images" / "cutflow"
 
-# step order: key -> (label, sub for "total")
+# (key, label), top to bottom
 STEPS = [
     ("total", "Total events"),
     ("trigger", "HLT PFHT1050"),
@@ -217,7 +217,7 @@ def main():
 
     # Signal: normalize each mass to a reference cross-section of 1 pb at the
     # 2024 integrated luminosity, so every mass starts at sigma*L before any
-    # selection (1 pb x 104 fb^-1 = 104,000 events) and yields read as eff x 1pb.
+    # selection and yields read as eff x 1 pb.
     SIG_XSEC_PB = 1.0
     from lumi import LUMI_PB
     SIG_LUMI_FB = LUMI_PB['2024'] / 1000.0

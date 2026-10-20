@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 default_datastets = ['data', 'TTbar', 'QCD']
-default_signals = ['RSGluon', 'ZPrime10', 'ZPrime30', 'ZPrimeDM', 'ZPrime1']
+default_signals = ['ZPrime1', 'ZPrime10', 'ZPrime30']
 
 from ttbarprocessor import TTbarResProcessor
 from python.functions import printTime, makeSaveDirectories, xs as _XS_TABLE
@@ -48,30 +48,20 @@ def _output_subsection(sample, subsection):
 
 def _signal_dataset_key(sample, subsection):
     """dataset-axis label for one signal mass point, matching the legacy per-mass
-    file stem (e.g. RSGluon3000, ZPrime4000_1) so the mass is recoverable from the
-    grouped output's dataset axis."""
-    if 'RSGluon' in sample:
-        return f'RSGluon{subsection}'
+    file stem (e.g. ZPrime4000_1) so the mass is recoverable from the grouped
+    output's dataset axis."""
     if 'ZPrime' in sample:
         return f'ZPrime{subsection}_{sample.replace("ZPrime", "")}'
     return subsection or sample
 
 
 def _signal_xsec(sample, subsection):
-    """1 pb reference xsec (pb) for a signal mass point, from functions.xs; None if
-    absent. Signal manifests carry no xsec, so this normalizes each mass to 1 pb in
-    postprocess (lumi from the processor's _LUMI_PB, consistent with TTbar/QCD)."""
-    try:
-        val = _XS_TABLE.get(sample, {}).get(str(subsection))
-    except Exception:
-        val = None
+    """Reference xsec (pb) for a signal mass point: functions.xs, else 1 pb. Signal
+    manifests carry no xsec, so this normalizes each mass to 1 pb in postprocess."""
+    val = _XS_TABLE.get(sample, {}).get(str(subsection))
     if val is None:
-        # The functions.xs table only spans the legacy mass grid (e.g. ZPrime1
-        # 1000-4500). Masses outside it silently fell through to scale_factor=1
-        # (RAW weighted counts, not the 1 pb reference) -- this produced the
-        # spurious "1 TeV spike" in every limit scan: 400-900 GeV templates were
-        # inflated, M=1000 was the first honestly-normalized point. ALL signal
-        # masses use the same 1 pb reference by construction, so default to it.
+        # functions.xs only spans the legacy mass grid (e.g. ZPrime1 1000-4500); every
+        # signal mass uses the same 1 pb reference, so masses outside it get 1 pb too.
         print(f"[signal-xsec] {sample} {subsection}: not in functions.xs table -> using 1 pb reference")
         val = 1.0
     return val
@@ -134,7 +124,7 @@ if __name__ == "__main__":
     # datasets
     parser.add_argument('-d', '--dataset',
                         choices=['data', 'QCD', 'TTbar', 'ZPrime1', 'ZPrime10',
-                                 'ZPrime30', 'ZPrimeDM', 'RSGluon', 'ZPrimeLocal'],
+                                 'ZPrime30', 'ZPrimeLocal'],
                         default=default_datastets, action='append')
     parser.add_argument('--iov',
                         choices=['2022', '2023', '2024', '2025', '2026',
@@ -160,9 +150,9 @@ if __name__ == "__main__":
     # analysis options
     parser.add_argument('--blind',    action='store_true', help='process 1/10th of the data')
     parser.add_argument('--bkgest',   choices=['2dalphabet', 'mistag'], default=None)
-    parser.add_argument('--toptagger',choices=['topvsqcd', 'cmsv2', 'recomb'], default='topvsqcd',
+    parser.add_argument('--toptagger',choices=['topvsqcd', 'recomb'], default='topvsqcd',
                         help="'topvsqcd' = GloParTv3 TopvsQCD baseline (default); "
-                             "'recomb' = learned per-pT GloParTv3 recombination; 'cmsv2' = legacy")
+                             "'recomb' = learned per-pT GloParTv3 recombination")
     parser.add_argument('--recomb-weights', default='data/recomb/recomb_deploy_2024.json',
                         help='deploy JSON for --toptagger recomb')
     parser.add_argument('--ttag-ptbinned', action='store_true',
@@ -184,7 +174,6 @@ if __name__ == "__main__":
                              'for --casa-workers')
     parser.add_argument('-r', '--redirector', default='root://cmsxrootd.fnal.gov/')
     parser.add_argument('--ttagWP',   choices=['loose', 'medium', 'tight'], default='medium')
-    parser.add_argument('--btagger',  choices=['deepcsv', 'csvv2'], default='deepcsv')
     parser.add_argument('--ht',       choices=['1400', '950'], default='1400')
     parser.add_argument('--noSyst',   action='store_true', help='run without systematics')
     parser.add_argument('--weights-only', action='store_true',
@@ -228,7 +217,6 @@ if __name__ == "__main__":
         parser.error('--manifest replaces one dataset\'s file lists: pass exactly one --dataset')
     IOV               = args.iov
     useDeepAK8        = args.toptagger in ('topvsqcd', 'recomb')
-    useDeepCSV        = args.btagger == 'deepcsv'
     htCut             = 1400.0 if args.ht == '1400' else 950.0
     dask_memory       = '5GB'
     chunksize_dask    = 100000
@@ -283,8 +271,6 @@ if __name__ == "__main__":
         "ZPrime1":    'data/nanoAOD/ZPrime1.json',
         "ZPrime10":   'data/nanoAOD/ZPrime10.json',
         "ZPrime30":   'data/nanoAOD/ZPrime30.json',
-        "ZPrimeDM":   'data/nanoAOD/ZPrimeDM.json',
-        "RSGluon":    'data/nanoAOD/RSGluon.json',
         "ZPrimeLocal":'data/nanoAOD/local.json',
     }
 
@@ -323,11 +309,11 @@ if __name__ == "__main__":
             # MC fallback: when an IOV has no v15 production for a given MC sample,
             # stand in the 2024 Summer24 files while still labelling them with the
             # requested IOV (so lumi normalization uses the right per-year value).
-            #  - 2022/2023 sub-eras: only signal (Z'/RSGluon) lacks v15 -> falls back.
+            #  - 2022/2023 sub-eras: only signal (Z') lacks v15 -> falls back.
             #  - 2025: no analysis MC exists yet, so TTbar/QCD/signal ALL fall back to
             #    Summer24 (the PPD-recommended MC for 2025 data). Data is never
             #    substituted -- it must resolve to its real per-year files.
-            is_signal = sample.startswith('ZPrime') or sample == 'RSGluon'
+            is_signal = sample.startswith('ZPrime')
             source_iov = None
             if sample != 'data' and IOV not in manifest and '2024' in manifest:
                 source_iov = '2024'
@@ -347,8 +333,6 @@ if __name__ == "__main__":
             # Batching is the middle ground between all-in-one (big merge -> OOM) and
             # per-mass (many jobs). Everything else runs one job per subsection.
             file_savedir = savedir
-            if (args.toptagger == 'cmsv2') and (args.btagger == 'csvv2') and not args.outdir:
-                file_savedir = 'outputs/oldanalysis/'
 
             jobs = []  # each: (fileset, dataset_metadata, base_savefilename)
             if is_signal:
@@ -362,9 +346,7 @@ if __name__ == "__main__":
                     # signal manifests carry no xsec -> use the 1 pb reference so each
                     # mass is normalized to 1 pb on the dataset axis in postprocess.
                     if sample_metadata.get('xsec_pb') is None:
-                        xsec = _signal_xsec(sample, subsection)
-                        if xsec is not None:
-                            sample_metadata = {**sample_metadata, 'xsec_pb': xsec}
+                        sample_metadata = {**sample_metadata, 'xsec_pb': _signal_xsec(sample, subsection)}
                     built.append((subsection, ds_key, files, sample_metadata))
                 for bi in range(0, len(built), batch_size):
                     batch = built[bi:bi + batch_size]
@@ -400,17 +382,13 @@ if __name__ == "__main__":
             for fileset, dataset_metadata, savefilename in jobs:
                 # always tag the output with the top-tagging method used
                 #   topvsqcd = GloParTv3 TopvsQCD baseline | recomb = per-pT recombination
-                #   cmsv2 = ParticleNet/CMS-v2 | topvsqcd+ptbinned = pT-binned baseline
-                if args.toptagger == 'cmsv2':
-                    savefilename = savefilename.replace('.coffea', '_cmsv2.coffea')
+                #   topvsqcd+ptbinned = pT-binned baseline
                 if args.toptagger == 'recomb':
                     savefilename = savefilename.replace('.coffea', '_recomb.coffea')
                 if args.toptagger == 'topvsqcd' and args.ttag_ptbinned:
                     savefilename = savefilename.replace('.coffea', '_ptbin.coffea')
                 if args.toptagger == 'topvsqcd' and not args.ttag_ptbinned:
                     savefilename = savefilename.replace('.coffea', '_topvsqcd.coffea')
-                if args.btagger == 'csvv2':
-                    savefilename = savefilename.replace('.coffea', '_csvv2.coffea')
                 if args.ht == '950':
                     savefilename = savefilename.replace('.coffea', '_ht950.coffea')
                 if args.blind:
@@ -437,7 +415,6 @@ if __name__ == "__main__":
                     noSyst=args.noSyst,
                     deepAK8Cut=args.ttagWP,
                     useDeepAK8=useDeepAK8,
-                    useDeepCSV=useDeepCSV,
                     topTagger=args.toptagger,
                     recomb_weights=ttag_weights,
                     htCut=htCut,

@@ -185,10 +185,11 @@ def main() -> None:
         text=True,
         check=False,
     ).stdout.strip() or "unknown"
+    more = f" +{len(args.inputs) - 1}" if len(args.inputs) > 1 else ""
     fig.text(
         0.99, 0.005,
         f"{date.today().isoformat()} | TTbarHadronicSkimmer {git_version} | "
-        "inputs: local 2024 ZPrime4000 W10",
+        f"inputs: {args.inputs[0].name}{more}",
         ha="right", va="bottom", fontsize=8, color="0.45", family="monospace",
     )
 

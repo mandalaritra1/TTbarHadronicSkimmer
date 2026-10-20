@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Leptonic tops in the all-hadronic selection: derive the jet-level leptonic-top cut c
-and compare the current selection with option A and option D.
+and compare the current selection with options A, C and D.
 
 GloParTv3 has leptonic-top classes (TopbWev, TopbWmv, TopbWtauhv) that the tagger score
 S = H / (H + QCD), H = TopbWqq + TopbWq, ignores. Per jet
@@ -21,7 +21,7 @@ data rows = Fail region only. The full-statistics data Fail yield comes from the
 production histograms (--data-full); the data slice gives the fraction each option keeps.
 
 Outputs (in --outdir): lepstudy.md (all tables), flep_distributions.png,
-eff_vs_c.png, summary.png.
+eff_vs_c.png, summary.png, mtt_shapes.png.
 
 Example:
     python plots/leptonic_top_study.py --indir outputs/lepstudy --outdir plots/out/lepstudy

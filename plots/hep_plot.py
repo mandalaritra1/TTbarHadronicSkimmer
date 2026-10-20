@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
 import mplhep as hep
 from cycler import cycler
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
+from lumi import LUMI_PB  # noqa: E402
 
 # ----------------------------
 # User-configurable globals
@@ -28,19 +32,6 @@ CMS_COLORS = [
     "#717581",
     "#92dadd",
 ]
-
-CMS_LUMI_RUN2 = {
-    "2016APV": 19.52,
-    "2016": 16.81,
-    "2017": 41.48,
-    "2018": 59.83,
-    "all" : 137.6,
-    "2024": 109.95
-}
-
-
-
-#CMS_LUMI_RUN2["all"] = sum(CMS_LUMI_RUN2.values())
 
 # Internal state
 _INITIALIZED = False
@@ -203,7 +194,7 @@ def quick_label(
 ) -> None:
     """
     Convenience helper for labels and CMS text.
-    Automatically uses CMS Run2 lumi based on ERA.
+    Without ``lumi``, takes the luminosity for ERA from python/lumi.py.
     """
     if ax is None:
         ax = plt.gca()
@@ -222,10 +213,8 @@ def quick_label(
     # If lumi not given, determine from ERA
     if lumi is None:
         era_key = str(ERA).replace("UL", "")  # allow UL2018, etc.
-        if era_key in CMS_LUMI_RUN2:
-            lumi = CMS_LUMI_RUN2[era_key]
-        elif era_key.lower() == "all":
-            lumi = CMS_LUMI_RUN2["all"]
+        if era_key in LUMI_PB:
+            lumi = LUMI_PB[era_key] / 1000.0
 
     if lumi is not None:
         hep.cms.label(

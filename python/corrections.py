@@ -508,8 +508,9 @@ def GetJECUncertainties(FatJets, events, IOV, R='AK8', isData=False):
 
 def GetPDFWeights(events):
     
-    # hessian pdf weights https://arxiv.org/pdf/1510.03865v1.pdf
-    # https://github.com/nsmith-/boostedhiggs/blob/master/boostedhiggs/corrections.py#L60
+    # PDF uncertainty = std/mean over the LHEPdfWeight members (replica-style, not the
+    # Hessian sum; see https://arxiv.org/pdf/1510.03865v1.pdf for the prescriptions).
+    # Pattern from https://github.com/nsmith-/boostedhiggs/blob/master/boostedhiggs/corrections.py#L60
     
     pdf_nom = np.ones(len(events))
 

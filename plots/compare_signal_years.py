@@ -11,14 +11,16 @@ compared unit-normalized, with a ratio to the reference IOV (2024).
 Outputs (in --outdir):
     efficiency_M<mass>.png             efficiency per category vs IOV
     <var>_M<mass>.png                  unit-normalized shapes + ratio to 2024
+    cutflow_M<mass>.png                per-step efficiency relative to 2024
     efficiency.csv / efficiency.md     the numbers behind the efficiency plots
+    cutflow.md                         the per-step numbers
 
 Example:
     python plots/compare_signal_years.py \\
         --input outputs/tight_v1.2/ZPrime1_2024_1400to2000_topvsqcd.coffea \\
         --input outputs/tight_v1.2/ZPrime1_2024_2500to4000_topvsqcd.coffea \\
         --input outputs/tight_v1.2/ZPrime1_2024_4500to7000_topvsqcd.coffea \\
-        --input '.claude/worktrees/renano-v1.2/outputs/renano_v12/ZPrime1_202[23]*_weightsOnly.coffea' \\
+        --input 'outputs/renano_v12/ZPrime1_202[23]*_weightsOnly.coffea' \\
         --masses 2000 4000 6000 --width 1 --outdir plots/out/signal_years
 """
 import argparse

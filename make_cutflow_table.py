@@ -71,14 +71,20 @@ def _render_all(paths, args, output_format):
 
 
 def _derive_column_label(path):
-    """Best-effort column label from an output filename.
+    """Column label from an output filename; anything unrecognised gives the file stem.
 
-    ZPrime outputs are named ``ZPrime{mass}_{width}_{IOV}.coffea`` -> "{mass} GeV".
-    Anything else falls back to the file stem.
+    ``ZPrime{width}_{IOV}_{lo}to{hi}_...`` -> "Z' {lo}-{hi} GeV ({width}%)"
+    ``ZPrime{width}_{IOV}_{mass}_...``     -> "Z' {mass} GeV ({width}%)"
+    ``ZPrime{mass}_{width}_{year}...``     -> "{mass} GeV" (legacy per-mass files)
     """
 
     stem = Path(path).stem
-    match = re.search(r"ZPrime(\d+)_", stem)
+    match = re.match(r"ZPrime(\d+)_20\d\d[A-Za-z]*_(\d+)(?:to(\d+))?(?:_|$)", stem)
+    if match:
+        width, lo, hi = match.groups()
+        masses = f"{lo}-{hi}" if hi else lo
+        return f"Z' {masses} GeV ({width}%)"
+    match = re.match(r"ZPrime(\d+)_\d+_", stem)
     if match:
         return f"{match.group(1)} GeV"
     return stem

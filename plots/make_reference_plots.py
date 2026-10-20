@@ -1,8 +1,7 @@
-"""Reproduce the two reference plots:
+"""Two reference plots:
 
 1. TTbar MC m_tt systematic variations (nominal/up/down + Syst/Nom ratio)
-   for jer, jes, q2.  Prefiring is Run-2 only and absent from the Run-3 2024
-   outputs, so it is omitted.
+   for jer, jes, pileup, pdf, q2 and ttag_pt1.
 2. Z' (1% width) m_tt signal shapes overlaid for several masses.
 
 Run:  .venv/bin/python plots/make_reference_plots.py

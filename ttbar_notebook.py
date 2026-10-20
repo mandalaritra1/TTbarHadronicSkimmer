@@ -38,7 +38,7 @@ for name in [
     logging.getLogger(name).setLevel(logging.CRITICAL)
 
 default_datastets = ["data", "TTbar", "QCD"]
-default_signals = ["RSGluon", "ZPrime10", "ZPrime30", "ZPrimeDM", "ZPrime1"]
+default_signals = ["ZPrime1", "ZPrime10", "ZPrime30"]
 
 
 class _BroadcastHeavyClient:
@@ -106,7 +106,6 @@ DEFAULTS = dict(
     ttag_ptbinned=False,
     redirector="rootfiles/",
     ttagWP="tight",   # 0.5% QCD-mistag WP (2026-06-25 meeting decision)
-    btagger="deepcsv",
     ht="1400",
     noSyst=False,
     ntuple=False,
@@ -150,8 +149,6 @@ _dataset_opts = [
     "ZPrime1",
     "ZPrime10",
     "ZPrime30",
-    "ZPrimeDM",
-    "RSGluon",
     "ZPrimeLocal",
 ]
 _redirector_opts = [
@@ -164,9 +161,8 @@ _redirector_vals = [v for _, v in _redirector_opts]
 _env_opts = ["casa", "lpc", "winterfell", "local"]
 _iov_opts = ["2022", "2023", "2024", "2025", "2026"]
 _bkgest_opts = [("None", None), "2dalphabet", "mistag"]
-_toptagger_opts = ["topvsqcd", "cmsv2", "recomb"]
+_toptagger_opts = ["topvsqcd", "recomb"]
 _ttagWP_opts = ["loose", "medium", "tight"]
-_btagger_opts = ["deepcsv", "csvv2"]
 _ht_opts = ["1400", "950"]
 _manifest_files = {
     "data": "data/nanoAOD/data.json",
@@ -176,8 +172,6 @@ _manifest_files = {
     "ZPrime1": "data/nanoAOD/ZPrime1.json",
     "ZPrime10": "data/nanoAOD/ZPrime10.json",
     "ZPrime30": "data/nanoAOD/ZPrime30.json",
-    "ZPrimeDM": "data/nanoAOD/ZPrimeDM.json",
-    "RSGluon": "data/nanoAOD/RSGluon.json",
     "ZPrimeLocal": "data/nanoAOD/local_xsec_test.json",
 }
 
@@ -301,13 +295,6 @@ w_ttagWP = widgets.Dropdown(
     style=style,
     layout=layout,
 )
-w_btagger = widgets.Dropdown(
-    options=_btagger_opts,
-    value=_valid_choice(cfg["btagger"], _btagger_opts, DEFAULTS["btagger"]),
-    description="B tagger",
-    style=style,
-    layout=layout,
-)
 w_ht = widgets.Dropdown(
     options=_ht_opts,
     value=_valid_choice(cfg["ht"], _ht_opts, DEFAULTS["ht"]),
@@ -418,7 +405,6 @@ WIDGETS = {
     "ttag_ptbinned": w_ttag_ptbinned,
     "redirector": w_redirector,
     "ttagWP": w_ttagWP,
-    "btagger": w_btagger,
     "ht": w_ht,
     "noSyst": w_noSyst,
     "ntuple": w_ntuple,
@@ -536,8 +522,6 @@ def _output_subsection(sample, subsection):
 
 
 def _signal_dataset_key(sample, subsection):
-    if "RSGluon" in sample:
-        return f"RSGluon{subsection}"
     if "ZPrime" in sample:
         return f'ZPrime{subsection}_{sample.replace("ZPrime", "")}'
     return subsection or sample
@@ -892,7 +876,6 @@ def run_analysis(args):
     samples = args.dataset
     IOV = args.iov
     useDeepAK8 = args.toptagger in ("topvsqcd", "recomb")
-    useDeepCSV = args.btagger == "deepcsv"
     htCut = 1400.0 if args.ht == "1400" else 950.0
     dask_memory = f"{int(args.daskMemory)}GB"
     chunksize_dask = 100000
@@ -961,8 +944,6 @@ def run_analysis(args):
         "ZPrime1": "data/nanoAOD/ZPrime1.json",
         "ZPrime10": "data/nanoAOD/ZPrime10.json",
         "ZPrime30": "data/nanoAOD/ZPrime30.json",
-        "ZPrimeDM": "data/nanoAOD/ZPrimeDM.json",
-        "RSGluon": "data/nanoAOD/RSGluon.json",
         "ZPrimeLocal": "data/nanoAOD/local_xsec_test.json",
     }
 
@@ -1056,14 +1037,12 @@ def run_analysis(args):
             )
 
             file_savedir = savedir
-            if (args.toptagger == "cmsv2") and (args.btagger == "csvv2") and not args.outdir:
-                file_savedir = "outputs/oldanalysis/"
             if args.test:
                 maxchunks = 1
 
             # signals: ONE grouped job per width (masses on the dataset axis,
             # each scaled to 1 pb); everything else one job per subsection.
-            is_signal = sample.startswith("ZPrime") or sample == "RSGluon"
+            is_signal = sample.startswith("ZPrime")
             run_units = []  # (fileset, dataset_metadata, group_flag, subsection, savefilename)
             if is_signal:
                 # batch masses into groups of args.signal_batch -> one file per batch
@@ -1076,9 +1055,7 @@ def run_analysis(args):
                         files = [files[int(len(files) / 2)]]
                     ds_key = _signal_dataset_key(sample, subsection)
                     if sample_metadata.get("xsec_pb") is None:
-                        _x = _signal_xsec(sample, subsection)
-                        if _x is not None:
-                            sample_metadata = {**sample_metadata, "xsec_pb": _x}
+                        sample_metadata = {**sample_metadata, "xsec_pb": _signal_xsec(sample, subsection)}
                     built.append((subsection, ds_key, files, sample_metadata))
                 for bi in range(0, len(built), batch_size):
                     batch = built[bi:bi + batch_size]
@@ -1102,16 +1079,12 @@ def run_analysis(args):
             for section_index, (fileset, dataset_metadata, group_flag, subsection, savefilename) in enumerate(run_units):
                 print(f"running {IOV} {sample} {subsection} -> {savefilename}")
 
-                if args.toptagger == "cmsv2":
-                    savefilename = savefilename.replace(".coffea", "_cmsv2.coffea")
                 if args.toptagger == "recomb":
                     savefilename = savefilename.replace(".coffea", "_recomb.coffea")
                 if args.toptagger == "topvsqcd" and getattr(args, "ttag_ptbinned", False):
                     savefilename = savefilename.replace(".coffea", "_ptbin.coffea")
                 if args.toptagger == "topvsqcd" and not getattr(args, "ttag_ptbinned", False):
                     savefilename = savefilename.replace(".coffea", "_topvsqcd.coffea")
-                if args.btagger == "csvv2":
-                    savefilename = savefilename.replace(".coffea", "_csvv2.coffea")
                 if args.ht == "950":
                     savefilename = savefilename.replace(".coffea", "_ht950.coffea")
                 if args.blind:
@@ -1191,7 +1164,6 @@ def run_analysis(args):
                                 noSyst=args.noSyst,
                                 deepAK8Cut=args.ttagWP,
                                 useDeepAK8=useDeepAK8,
-                                useDeepCSV=useDeepCSV,
                                 topTagger=args.toptagger,
                                 recomb_weights=("data/recomb/recomb_deploy_2024.json" if args.toptagger == "recomb" else ("data/recomb/baseline_deploy_2024.json" if (args.toptagger == "topvsqcd" and getattr(args, "ttag_ptbinned", False)) else None)),
                                 htCut=htCut,
@@ -1236,7 +1208,6 @@ def run_analysis(args):
                                 noSyst=args.noSyst,
                                 deepAK8Cut=args.ttagWP,
                                 useDeepAK8=useDeepAK8,
-                                useDeepCSV=useDeepCSV,
                                 topTagger=args.toptagger,
                                 recomb_weights=("data/recomb/recomb_deploy_2024.json" if args.toptagger == "recomb" else ("data/recomb/baseline_deploy_2024.json" if (args.toptagger == "topvsqcd" and getattr(args, "ttag_ptbinned", False)) else None)),
                                 htCut=htCut,
@@ -1370,7 +1341,6 @@ def show_widgets():
         w_ttag_ptbinned,
         w_redirector,
         w_ttagWP,
-        w_btagger,
         w_ht,
         w_noSyst,
         w_ntuple,

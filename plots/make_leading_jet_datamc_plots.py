@@ -147,7 +147,7 @@ def _parse_args() -> argparse.Namespace:
         nargs="*",
         choices=sorted(VARIABLES),
         default=["pt", "phi", "msd", "y"],
-        help="Variables to draw in the 2x2 summary.",
+        help="Variables to plot, one figure each.",
     )
     parser.add_argument(
         "--scale-qcd-to-data-minus-ttbar",
