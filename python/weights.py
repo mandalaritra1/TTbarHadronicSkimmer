@@ -5,12 +5,25 @@ import awkward as ak
 import numpy as np
 from coffea.analysis_tools import Weights
 
-from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, GetTopPtWeight
+from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, GetTopPtResidual, GetTopPtWeight
 from truthstudy import MERGE_FULL, top_merge_category
 
-# Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json); v1.2 holds the 2024
-# SFs measured on the v1.2 objects.
-TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.2.json"
+# Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.3: the 2024 SFs from the
+# high-pT T&P re-measurement (four pT bins, band SF binned, f_lep efficiency included, covariance
+# and extrapolation entries); v1.2 stays readable.
+TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.3.json"
+
+# per-bin SF nuisances: one per measured pT bin of the IOV's table, moving the tight and band SF of
+# that bin together; bins a table does not have get weight 1
+TTAG_PT_NUISANCES = ("ttag_pt1", "ttag_pt2", "ttag_pt3", "ttag_pt4")
+
+# the same SF uncertainty as independent shifts along the eigenvectors of the table's covariance
+# (tight and band, all bins); an alternative to TTAG_PT_NUISANCES, a fit uses one set or the other
+TTAG_EIG_NUISANCES = tuple(f"ttag_eig{i}" for i in range(1, 9))
+
+# uncertainty added above the measured pT range (table entry 'extrapolation'), one per block, kept
+# out of the ttag_pt / ttag_eig nuisances so its size can be set in the fit
+EXTRAP_NUISANCES = {"tag": "ttag_extrap_tag", "antitag": "ttag_extrap_band"}
 
 # SF_flep nuisances per block of the table's 'flep' entry
 FLEP_NUISANCES = {"tag": "ttag_flep_tag", "antitag": "ttag_flep_band"}
@@ -20,8 +33,8 @@ FLEP_NUISANCES = {"tag": "ttag_flep_tag", "antitag": "ttag_flep_band"}
 DRIFT_NUISANCES = ("ttag_drift_pt1", "ttag_drift_pt2", "ttag_drift_pt3", "ttag_drift_band")
 
 
-def load_ttag_sf(path=TTAG_SF_FILE):
-    with open(path) as f:
+def load_ttag_sf(path=None):
+    with open(path or TTAG_SF_FILE) as f:
         table = json.load(f)
     for alias, target in table["aliases"].items():
         table["iovs"][alias] = table["iovs"][target]
@@ -41,12 +54,12 @@ def _mc_campaign(events):
 class Run3WeightManager:
     """Handle event-weight construction and systematic variations."""
 
-    def __init__(self, iov, systematics, no_syst, deepak8_cut):
+    def __init__(self, iov, systematics, no_syst, deepak8_cut, ttag_sf_file=None):
         self.iov = iov
         self.systematics = systematics
         self.no_syst = no_syst
         self.deepak8_cut = deepak8_cut
-        self.ttag_sf = load_ttag_sf()
+        self.ttag_sf = load_ttag_sf(ttag_sf_file)
 
     def build_weights(self, dataset, events, evtweights, is_data, jet0, jet1, ttag2, antitag, flep_sf=True):
         """flep_sf=False leaves out SF_flep (ttag_flep_*), which belongs to jets that pass the
@@ -63,6 +76,12 @@ class Run3WeightManager:
             else:
                 weights.add("toppt", weight=ttbar_wgt, weightUp=np.ones_like(ttbar_wgt),
                             weightDown=2.0 * ttbar_wgt - 1.0)
+            # TWiki data/NNLO residual on top of the TOP-23-008 weight, as a variation only (the
+            # nominal stays TOP-23-008): Up = x residual, Down = x residual^2. A fit that adopts
+            # the residual takes Up as its nominal and the nominal and Down as its variations.
+            if not self.no_syst and "toppt_rsd" in self.systematics:
+                rsd = GetTopPtResidual(events.GenPart)
+                weights.add("toppt_rsd", weight=np.ones_like(rsd), weightUp=rsd, weightDown=rsd ** 2)
 
         if self.no_syst or is_data:
             return weights
@@ -86,14 +105,16 @@ class Run3WeightManager:
                 weights.add(ps, weight=psNom, weightUp=psUp, weightDown=psDown)
 
         flep_on = flep_sf and any(s in self.systematics for s in FLEP_NUISANCES.values())
-        if flep_on or any(s in self.systematics for s in ("ttag_pt1", "ttag_nonmerged") + DRIFT_NUISANCES):
+        sf_on = any(s in self.systematics for s in
+                    TTAG_PT_NUISANCES + TTAG_EIG_NUISANCES + tuple(EXTRAP_NUISANCES.values()))
+        if flep_on or sf_on or any(s in self.systematics for s in ("ttag_nonmerged",) + DRIFT_NUISANCES):
             merged = None
             if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
                 merged = tuple(
                     top_merge_category(events.GenPart, ak.to_numpy(j.p4.eta), ak.to_numpy(j.p4.phi)) == MERGE_FULL
                     for j in (jet0, jet1)
                 )
-            if "ttag_pt1" in self.systematics:
+            if sf_on:
                 self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
             if "ttag_nonmerged" in self.systematics:
                 self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
@@ -227,7 +248,7 @@ class Run3WeightManager:
             raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
                              "pass the per-jet gen merge flags")
         merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
-        ptbins = self.ttag_sf["pt_edges"]
+        ptbins = table.get("pt_edges", self.ttag_sf["pt_edges"])
         # same jets as the ttag_pt SFs: jet0, and jet1 when tagged or antitag, in the SF pT range
         in0 = np.digitize(ak.to_numpy(jet0.p4.pt), ptbins) - 1 >= 1
         in1 = np.digitize(ak.to_numpy(jet1.p4.pt), ptbins) - 1 >= 1
@@ -236,67 +257,173 @@ class Run3WeightManager:
         weights.add("ttag_nonmerged", weight=np.ones(n),
                     weightUp=(1.0 + unc) ** n_nonmerged, weightDown=(1.0 - unc) ** n_nonmerged)
 
+    def _add(self, weights, name, nom, up, down):
+        """Add a weight with its variations when the nuisance is requested, else its nominal only
+        (a variation missing from the systematics list would have no slice on the axis)."""
+        if name in self.systematics:
+            weights.add(name, weight=nom, weightUp=up, weightDown=down)
+        else:
+            weights.add(name, weight=nom)
+
     def _add_ttag_pt_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
+        """Top-tag SF nominal and its uncertainty: the per-bin nuisances TTAG_PT_NUISANCES, the
+        eigenvector nuisances TTAG_EIG_NUISANCES (tables with a 'covariance' entry) and the
+        extrapolation nuisances EXTRAP_NUISANCES (tables with an 'extrapolation' entry).
+
+        jet0 and a tagged jet1 take the 'tag' SF, an antitag jet1 the 'antitag' (band) SF, in the
+        pT bin given by the IOV's own pt_edges (else the global ones; lower edges, last bin open,
+        index 0 is a filler). Jets above pt_measured_max keep the last bin's SF. Tables with an
+        'extrapolation' entry give them the last bin's deviation in the ttag_pt / ttag_eig
+        nuisances and the extra extrapolation uncertainty in EXTRAP_NUISANCES; older tables double
+        the deviation inside ttag_pt (no extrapolation nuisance)."""
         table = self.ttag_sf["iovs"][self.iov]
         if self.deepak8_cut not in table["wps"]:
             raise KeyError(f"top-tag SF table {self.ttag_sf['version']} has no '{self.deepak8_cut}' "
                            f"WP for {self.iov} (have {sorted(table['wps'])})")
         wp = table["wps"][self.deepak8_cut]
-        ptbins = self.ttag_sf["pt_edges"]
+        ptbins = table.get("pt_edges", self.ttag_sf["pt_edges"])
+        nbins = len(ptbins) - 1
+        if nbins > len(TTAG_PT_NUISANCES):
+            raise ValueError(f"{nbins} top-tag SF pT bins for {self.iov}, but only "
+                             f"{len(TTAG_PT_NUISANCES)} ttag_pt nuisances are defined")
 
         # The T&P measured the SFs for fully merged tops only (other merge categories fixed
         # to MC), so with applies_to = fully_merged every other jet keeps SF 1.
+        n = len(ak.to_numpy(jet0.p4.pt))
         if table.get("applies_to", "all") == "fully_merged":
             if merged is None:
                 raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
                                  "pass the per-jet gen merge flags")
             merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
         else:
-            merged0 = merged1 = True
+            merged0 = merged1 = np.ones(n, bool)
 
-        # Extrapolation: the T&P data run out at pt_measured_max, so jets beyond it get
-        # the top-bin SF with its uncertainty doubled (same nuisance). null = no doubling
-        # (Run-2 SFs keep their original treatment).
         pt_measured_max = table["pt_measured_max"] or np.inf
+        extrap = table.get("extrapolation")
+        k_beyond = 1.0 if extrap else 2.0
 
-        nomsf, upsf, downsf = (np.array(wp["tag"][v]) for v in ("nominal", "up", "down"))
-        # antitag jet: v1.2 2024 has the SF measured in its own score band [low WP, WP);
-        # the legacy tables give it the 'loose' SF
-        nomsf_fail, upsf_fail, downsf_fail = (np.array(wp["antitag"][v]) for v in ("nominal", "up", "down"))
+        sf = {b: tuple(np.array(wp[b][v], dtype=float) for v in ("nominal", "up", "down"))
+              for b in ("tag", "antitag")}
 
         jet0_pt = ak.to_numpy(jet0.p4.pt)
         jet1_pt = ak.to_numpy(jet1.p4.pt)
         jet0_ptbins = np.digitize(jet0_pt, ptbins) - 1
         jet1_ptbins = np.digitize(jet1_pt, ptbins) - 1
-        jet0_k = np.where(jet0_pt > pt_measured_max, 2.0, 1.0)
-        jet1_k = np.where(jet1_pt > pt_measured_max, 2.0, 1.0)
+        jet0_k = np.where(jet0_pt > pt_measured_max, k_beyond, 1.0)
+        jet1_k = np.where(jet1_pt > pt_measured_max, k_beyond, 1.0)
 
-        # Interim high-pT band SF (antitag_hipt): band jets at or above its first edge take
+        # Interim high-pT band SF (v1.2 'antitag_hipt'): band jets at or above its first edge take
         # its SF and its own nuisance instead of the ttag_pt band term.
         hipt = table.get("antitag_hipt")
+        ttag2 = np.asarray(ak.to_numpy(ttag2), dtype=bool)
         antitag = np.asarray(ak.to_numpy(antitag), dtype=bool)
-        jet1_hipt = np.zeros(len(jet1_pt), bool) if hipt is None else jet1_pt >= hipt["pt_edges"][0]
+        jet1_hipt = np.zeros(n, bool) if hipt is None else jet1_pt >= hipt["pt_edges"][0]
 
-        def jet_sf(jet_ptbins, k, ibin, sf_nom, sf_var, sel=True):
+        # (block, pT, bin, extrapolation factor, selection) of every jet that carries an SF
+        jets = (("tag", jet0_pt, jet0_ptbins, jet0_k, merged0),
+                ("tag", jet1_pt, jet1_ptbins, jet1_k, ttag2 & merged1),
+                ("antitag", jet1_pt, jet1_ptbins, jet1_k, antitag & ~jet1_hipt & merged1))
+
+        def jet_sf(block, jet_ptbins, k, ibin, var, sel):
             # per-jet SF in pT bin ibin: nominal + k * (variation - nominal)
-            return np.where((jet_ptbins == ibin) & sel, sf_nom[ibin] + k * (sf_var[ibin] - sf_nom[ibin]), 1.0)
+            nom = sf[block][0]
+            return np.where((jet_ptbins == ibin) & sel, nom[ibin] + k * (var[ibin] - nom[ibin]), 1.0)
 
-        for ibin in range(1, 4):
+        for ibin, name in enumerate(TTAG_PT_NUISANCES, start=1):
+            if ibin > nbins:
+                ones = np.ones(n)
+                self._add(weights, name, ones, ones, ones)
+                continue
             nom, up, down = (
-                jet_sf(jet0_ptbins, jet0_k, ibin, nomsf, var, merged0)
-                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf, var, ttag2 & merged1)
-                * jet_sf(jet1_ptbins, jet1_k, ibin, nomsf_fail, var_fail, antitag & ~jet1_hipt & merged1)
-                for var, var_fail in ((nomsf, nomsf_fail), (upsf, upsf_fail), (downsf, downsf_fail))
+                np.prod([jet_sf(block, bins, k, ibin, sf[block][iv], sel) for block, _, bins, k, sel in jets], axis=0)
+                for iv in (0, 1, 2)
             )
-            weights.add(f"ttag_pt{ibin}", weight=nom, weightUp=up, weightDown=down)
+            self._add(weights, name, nom, up, down)
 
-        name = "ttag_band_hipt" if hipt is None else hipt["nuisance"]
         if hipt is None:
-            ones = np.ones(len(jet1_pt))
-            weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
+            if "ttag_band_hipt" in self.systematics:
+                ones = np.ones(n)
+                weights.add("ttag_band_hipt", weight=ones, weightUp=ones, weightDown=ones)
         else:
             ib = np.clip(np.digitize(jet1_pt, hipt["pt_edges"]) - 1, 0, len(hipt["nominal"]) - 1)
             sel = antitag & jet1_hipt & merged1
             nom, up, down = (np.where(sel, np.asarray(hipt[v], dtype=float)[ib], 1.0)
                              for v in ("nominal", "up", "down"))
-            weights.add(name, weight=nom, weightUp=up, weightDown=down)
+            self._add(weights, hipt["nuisance"], nom, up, down)
+
+        self._add_ttag_eig_weights(weights, table, sf, nbins, jets, n)
+        self._add_ttag_extrap_weights(weights, extrap, sf, nbins, jets, n)
+
+    def _add_ttag_eig_weights(self, weights, table, sf, nbins, jets, n):
+        """Eigenvector nuisances of the table's SF covariance (entry 'covariance': order = tag bins
+        then antitag bins; eigen.vectors_columns[:, k] * sqrt(eigen.values[k]) is the k-th
+        independent shift of the 2 * nbins SFs). Each shift moves every jet's SF in its block and
+        bin, symmetric up/down (the covariance symmetrises the asymmetric errors); the SF is kept
+        >= 0. Weight 1 where the table has no covariance."""
+        requested = [name for name in TTAG_EIG_NUISANCES if name in self.systematics]
+        if not requested:
+            return
+        ones = np.ones(n)
+        cov = table.get("covariance")
+        if cov is None or "eigen" not in cov:
+            for name in requested:
+                weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
+            return
+        if len(cov["order"]) != 2 * nbins or not all(
+                o.startswith(b + "_") for o, b in zip(cov["order"], ["tag"] * nbins + ["antitag"] * nbins)):
+            raise ValueError(f"covariance order {cov['order']} does not match {nbins} tag + antitag bins")
+        values = np.asarray(cov["eigen"]["values"], dtype=float)
+        vectors = np.asarray(cov["eigen"]["vectors_columns"], dtype=float)
+        if len(values) > len(TTAG_EIG_NUISANCES):
+            raise ValueError(f"{len(values)} eigenvectors, only {len(TTAG_EIG_NUISANCES)} ttag_eig nuisances")
+        offset = {"tag": 0, "antitag": nbins}
+        for k, name in enumerate(TTAG_EIG_NUISANCES):
+            if name not in self.systematics:
+                continue
+            if k >= len(values):
+                weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
+                continue
+            shift = vectors[:, k] * np.sqrt(max(values[k], 0.0))
+            up, down = ones.copy(), ones.copy()
+            for block, _, bins, _, sel in jets:
+                valid = (bins >= 1) & sel
+                ib = np.clip(bins, 1, nbins)
+                nom = sf[block][0][ib]
+                d = shift[ib - 1 + offset[block]]
+                up *= np.where(valid, (nom + d) / nom, 1.0)
+                down *= np.where(valid, np.maximum(nom - d, 0.0) / nom, 1.0)
+            weights.add(name, weight=ones, weightUp=up, weightDown=down)
+
+    def _add_ttag_extrap_weights(self, weights, extrap, sf, nbins, jets, n):
+        """Extra uncertainty for jets above the measured pT range (entry 'extrapolation': 'above',
+        and per block 'factor', or 'factor_up' / 'factor_down'). The T&P's total deviation there is
+        factor x the last bin's deviation; the last bin's own deviation stays in ttag_pt /
+        ttag_eig, so this nuisance carries sqrt(factor^2 - 1) x that deviation (the two add in
+        quadrature to the total). One nuisance per block, correlated between the jets; the SF is
+        kept >= 0. Weight 1 where the table has no extrapolation entry."""
+        requested = [name for name in EXTRAP_NUISANCES.values() if name in self.systematics]
+        if not requested:
+            return
+        ones = np.ones(n)
+        if extrap is None:
+            for name in requested:
+                weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
+            return
+        for block, name in EXTRAP_NUISANCES.items():
+            if name not in self.systematics:
+                continue
+            b = extrap.get(block, {})
+            f_up = b.get("factor_up", b.get("factor", 1.0))
+            f_down = b.get("factor_down", b.get("factor", 1.0))
+            c_up, c_down = np.sqrt(max(f_up ** 2 - 1.0, 0.0)), np.sqrt(max(f_down ** 2 - 1.0, 0.0))
+            nom, up_last, down_last = (v[nbins] for v in sf[block])
+            sf_up = nom + c_up * (up_last - nom)
+            sf_down = max(nom - c_down * (nom - down_last), 0.0)
+            up, down = ones.copy(), ones.copy()
+            for jblock, pt, bins, _, sel in jets:
+                if jblock != block:
+                    continue
+                beyond = (pt > extrap["above"]) & sel
+                up *= np.where(beyond, sf_up / nom, 1.0)
+                down *= np.where(beyond, sf_down / nom, 1.0)
+            weights.add(name, weight=ones, weightUp=up, weightDown=down)

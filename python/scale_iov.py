@@ -29,9 +29,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from ttbarprocessor import _LUMI_PB
 
 # target IOV -> source IOV whose MC output it reuses. Only add an IOV whose MC
-# processing matches the source's up to the lumi factor (2025: see the JER caveat
-# above). 2026 has its own MC, pileup and top-tag drift, so it is not here.
-_MC_LUMI_EQUIVALENT = {"2025": "2024"}
+# processing matches the source's up to the lumi factor. From v1.3, 2025 is run with
+# --iov 2025 (its own JER SF and pileup weights) and 2026 with --iov 2026, so none is.
+_MC_LUMI_EQUIVALENT = {}
 
 
 def _scale_mapping(m, factor, power=1):

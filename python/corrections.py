@@ -349,20 +349,24 @@ def GetPUSF(events, IOV, mc_campaign=None):
         # brilcalc per-LS pileup, validated on 2025 against the central histogram:
         # data/corrections/puWeights/Summer24_2026/README.md
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/Summer24_2026/puWeights.json.gz"
-    elif IOV in ("2024", "2025"):
+    elif IOV == "2024":
         # Real 2024 PU weights: CAT/LUM Run3-24CDEReprocessingFGHIPrompt-Summer24
         # -NanoAODv15 @2026-04-15, file puWeights_CDEFGHI.json.gz, vendored from
         # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/... . The Summer24 MC pileup
         # profile is far off 2024 data (weight 0.44 at nTrueInt=20, 19.7 at 70).
-        # 2025 MC is Summer24 (PPD), so it reuses the same file.
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2024_Summer24/puWeights.json.gz"
+    elif IOV == "2025":
+        # 2025 data on Summer24 MC: CAT/LUM Run3-25Prompt-Summer24-NanoAODv15 @2026-06-05
+        # (preliminary), puWeights_2025pp_Golden_Summer24_25ns_69200ub.json.gz from
+        # /cvmfs/cms-griddata.cern.ch/cat/metadata/LUM/..., md5 3fd35249d836ae31e6bd5ebad65bb886
+        fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/2025_Summer24/puWeights.json.gz"
     elif IOV in _pu_subdir:
         fname = str(_PROJECT_ROOT)+"/data/corrections/puWeights/{0}/puWeights.json.gz".format(_pu_subdir[IOV])
     else:
         raise ValueError(f"no pileup weights for IOV {IOV!r}")
     hname = {
         "2024"   : "Collisions24_CDEFGHI_goldenJSON",
-        "2025"   : "Collisions24_CDEFGHI_goldenJSON",  # Summer24 MC, same file
+        "2025"   : "Collisions25_goldenJSON",
         "2026"   : "2026_data_on_Summer24",  # derived, see Summer24_2026/README.md
         "2022preEE":    "Collisions2022_355100_357900_eraBCD_GoldenJson",
         "2022postEE":   "Collisions2022_359022_362760_eraEFG_GoldenJson",
@@ -524,6 +528,22 @@ def GetTopPtWeight(genparts):
     counts = ak.num(tops.pt, axis=1)
     sf = ak.unflatten(top_pt_sf(ak.to_numpy(ak.flatten(tops.pt))), counts)
     return np.sqrt(ak.to_numpy(ak.prod(sf, axis=1)))
+
+
+def top_pt_residual(pt):
+    """Per-top data/NNLO residual from the TOP PAG TWiki TopPtReweighting, exp(0.0416 - 0.0003 pT),
+    held at 1 TeV (the end of the measured range). It multiplies the TOP-23-008 SF (top_pt_sf)."""
+    return np.exp(0.0416 - 0.0003 * np.minimum(np.asarray(pt, dtype=float), 1000.0))
+
+
+def GetTopPtResidual(genparts):
+    """Event weight sqrt(r(t) r(tbar)) of the data/NNLO residual (top_pt_residual) from the
+    last-copy gen tops, 1 if there are none; tt only, as GetTopPtWeight."""
+    pdg = abs(genparts.pdgId)
+    tops = genparts[(pdg == 6) & ((genparts.statusFlags & _IS_LAST_COPY) != 0)]
+    counts = ak.num(tops.pt, axis=1)
+    r = ak.unflatten(top_pt_residual(ak.to_numpy(ak.flatten(tops.pt))), counts)
+    return np.sqrt(ak.to_numpy(ak.prod(r, axis=1)))
     
     
 def GetQ2weights(events):

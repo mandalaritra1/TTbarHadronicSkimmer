@@ -13,6 +13,19 @@ from truthstudy import (WLEP_E, WLEP_MU, WLEP_NONE, WLEP_TAUE, WLEP_TAUH, WLEP_T
                         w_lepton_in_jet)
 from weights import Run3WeightManager, load_ttag_sf
 
+# these tests pin the v1.2 table (interim antitag_hipt, flep block, 3 pT bins); the v1.3 table
+# is covered by tests/test_ttag_weights_v13.py
+_V12 = os.path.join(os.getcwd(), "data", "toptag", "ttag_sf_v1.2.json")
+_default_table = weights.TTAG_SF_FILE
+
+
+def setUpModule():
+    weights.TTAG_SF_FILE = _V12
+
+
+def tearDownModule():
+    weights.TTAG_SF_FILE = _default_table
+
 
 def _jets(pts):
     return ak.Array({"p4": {"pt": np.asarray(pts, dtype=np.float64)}})
@@ -28,7 +41,7 @@ HIPT = {700.0: (1.50, 1.80, 1.20), 900.0: (1.00, 1.50, 0.50), 1500.0: (1.00, 1.5
 
 class TopTagSFWeightsTest(unittest.TestCase):
     def _variations(self, iov, jet0_pt, jet1_pt, ttag2, antitag, merged=None, nuisance="ttag_pt3"):
-        manager = Run3WeightManager(iov=iov, systematics=["ttag_pt3"], no_syst=False, deepak8_cut="tight")
+        manager = Run3WeightManager(iov=iov, systematics=["ttag_pt3", nuisance], no_syst=False, deepak8_cut="tight")
         weights = Weights(len(jet0_pt))
         if merged is None:
             merged = (np.ones(len(jet0_pt), bool), np.ones(len(jet0_pt), bool))
