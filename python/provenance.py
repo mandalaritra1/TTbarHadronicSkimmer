@@ -41,6 +41,16 @@ def payload_hashes():
     return hashes
 
 
+def _exported_sha():
+    """Commit of a ``git archive`` export (no .git, e.g. the copy a batch job runs), read from the
+    COMMIT file written next to the export: its first word is the full SHA."""
+    try:
+        with open(os.path.join(REPO, "COMMIT")) as f:
+            return f.read().split()[0]
+    except (OSError, IndexError):
+        return None
+
+
 def collect(config):
     """Provenance dict for a run; ``config`` is the run configuration (e.g. vars(args))."""
     import awkward
@@ -48,7 +58,7 @@ def collect(config):
 
     status = _git("status", "--porcelain", "--untracked-files=no")
     return {
-        "git_sha": _git("rev-parse", "HEAD"),
+        "git_sha": _git("rev-parse", "HEAD") or _exported_sha(),
         "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
         "git_modified_files": status.splitlines() if status else [],
         "git_diff_py": _git("diff", "HEAD", "--", "*.py"),
