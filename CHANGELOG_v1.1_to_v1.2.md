@@ -1,5 +1,7 @@
 # Skimmer changelog: v1.1 → v1.2
 
+Continued in `CHANGELOG_v1.2.1_to_v1.3.md` (next re-skim v1.3; v1.2.1 = tag `v1.2.1`, `c34dbd1`).
+
 Baseline **v1.1** = tag `v1.1` (`fab5038`, 2026-08-01): the production behind the
 current 39-point limits. **v1.2** = the next MC + data re-skim, tag `v1.2` (2026-09-24;
 this changelog commit). Correction-file caching and the review cleanup go to v1.3.
