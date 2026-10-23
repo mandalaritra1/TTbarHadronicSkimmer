@@ -12,7 +12,7 @@ gets the tag `v1.3` on the commit that starts the production.
 Status: **Done** = committed · **Working tree** = written, not committed ·
 **Planned** = decided, not started · **Open** = needs a decision.
 
-Last updated: 2026-10-23 (production done, post-processing)
+Last updated: 2026-10-23 (fit inputs staged, fit matrix running)
 
 ---
 
@@ -28,7 +28,8 @@ Last updated: 2026-10-23 (production done, post-processing)
 | 6 | Correction-file caching and the review cleanup (carried over from v1.2) | Open | — | Code only | None |
 | 7 | PDF uncertainty: std/mean → Hessian (v1.2 item 8) | Open | — | MC | PDF uncertainty ~10× larger |
 | 8 | Provenance `git_sha` from the `COMMIT` file of a `git archive` export (batch-job copies have no `.git`) | Done | `d84dc75` | Output metadata | None |
-| 9 | Fit side (bgestimation): JES and JER per year (2024 and 2025 split; JME default for a single total JES source and for JER: uncorrelated across years; all JES sources and the JER SF uncertainty are identical in the 2024/2025/2026 payloads, only the JER SF central value differs) | Done | bgestimation `67e187a` | Fit | Diagnostic of the split on v1.2.1 inputs running (model study #33) |
+| 9 | Fit side (bgestimation): JES and JER per year (2024 and 2025 split; JME default for a single total JES source and for JER: uncorrelated across years; all JES sources and the JER SF uncertainty are identical in the 2024/2025/2026 payloads, only the JER SF central value differs) | Done | bgestimation `67e187a` | Fit | On v1.2.1 inputs the split was ill-conditioned (identical 2024/2025 templates, model study #33); on v1.3 inputs the decorrelated fits pass the gate with it |
+| 10 | `plots/make2Drootfiles.py`: systematic labels from the MC inputs only (data is nominal-only; the v1.2.1 data next to v1.3 MC still lists `ttag_band_hipt`) | Done | `b1a73ae` | Fit-input step | None (the v1.3 post step failed without it) |
 
 ## Samples (DAS, checked 2026-10-22)
 
@@ -49,3 +50,6 @@ Last updated: 2026-10-23 (production done, post-processing)
 | 2026-10-23 | Unit tests: `tests/test_ttag_weights_v13.py` (4 bins and binned band SF; no doubling and the extrapolation nuisance in quadrature; band extrapolation only on band jets beyond 1.2 TeV; eigen shifts reproduce the covariance diagonal; unrequested nuisances keep their nominal; v1.2 table unchanged; aliased IOVs; residual held at 1 TeV and from last-copy tops) + full suite with the v1.2 tests pinned to the v1.2 table | 100 pass, 4 skipped |
 | 2026-10-23 | CMS central inputs (survey): no central Run-3 top-tag SFs (JMAR: Run-2 UL ParticleNet only); JES/JER correlation per the JERC docs; 2025 pileup file = the vendored one | Our T&P stays; JES/JER per year (item 9) |
 | 2026-10-23 | Production (lxplus condor, `d84dc75` from EOS, workday, coffea-dask 2026.4.0 container): TTbar 473 file splits, Z′ 315 (7 IOVs × 3 widths × 15 masses) | 2023–2026 complete on the first pass; 17 TTbar splits (2022 Summer22/22EE files) and 1 Z′ job failed on xrootd reads via the global redirector and were resubmitted with a redirector fallback (FNAL, then INFN) |
+| 2026-10-23 | Post-processing (`post_v13.sh` per IOV on lxplus condor, coffea-dask 2026.5.0 image because the v1.2.1 data outputs are numpy-2 pickles): merge + `make2Drootfiles.py` | 47 fit-input files per IOV in `2dAlphabetInputs/v1.3/twodalphabet_tight<yy>_v1.3`; staged `v1.3/run3_combined` (246 files) with the residual from the `TOPPT_RSD` templates and the smooth tail |
+| 2026-10-23 | v1.3 vs v1.2.1 fit inputs (nominal integrals, all IOVs) | TTbar Pass −2%, Fail +0.5–1.6%; Z′ Pass −1%, Fail +4–6% (band SF above 800 GeV 1.00 → 1.06); 2025 a further −1% (Cen) / −2.5% (Fwd) from its own JER SF and pileup. All v1.3 templates present; every template the 18 v1.3 fit configs use exists (`check_cfg_templates.py`) |
+| 2026-10-23 | Signal top-tag uncertainty at 4 TeV (central Pass) | `ttag_pt4` +30/−24% and `ttag_extrap_tag` +20/−61% (v1.2.1: `ttag_pt3` +36/−29%): the extrapolation's tight down side (SF 0.44 at −1σ above 1.2 TeV, item 4) roughly doubles the expected limits above 3.5 TeV; fit-side width variants under study (model study, bgestimation `ecbf3fb`) |
