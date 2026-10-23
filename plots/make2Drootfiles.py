@@ -270,9 +270,10 @@ def _category_ids(label_to_int: dict[str, int], region: str, cat: str) -> list[i
 
 
 def _available_systematics(outputs: list[dict], hist_name: str) -> list[str]:
-    """Union of the systematic labels over the inputs, in first-seen order. Data outputs
-    can carry fewer labels than MC (data is written nominal-only); an MC input that lacks
-    a label still fails when its template is built."""
+    """Union of the systematic labels over the inputs, in first-seen order. Called on the
+    MC inputs only: data is written nominal-only, and its axis can carry the labels of an
+    older production (v1.2.1 data next to v1.3 MC). An MC input that lacks a label still
+    fails when its template is built."""
     labels: list[str] = []
     for output in outputs:
         if hist_name not in output:
@@ -440,7 +441,9 @@ def main() -> None:
     label_to_int = {label: idx for idx, label in label_map.items()}
     print("Analysis categories:", label_map)
 
-    syst_labels = _available_systematics(all_outputs, args.hist)
+    syst_labels = _available_systematics(
+        [out for label, outs in samples if label != "Data" for out in outs], args.hist
+    )
     if not args.include_systs:
         syst_labels = ["nominal"]
     print("Systematics:", ", ".join(syst_labels))
