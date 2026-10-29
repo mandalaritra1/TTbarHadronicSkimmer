@@ -1,0 +1,1169 @@
+{
+ "version": "v1.3-noflep",
+ "description": "Top-tag SFs per pT bin; list index 0 (<400 GeV) is a filler. 'tag' weights jets passing the WP, 'antitag' the antitag (fail-region) jet. Jets above pt_measured_max keep the top-bin SF with the uncertainty doubled (null: no doubling). 'applies_to': 'fully_merged' = the SFs weight only jets gen-matched as fully merged tops (b + both W quarks within dR 0.8, the T&P definition), other jets get SF 1; 'all' = every jet (legacy Run-2 treatment). 'nonmerged_unc': flat relative uncertainty per tagged/antitag jet that is not a fully merged top (those keep SF 1), one nuisance 'ttag_nonmerged' for all pT bins. 'antitag_hipt' (optional): band SF for antitag jets at or above its first pT edge, overriding the 'antitag' entry there, with its own nuisance (name in 'nuisance', no doubling); those jets drop out of the ttag_pt band variation. v1.3: per-IOV 'pt_edges' (overrides the global edges; 4 measured bins), 'extrapolation' (factor on the last-bin deviation above pt_measured_max, replacing the fixed 2), 'covariance', 'partially_merged' (measured SF for semi-/W-merged tops, not applied by the current consumer). v1.3-noflep: the 2024 SFs from the T&P fit without the f_lep < 0.59 cut, for a selection without f_lep (Run-2-like, decay-inclusive tt̄); derived from ttag_sf_v1.3.json sha256 a1cd56aaab93a0f4a9fa0d32be18ff2bb6fcaa0119f52536a258200bcdb474f2.",
+ "pt_edges": [
+  0,
+  400,
+  480,
+  600
+ ],
+ "aliases": {
+  "2022preEE": "2024",
+  "2022postEE": "2024",
+  "2023preBPix": "2024",
+  "2023postBPix": "2024",
+  "2025": "2024",
+  "2026": "2024"
+ },
+ "iovs": {
+  "2016": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "applies_to": "all",
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.92,
+       1.01,
+       0.84,
+       1.0
+      ],
+      "up": [
+       1.04,
+       1.18,
+       0.9,
+       1.07
+      ],
+      "down": [
+       0.82,
+       0.84,
+       0.78,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.89,
+       1.02,
+       0.93,
+       1.0
+      ],
+      "up": [
+       0.97,
+       1.07,
+       0.97,
+       1.05
+      ],
+      "down": [
+       0.81,
+       0.97,
+       0.89,
+       0.95
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2016APV": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "applies_to": "all",
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.92,
+       1.01,
+       0.84,
+       1.0
+      ],
+      "up": [
+       1.04,
+       1.18,
+       0.9,
+       1.07
+      ],
+      "down": [
+       0.82,
+       0.84,
+       0.78,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.89,
+       1.02,
+       0.93,
+       1.0
+      ],
+      "up": [
+       0.97,
+       1.07,
+       0.97,
+       1.05
+      ],
+      "down": [
+       0.81,
+       0.97,
+       0.89,
+       0.95
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.98,
+       0.95,
+       0.97,
+       1.0
+      ],
+      "up": [
+       0.98,
+       0.99,
+       1.0,
+       1.04
+      ],
+      "down": [
+       0.91,
+       0.91,
+       0.94,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2017": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "applies_to": "all",
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.88,
+       0.9,
+       0.95,
+       0.97
+      ],
+      "up": [
+       0.96,
+       0.95,
+       1.0,
+       1.03
+      ],
+      "down": [
+       0.8,
+       0.85,
+       0.9,
+       0.91
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.95,
+       1.0,
+       0.98,
+       0.98
+      ],
+      "up": [
+       1.01,
+       1.04,
+       1.02,
+       1.02
+      ],
+      "down": [
+       0.89,
+       0.96,
+       0.94,
+       0.94
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.95,
+       0.98,
+       0.97,
+       0.97
+      ],
+      "up": [
+       1.0,
+       1.01,
+       1.0,
+       1.01
+      ],
+      "down": [
+       0.9,
+       0.95,
+       0.94,
+       0.93
+      ]
+     }
+    }
+   }
+  },
+  "2018": {
+   "source": "Run-2 top-tag SFs (legacy table)",
+   "pt_measured_max": null,
+   "applies_to": "all",
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       0.81,
+       0.93,
+       0.96,
+       0.93
+      ],
+      "up": [
+       0.88,
+       0.98,
+       1.02,
+       1.01
+      ],
+      "down": [
+       0.74,
+       0.88,
+       0.92,
+       0.85
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    },
+    "medium": {
+     "tag": {
+      "nominal": [
+       0.9,
+       0.97,
+       0.98,
+       0.95
+      ],
+      "up": [
+       0.95,
+       1.0,
+       1.01,
+       0.98
+      ],
+      "down": [
+       0.85,
+       0.94,
+       0.95,
+       0.92
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    },
+    "loose": {
+     "tag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       0.96,
+       1.0,
+       0.98,
+       0.99
+      ],
+      "up": [
+       1.0,
+       1.03,
+       1.0,
+       1.02
+      ],
+      "down": [
+       0.92,
+       0.97,
+       0.96,
+       0.96
+      ]
+     }
+    }
+   }
+  },
+  "2024": {
+   "source": "NO-f_lep variant of v1.3 (branch decay-inclusive-ttbar, 2026-10-29): tight 'tag' and 'antitag' nominal/up/down replaced by the T&P alternative 'comb_noflep' (same T&P, 2024 C-I + 2025 C-G, f_lep cut NOT applied in the pass and band categories, combine_json sim_comb_noflep); breakdown and covariance dropped (none for that fit, so the ttag_eig* nuisances are weight 1 -- use ttag_pt1-4); extrapolation, partially_merged and the 2026 drift kept from the f_lep set (approximation). Original v1.3 source: v1.3 candidate T&P (2026-10-22): semileptonic ttbar tag-and-probe (mu), data 2024 C-I + 2025 C-G (220 fb-1) against the Summer24 MC, v1.2 objects. One simultaneous pass / band / fail mSD fit over the probe-pT bins 400-480, 480-600, 600-800, 800+ GeV in Combine (Poisson likelihood, Barlow-Beeston-lite MC statistics, jet mass scale 0.998 with one jms nuisance per bin profiled), f_lep < 0.59 applied in the pass and band categories as in the analysis selection (so the SFs include the f_lep efficiency and there is no separate flep block), partially merged tag-rate scales shared by all bins, rest rates fixed. up/down = nominal +/- total (stat (+) exact JES/JER (+) JMR 2% (+) PU (+) rest rates x2/x0.5 (+) partially merged model). Applies to fully merged top jets in ttbar/signal MC.",
+   "tp_commit": "toptag-sf-derivation d7fe63b (branch aritra)",
+   "tp_result": "results/outputs/ttag_sf_v1.3_summary.json",
+   "tp_result_sha256": "1d504ecce7bf29b5f09b93dbd54b8d27f2404839e50c8ce112abfd42595a826a",
+   "pt_measured_max": 1200.0,
+   "applies_to": "fully_merged",
+   "nonmerged_unc": 0.25,
+   "thresholds": {
+    "tag": 0.9284,
+    "antitag_low": 0.8571
+   },
+   "wps": {
+    "tight": {
+     "tag": {
+      "nominal": [
+       1.0,
+       0.811,
+       0.815,
+       0.838,
+       0.877
+      ],
+      "up": [
+       1.0,
+       0.8386,
+       0.8618,
+       0.9644,
+       1.0671
+      ],
+      "down": [
+       1.0,
+       0.784,
+       0.7686,
+       0.7113,
+       0.6973
+      ]
+     },
+     "antitag": {
+      "nominal": [
+       1.0,
+       1.194,
+       1.258,
+       1.576,
+       1.171
+      ],
+      "up": [
+       1.0,
+       1.3066,
+       1.3453,
+       1.8112,
+       1.5998
+      ],
+      "down": [
+       1.0,
+       1.0825,
+       1.173,
+       1.3398,
+       0.7666
+      ]
+     }
+    }
+   },
+   "pt_edges": [
+    0.0,
+    400.0,
+    480.0,
+    600.0,
+    800.0
+   ],
+   "extrapolation": {
+    "above": 1200.0,
+    "tag": {
+     "factor": 1.247,
+     "sigma_extrap": 0.0871,
+     "factor_up": 1.247,
+     "factor_down": 3.391,
+     "count_check": {
+      "config": {
+       "ntuple_dir": "outputs/ntuples_2024_v12lep",
+       "data": [
+        "outputs/ntuples_2024_v12lep",
+        "outputs/ntuples_2025_v2"
+       ],
+       "lumi_ratio": 2.004,
+       "flep_cut": 0.59,
+       "pt_min": 1200.0,
+       "ref_sf": 0.818,
+       "part": "0.587,0.861",
+       "toppt_factor": 0.76,
+       "low_norm_range": "400,1200",
+       "comp": "1.207,1.972,1.687",
+       "out": "outputs/ntuples_2024_v12lep_fits/band_v13/count_1200plus.json"
+      },
+      "data": {
+       "P": 1.0,
+       "B": 1.0,
+       "F": 38.0
+      },
+      "mc_total_lumi_scaled": 72.9926300414186,
+      "data_over_mc_low_pt": 0.8092211679414194,
+      "mc": {
+       "ttbar_scale": 1.0,
+       "full_frac": 0.3039951666996965,
+       "P_full_at_SF1": 6.463916624760497,
+       "P_other": 2.283761293654273,
+       "B_full_at_SB1": 1.4830951319024812,
+       "B_other": 0.687227482116753,
+       "SF_ul95": 0.3805901851073854,
+       "SF_68": [
+        0.0,
+        0.15544179651646534
+       ],
+       "SB_ul95": 2.7352507260070156,
+       "SB_68": [
+        0.0,
+        1.7539647782986094
+       ],
+       "p_pass_le_obs_at_ref": 0.004414626327145066
+      },
+      "toppt": {
+       "ttbar_scale": 0.76,
+       "full_frac": 0.28440867767632444,
+       "P_full_at_SF1": 6.047444766364368,
+       "P_other": 2.6540487190312643,
+       "B_full_at_SB1": 1.387538920147574,
+       "B_other": 0.7259864740498558,
+       "SF_ul95": 0.3455700515005578,
+       "SF_68": [
+        0.0,
+        0.10491627651357494
+       ],
+       "SB_ul95": 2.895686734259971,
+       "SB_68": [
+        0.0,
+        1.846822164827859
+       ],
+       "p_pass_le_obs_at_ref": 0.004300618154947399
+      },
+      "absorb": {
+       "ttbar_scale": 0.5871635818447571,
+       "full_frac": 0.26357975225947883,
+       "P_full_at_SF1": 5.604554707487719,
+       "P_other": 3.0478247121033135,
+       "B_full_at_SB1": 1.2859212588411368,
+       "B_other": 0.7672040782485141,
+       "SF_ul95": 0.30261811951292855,
+       "SF_68": [
+        0.0,
+        0.04294710406070314
+       ],
+       "SB_ul95": 3.0924602986389744,
+       "SB_68": [
+        0.0,
+        1.9607110550169877
+       ],
+       "p_pass_le_obs_at_ref": 0.004182552239027711
+      },
+      "fitcomp": {
+       "ttbar_scale": 1.0,
+       "full_frac": 0.23656819809889457,
+       "P_full_at_SF1": 5.030202042954408,
+       "P_other": 2.5172166273765275,
+       "B_full_at_SB1": 1.1541405304973311,
+       "B_other": 0.8221105662855752,
+       "SF_ul95": 0.4426557565680399,
+       "SF_68": [
+        0.0,
+        0.15333528800170235
+       ],
+       "SB_ul95": 3.397986508986975,
+       "SB_68": [
+        0.0,
+        2.1370131928312954
+       ],
+       "p_pass_le_obs_at_ref": 0.010056036300729812
+      }
+     },
+     "note": "factor_up: score-shift model; factor_down: the down deviation reaches the 95% CL counting bound SF < 0.44 above 1200 GeV (scenario \"fitcomp\", the least restrictive: 1 tight probe(s) observed where 5.0 fully merged at SF 1 plus 2.5 others are expected; p = 0.010 at the last-bin SF). The score-shift model does not reproduce this deficit."
+    },
+    "antitag": {
+     "factor": 1.735,
+     "sigma_extrap": 0.8625
+    },
+    "note": "Jets above 1200 GeV take the last measured bin with its deviation scaled by factor = sqrt(sigma_last^2 + sigma_extrap^2) / sigma_last (same nuisance), derived from a logit score-shift model of the data/MC difference fitted to all bins (delta = -0.975 +- 0.055, chi2 4.8/7): sigma_extrap = predicted change from the last bin to the region above (+) delta-slope uncertainty (+) MC statistics. The v1.2 consumer doubles the deviation instead."
+   },
+   "partially_merged": {
+    "applies_to": "partially merged tops: b + one W quark, or both W quarks without the b, in the AK8 cone (T&P merge_cat 1 and 2)",
+    "pt_independent": true,
+    "tag": {
+     "nominal": 0.587,
+     "up": 1.0425,
+     "down": 0.1347
+    },
+    "antitag": {
+     "nominal": 0.861,
+     "up": 1.5795,
+     "down": 0.1473
+    },
+    "note": "One pT-independent data/MC tag-rate scale each for pass and band, from the simultaneous fit (constrained mostly at 400-600 GeV, where partially merged tops are 25-55% of the band). Not applied by the current consumer (non-fully-merged jets keep SF 1 +- nonmerged_unc).",
+    "per_bin_check": {
+     "note": "partially merged scales fitted per bin instead (log-normal prior width 1)",
+     "tag": [
+      0.578,
+      0.623,
+      1.086,
+      1.064
+     ],
+     "antitag": [
+      0.825,
+      1.01,
+      0.94,
+      1.502
+     ]
+    }
+   },
+   "alternatives": {
+    "2024": {
+     "values_down_up": {
+      "400-480": {
+       "tag": [
+        0.813,
+        0.0306,
+        0.0313
+       ],
+       "antitag": [
+        1.255,
+        0.1051,
+        0.1067
+       ]
+      },
+      "480-600": {
+       "tag": [
+        0.805,
+        0.0428,
+        0.0433
+       ],
+       "antitag": [
+        1.281,
+        0.115,
+        0.1173
+       ]
+      },
+      "600-800": {
+       "tag": [
+        0.817,
+        0.0542,
+        0.0566
+       ],
+       "antitag": [
+        1.534,
+        0.2087,
+        0.2179
+       ]
+      },
+      "800+": {
+       "tag": [
+        0.861,
+        0.1482,
+        0.172
+       ],
+       "antitag": [
+        0.479,
+        0.2502,
+        0.3021
+       ]
+      }
+     },
+     "combine_json": "sim_y2024_flep"
+    },
+    "2025": {
+     "values_down_up": {
+      "400-480": {
+       "tag": [
+        0.802,
+        0.0268,
+        0.0275
+       ],
+       "antitag": [
+        1.108,
+        0.1013,
+        0.1029
+       ]
+      },
+      "480-600": {
+       "tag": [
+        0.808,
+        0.051,
+        0.0515
+       ],
+       "antitag": [
+        1.223,
+        0.1083,
+        0.1107
+       ]
+      },
+      "600-800": {
+       "tag": [
+        0.805,
+        0.0474,
+        0.0499
+       ],
+       "antitag": [
+        1.512,
+        0.1757,
+        0.1843
+       ]
+      },
+      "800+": {
+       "tag": [
+        0.789,
+        0.1543,
+        0.1727
+       ],
+       "antitag": [
+        1.613,
+        0.3653,
+        0.4434
+       ]
+      }
+     },
+     "combine_json": "sim_y2025_flep"
+    },
+    "comb_noflep": {
+     "values_down_up": {
+      "400-480": {
+       "tag": [
+        0.811,
+        0.027,
+        0.0276
+       ],
+       "antitag": [
+        1.194,
+        0.1115,
+        0.1126
+       ]
+      },
+      "480-600": {
+       "tag": [
+        0.815,
+        0.0464,
+        0.0468
+       ],
+       "antitag": [
+        1.258,
+        0.085,
+        0.0873
+       ]
+      },
+      "600-800": {
+       "tag": [
+        0.838,
+        0.1267,
+        0.1264
+       ],
+       "antitag": [
+        1.576,
+        0.2362,
+        0.2352
+       ]
+      },
+      "800+": {
+       "tag": [
+        0.877,
+        0.1797,
+        0.1901
+       ],
+       "antitag": [
+        1.171,
+        0.4044,
+        0.4288
+       ]
+      }
+     },
+     "combine_json": "sim_comb_noflep"
+    },
+    "2024_noflep": {
+     "values_down_up": {
+      "400-480": {
+       "tag": [
+        0.817,
+        0.0311,
+        0.0319
+       ],
+       "antitag": [
+        1.281,
+        0.1042,
+        0.1066
+       ]
+      },
+      "480-600": {
+       "tag": [
+        0.821,
+        0.0517,
+        0.0522
+       ],
+       "antitag": [
+        1.317,
+        0.1263,
+        0.1285
+       ]
+      },
+      "600-800": {
+       "tag": [
+        0.82,
+        0.1216,
+        0.1228
+       ],
+       "antitag": [
+        1.554,
+        0.2591,
+        0.2668
+       ]
+      },
+      "800+": {
+       "tag": [
+        0.866,
+        0.1479,
+        0.1778
+       ],
+       "antitag": [
+        0.533,
+        0.3005,
+        0.3537
+       ]
+      }
+     },
+     "combine_json": "sim_y2024_noflep"
+    },
+    "comb_no_pdg_scale": {
+     "values_down_up": {
+      "400-480": {
+       "tag": [
+        0.808,
+        0.0262,
+        0.0262
+       ],
+       "antitag": [
+        1.179,
+        0.0882,
+        0.0889
+       ]
+      },
+      "480-600": {
+       "tag": [
+        0.807,
+        0.0466,
+        0.047
+       ],
+       "antitag": [
+        1.253,
+        0.0913,
+        0.0928
+       ]
+      },
+      "600-800": {
+       "tag": [
+        0.806,
+        0.0407,
+        0.0422
+       ],
+       "antitag": [
+        1.515,
+        0.1348,
+        0.1408
+       ]
+      },
+      "800+": {
+       "tag": [
+        0.818,
+        0.1107,
+        0.1231
+       ],
+       "antitag": [
+        1.056,
+        0.3125,
+        0.3457
+       ]
+      }
+     },
+     "note": "primary set without the PDG scale of the stat errors for the 2024/2025 tension"
+    }
+   },
+   "comparison_v1.2": {
+    "pt_edges": [
+     0,
+     400,
+     480,
+     600
+    ],
+    "tag_nominal": [
+     1.0,
+     0.816,
+     0.822,
+     0.821
+    ],
+    "antitag_nominal": [
+     1.0,
+     1.286,
+     1.254,
+     1.578
+    ],
+    "antitag_hipt": {
+     "pt_edges": [
+      600.0,
+      800.0
+     ],
+     "nominal": [
+      1.5,
+      1.0
+     ],
+     "up": [
+      1.8,
+      1.5
+     ],
+     "down": [
+      1.2,
+      0.5
+     ]
+    },
+    "v12_sha256": "c82848b444ccd142ad43766a43629ab736c030ee65d9884437de5d5d4867422d"
+   }
+  }
+ },
+ "drift": {
+  "2026": {
+   "source": "2026/2024 real-top tight-tag efficiency ratio from a joint 2024+2026 semileptonic tt-bar T&P fit with shared Summer24 MC templates (no parameter floors, profile intervals, paired-bootstrap covariance, f_lep < 0.59 in the categories; systematics JMS, JMR, JES, JER, pileup, rest tag rates, composition). Multiplies the 2024 SFs that 2026 aliases. 2026 eras B+D (25.3/fb).",
+   "tp_commit": "toptag-sf-derivation f0cc036 (branch aritra)",
+   "tp_result": "outputs/drift_joint_2026_summary.json",
+   "tp_result_sha256": "ec7169014e445805df683e71e16277cfd63b63b1ebdaa898c497af1abff26daf",
+   "pt_edges": [
+    400.0,
+    480.0,
+    600.0
+   ],
+   "extrapolate_above": 1200.0,
+   "extrapolation_factor": 2.0,
+   "tag": {
+    "nominal": [
+     0.9428,
+     0.8265,
+     0.8165
+    ],
+    "up": [
+     0.9977,
+     0.885,
+     0.9148
+    ],
+    "down": [
+     0.8879,
+     0.768,
+     0.7181
+    ],
+    "nuisances": [
+     "ttag_drift_pt1",
+     "ttag_drift_pt2",
+     "ttag_drift_pt3"
+    ]
+   },
+   "antitag": {
+    "nominal": [
+     0.9463,
+     0.9463,
+     0.9463
+    ],
+    "up": [
+     1.0489,
+     1.0489,
+     1.0489
+    ],
+    "down": [
+     0.8438,
+     0.8438,
+     0.8438
+    ],
+    "nuisances": [
+     "ttag_drift_band",
+     "ttag_drift_band",
+     "ttag_drift_band"
+    ],
+    "extrapolate": false
+   },
+   "correlation_tight_bins_and_band": {
+    "order": [
+     "r[400-480]",
+     "r[480-600]",
+     "r[600+]",
+     "rB[incl]"
+    ],
+    "matrix": [
+     [
+      1.0,
+      -0.08164132414325845,
+      0.14181022166447133,
+      -0.23423161071726456
+     ],
+     [
+      -0.08164132414325845,
+      1.0,
+      -0.2769744051921835,
+      -0.07369761981116218
+     ],
+     [
+      0.14181022166447133,
+      -0.2769744051921835,
+      1.0,
+      -0.10791060779918833
+     ],
+     [
+      -0.23423161071726456,
+      -0.07369761981116218,
+      -0.10791060779918833,
+      1.0000000000000002
+     ]
+    ]
+   },
+   "note": "Most of the deficit sits in PromptReco CMSSW_16_0_6 (runs 403441-403684, 4.9/fb): ratio 0.73 +- 0.06 vs about 0.92 in the other release periods. Without those runs the T&P gives tight ratio 0.996/0.853/0.824 and band x 0.876 (not applied; pending the per-run check and a decision on those runs)."
+  }
+ }
+}

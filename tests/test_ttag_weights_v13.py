@@ -13,6 +13,7 @@ from weights import EXTRAP_NUISANCES, TTAG_EIG_NUISANCES, TTAG_PT_NUISANCES, Run
 
 V13 = os.path.join(os.getcwd(), "data", "toptag", "ttag_sf_v1.3.json")
 V12 = os.path.join(os.getcwd(), "data", "toptag", "ttag_sf_v1.2.json")
+NOFLEP = os.path.join(os.getcwd(), "data", "toptag", "ttag_sf_v1.3_noflep.json")
 ALL = list(TTAG_PT_NUISANCES + TTAG_EIG_NUISANCES + tuple(EXTRAP_NUISANCES.values()))
 
 
@@ -36,11 +37,30 @@ class V13TableTest(unittest.TestCase):
         cls.tag = [np.asarray(cls.t["wps"]["tight"]["tag"][v]) for v in ("nominal", "up", "down")]
         cls.band = [np.asarray(cls.t["wps"]["tight"]["antitag"][v]) for v in ("nominal", "up", "down")]
 
-    def test_default_table_is_v13(self):
-        self.assertTrue(str(weights.TTAG_SF_FILE).endswith("ttag_sf_v1.3.json"))
+    def test_v13_table_layout(self):
         self.assertEqual(self.t["pt_edges"], [0.0, 400.0, 480.0, 600.0, 800.0])
         self.assertNotIn("antitag_hipt", self.t)
         self.assertNotIn("flep", self.t)
+
+    def test_default_table_is_v13_noflep(self):
+        # branch decay-inclusive-ttbar: no f_lep cut, so the SFs of the T&P fit without it
+        self.assertTrue(str(weights.TTAG_SF_FILE).endswith("ttag_sf_v1.3_noflep.json"))
+        nf = load_ttag_sf(NOFLEP)["iovs"]["2024"]
+        alt = self.t["alternatives"]["comb_noflep"]["values_down_up"]
+        for block in ("tag", "antitag"):
+            w = nf["wps"]["tight"][block]
+            for i, b in enumerate(("400-480", "480-600", "600-800", "800+"), start=1):
+                nom, dn, up = alt[b][block]
+                self.assertAlmostEqual(w["nominal"][i], nom)
+                self.assertAlmostEqual(w["up"][i], nom + up, places=4)
+                self.assertAlmostEqual(w["down"][i], nom - dn, places=4)
+        self.assertEqual(nf["pt_edges"], self.t["pt_edges"])
+        self.assertEqual(nf["extrapolation"], self.t["extrapolation"])
+        self.assertNotIn("covariance", nf)
+        # no covariance: the eigenvector nuisances are weight 1
+        w = _weights([900.0], [700.0], [False], [True], systematics=list(TTAG_EIG_NUISANCES), sf_file=NOFLEP)
+        for name in TTAG_EIG_NUISANCES:
+            np.testing.assert_allclose(w.weight(f"{name}Up"), w.weight())
 
     def test_fourth_bin_and_binned_band_sf(self):
         # jet0 900 GeV tagged (bin 4), jet1 700 GeV band (bin 3): no interim hipt SF any more

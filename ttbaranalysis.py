@@ -323,6 +323,13 @@ if __name__ == "__main__":
                 source_iov=source_iov,
             )
 
+            # decay-inclusive tt̄ (no f_lep cut): every IOV needs all three decay samples
+            if sample == 'TTbar' and not subsections:
+                missing = {'TTtoLNu2Q', 'TTto2L2Nu'} - {name for name, _, _ in sections}
+                if missing:
+                    print(f"[WARNING] TTbar {IOV}: no {', '.join(sorted(missing))} in {inputfile}, "
+                          "so the tt̄ template of this IOV is TTto4Q only, NOT decay-inclusive")
+
             # ---- assemble run "jobs" ------------------------------------------
             # Signals are grouped into batches of --signal-batch masses: one file per
             # batch, masses on the dataset axis (each normalized to its own xsec).

@@ -10,8 +10,9 @@ from truthstudy import MERGE_FULL, top_merge_category
 
 # Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.3: the 2024 SFs from the
 # high-pT T&P re-measurement (four pT bins, band SF binned, f_lep efficiency included, covariance
-# and extrapolation entries); v1.2 stays readable.
-TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.3.json"
+# and extrapolation entries); v1.2 stays readable. Branch decay-inclusive-ttbar (no f_lep cut):
+# v1.3-noflep, the same T&P fitted without the f_lep cut (no covariance, so no ttag_eig* shifts).
+TTAG_SF_FILE = Path(__file__).resolve().parent.parent / "data" / "toptag" / "ttag_sf_v1.3_noflep.json"
 
 # per-bin SF nuisances: one per measured pT bin of the IOV's table, moving the tight and band SF of
 # that bin together; bins a table does not have get weight 1

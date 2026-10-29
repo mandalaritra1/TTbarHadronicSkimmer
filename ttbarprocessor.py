@@ -76,12 +76,9 @@ _LUMI_PB = LUMI_PB
 _V15_IOVS = {'2022preEE', '2022postEE', '2023preBPix', '2023postBPix', '2024', '2025', '2026'}
 
 
-# Leptonic-top rejection: both tagged/antitag jets also need GloParTv3
-# f_lep = L/(H+L) below this. The score H/(H+QCD) ignores the leptonic-top heads, so a jet
-# holding a leptonic top (lepton + b inside the AK8 jet) passes it. 0.59 = tightest value
-# keeping >= 99% of truth fully merged hadronic tops in every pT x tight/band row (MC).
-# IOVs without GloParTv3 have f_lep = 0 (no cut).
-_FLEP_CUT = 0.59
+# No leptonic-top cut (Run-2-like, branch decay-inclusive-ttbar): jets holding a leptonic top
+# can pass the score H/(H+QCD), and the tt̄ template is decay-inclusive (TTto4Q + TTtoLNu2Q +
+# TTto2L2Nu) as in Run 2. f_lep = L/(H+L) is still computed for the diagnostic 'flep' histogram.
 
 # Per-IOV top-tagger score thresholds (the code calls them "deepAK8" for historical
 # reasons). WP names follow the CMS AK8 top-tagger targeted QCD mis-tag:
@@ -905,16 +902,12 @@ class TTbarResProcessor(processor.ProcessorABC):
         )
         antitag = antitag_disc & ttag_s0 & mcut_s1
 
-        # GloParTv3 also has to call both jets hadronic tops (f_lep < _FLEP_CUT), or leptonic
-        # tops (lepton + b inside the AK8 jet) pass the score
+        # GloParTv3 leptonic-top fraction f_lep, diagnostic only (no cut on this branch)
         if self.iov in _V15_IOVS:
             flep0, flep1 = leptonic_top_fraction(jet0), leptonic_top_fraction(jet1)
         else:
             flep0 = flep1 = np.zeros(len(jet0))
         ttag_s0_s, ttag_s1_s, antitag_s = ttag_s0, ttag_s1, antitag     # score only: flep hist, lepstudy
-        ttag_s0 = ttag_s0 & (flep0 < _FLEP_CUT)
-        ttag_s1 = ttag_s1 & (flep1 < _FLEP_CUT)
-        antitag = antitag & (flep0 < _FLEP_CUT) & (flep1 < _FLEP_CUT)
 
         # back-to-back topology + subjet requirements
         dPhiCut     = np.abs(jet0.p4.delta_phi(jet1.p4)) > _DPHI_CUT
