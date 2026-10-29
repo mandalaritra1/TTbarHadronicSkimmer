@@ -169,6 +169,9 @@ if __name__ == "__main__":
     parser.add_argument('--casa-workers', type=int, default=64,
                         help='casa worker cap (default 64); the pool is sized per fileset '
                              'as min(cap, max(4, nchunks // 2)) with adapt(n, n)')
+    parser.add_argument('--scheduler', default=None,
+                        help='casa: attach to a running Dask scheduler (e.g. tls://localhost:8786, the '
+                             'JupyterLab Dask-extension cluster) instead of starting a CoffeaCasaCluster')
     parser.add_argument('--lpc-workers', type=int, default=100,
                         help='LPC condor worker cap (default 100), sized per fileset as '
                              'for --casa-workers')
@@ -460,6 +463,12 @@ if __name__ == "__main__":
                         if cluster:
                             cluster.adapt(minimum=POOL_MIN_WORKERS, maximum=POOL_MIN_WORKERS)
                         pool_cap = args.lpc_workers
+                    elif args.env in ('casa', 'C') and not args.nocluster and args.scheduler:
+                        # attach to a running scheduler (the JupyterLab Dask-extension cluster holds
+                        # tls://localhost:8786 on the pod, so a new CoffeaCasaCluster cannot bind it);
+                        # that cluster's own adapt range sets the workers
+                        cluster = args.scheduler
+                        pool_cap = None
                     elif args.env in ('casa', 'C') and not args.nocluster:
                         # coffea-casa gateway cluster; Client(None) would be a
                         # LocalCluster on the notebook pod's ~4 cores.
