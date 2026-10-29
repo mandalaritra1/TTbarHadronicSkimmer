@@ -50,13 +50,16 @@ def _theory_factors(sums):
     return out
 
 
-def merge(parts):
+def merge(parts, allow_commits=()):
     first = parts[0]
     if "ntuple" in first:
         raise SystemExit("ntuple outputs are not supported")
     shas = {p["provenance"].get("git_sha") for p in parts}
-    if len(shas) != 1:
-        raise SystemExit(f"parts come from different commits: {shas}")
+    # parts from different commits merge only when every commit is listed in allow_commits (full shas or
+    # prefixes), i.e. commits known to process identically; the merged provenance records them
+    allowed = lambda sha: any(sha and sha.startswith(a) for a in allow_commits)
+    if len(shas) != 1 and not (allow_commits and all(allowed(sha) for sha in shas)):
+        raise SystemExit(f"parts come from different commits: {shas} (--allow-commits lists commits that process identically)")
     norms = [p["normalization"] for p in parts]
     for k in ("sample", "subsample", "year", "xsec_pb", "lumi_pb", "applied"):
         if len({str(n.get(k)) for n in norms}) != 1:
@@ -85,7 +88,7 @@ def merge(parts):
         elif key in STATIC:
             merged[key] = val
         elif key == "provenance":
-            merged[key] = dict(val, merged_from=len(parts))
+            merged[key] = dict(val, merged_from=len(parts), **({"merged_commits": sorted(shas)} if len(shas) > 1 else {}))
         elif key in REBUILT:
             continue
         else:
@@ -115,8 +118,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("inputs", nargs="+")
     ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--allow-commits", default="",
+                    help="comma-separated commits (or prefixes) whose parts may be merged together")
     args = ap.parse_args()
-    merged = merge([load(f) for f in args.inputs])
+    merged = merge([load(f) for f in args.inputs], tuple(c for c in args.allow_commits.split(",") if c))
     save(merged, args.output)
     n = merged["normalization"]
     print(f"wrote {args.output}: {len(args.inputs)} parts, sumw {n['sumw_raw']:.6g}, scale {n['scale_factor']:.6g}")
