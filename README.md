@@ -199,7 +199,7 @@ options such as `--noSyst`, `--ntuple` or `--test`:
 
 ```text
 data_2024_C_topvsqcd.coffea
-TTbar_2024_inclusive_topvsqcd.coffea
+TTbar_2024_TTto4Q_topvsqcd.coffea
 ZPrime10_2024_1400to2000_topvsqcd.coffea
 ```
 
@@ -252,7 +252,7 @@ sideband of jet mass. `--lumi` only sets the label, and its default is the
 ## Cutflow tables
 
 ```bash
-python make_cutflow_table.py outputs/dy/TTbar_2024_inclusive_topvsqcd.coffea \
+python make_cutflow_table.py outputs/dy/TTbar_2024_TTto4Q_topvsqcd.coffea \
   --format both --weight-mode none -o cutflows/TTbar_2024
 ```
 
@@ -265,7 +265,7 @@ luminosity-scaled yield.
 Convert the ntuple stored with `--ntuple` to a ROOT TTree. This needs `uproot`, not ROOT:
 
 ```bash
-python write_ntuple.py outputs/dy/TTbar_2024_inclusive_topvsqcd_ntuple.coffea TTbar_2024.root ttbar
+python write_ntuple.py outputs/dy/TTbar_2024_TTto4Q_topvsqcd_ntuple.coffea TTbar_2024.root ttbar
 ```
 
 The column sets are defined in `ntuple_columns_for_preset` in `python/hists.py`.

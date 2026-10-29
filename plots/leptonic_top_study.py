@@ -51,7 +51,7 @@ SELECTIONS = ["current", "A", "C", "D"]
 VETO_DEFAULT = dict(pt=30.0, iso=0.1)
 
 SAMPLES = {
-    "TTto4Q": "TTbar_2024_inclusive_*lepstudy.coffea",
+    "TTto4Q": "TTbar_2024_TTto4Q_*lepstudy.coffea|TTbar_2024_inclusive_*lepstudy.coffea",
     "TTtoLNu2Q": "TTbar_2024_TTtoLNu2Q_*lepstudy.coffea",
     "TTto2L2Nu": "TTbar_2024_TTto2L2Nu_*lepstudy.coffea",
     "Z′ 2 TeV": "ZPrime1_2024_2000_*lepstudy.coffea",
@@ -66,7 +66,8 @@ ZP = ["Z′ 2 TeV", "Z′ 4 TeV", "Z′ 6 TeV"]
 
 # ---------------------------------------------------------------- inputs
 def load(indir, pattern):
-    paths = sorted(glob.glob(os.path.join(indir, pattern)))
+    # '|' separates alternative globs (the TTto4Q subsample was called 'inclusive' before 2026-10-29)
+    paths = sorted({p for pat in pattern.split("|") for p in glob.glob(os.path.join(indir, pat))})
     if not paths:
         return None
     cols = {}

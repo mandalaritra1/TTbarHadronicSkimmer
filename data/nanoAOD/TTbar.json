@@ -1,6 +1,6 @@
 {
     "2023": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/Run3Summer23NanoAODv12/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/JMENano12p5_132X_mcRun3_2023_realistic_v5-v1/60000/2477e252-df02-4d63-9fb6-59ef4f68323f.root",
                 "/store/mc/Run3Summer23NanoAODv12/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/JMENano12p5_132X_mcRun3_2023_realistic_v5-v1/60000/85b5164c-ad46-440b-bc9f-c47fa01c6c72.root",
@@ -167,14 +167,14 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2023",
                 "is_mc": true
             }
         }
     },
     "2024": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/RunIII2024Summer24NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/120000/4b74f791-673b-4b21-be3e-c9287790bc40.root",
                 "/store/mc/RunIII2024Summer24NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/120000/ac377c60-1f2f-4485-a4b7-fd4d695f37ef.root",
@@ -952,7 +952,7 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2024",
                 "is_mc": true,
                 "xsec_pb": 419.9
@@ -2554,7 +2554,7 @@
         }
     },
     "2022preEE": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/Run3Summer22NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2022_realistic_v1-v2/100000/66036aa7-8c84-4427-bf75-ea6d760ec1bf.root",
                 "/store/mc/Run3Summer22NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2022_realistic_v1-v2/110000/d8c6564b-718a-4ad4-9d67-39b747fdde30.root",
@@ -2629,7 +2629,7 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2022preEE",
                 "is_mc": true,
                 "xsec_pb": 419.9
@@ -2773,7 +2773,7 @@
         }
     },
     "2022postEE": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/Run3Summer22EENanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2022_realistic_postEE_v1-v2/2560000/0039f423-4793-4a7b-8582-9791706f6a78.root",
                 "/store/mc/Run3Summer22EENanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2022_realistic_postEE_v1-v2/2560000/0244ed94-9e30-4a80-977a-91f86de4eb98.root",
@@ -3004,7 +3004,7 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2022postEE",
                 "is_mc": true,
                 "xsec_pb": 419.9
@@ -3472,7 +3472,7 @@
         }
     },
     "2023preBPix": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/Run3Summer23NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2023_realistic_v1-v2/120000/03f70279-4c4c-4e1b-894c-ddffad6e73b4.root",
                 "/store/mc/Run3Summer23NanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2023_realistic_v1-v2/120000/04671f54-c998-4cf5-9647-748390ffb9ed.root",
@@ -3614,7 +3614,7 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2023preBPix",
                 "is_mc": true,
                 "xsec_pb": 419.9
@@ -3905,7 +3905,7 @@
         }
     },
     "2023postBPix": {
-        "inclusive": {
+        "TTto4Q": {
             "files": [
                 "/store/mc/Run3Summer23BPixNanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2023_realistic_postBPix_v1-v2/130000/07196905-838b-4b54-aa69-ec10a6d2452f.root",
                 "/store/mc/Run3Summer23BPixNanoAODv15/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2023_realistic_postBPix_v1-v2/130000/0bee2b97-8736-43f5-8263-0b720a78a271.root",
@@ -3983,7 +3983,7 @@
             ],
             "metadata": {
                 "sample": "TTbar",
-                "subsample": "inclusive",
+                "subsample": "TTto4Q",
                 "year": "2023postBPix",
                 "is_mc": true,
                 "xsec_pb": 419.9

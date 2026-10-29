@@ -9,7 +9,7 @@ gives (coffea chunks each file on its own, so the splits see the same chunks).
 
 Single-sample outputs only (not the grouped signal layout: use merge_signal_masses.py there).
 
-    python scripts/merge_split_mc.py -o TTbar_2026_inclusive_topvsqcd.coffea parts/p*/TTbar_2026_inclusive_topvsqcd.coffea
+    python scripts/merge_split_mc.py -o TTbar_2026_TTto4Q_topvsqcd.coffea parts/p*/TTbar_2026_TTto4Q_topvsqcd.coffea
 """
 import argparse
 import copy

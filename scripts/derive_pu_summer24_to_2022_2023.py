@@ -80,7 +80,7 @@ def main():
     red = "root://cmsxrootd.fnal.gov/"
     files = []
     for js, keys in (("ZPrime10.json", ("1000", "3000", "5000")), ("ZPrime30.json", ("2000",)),
-                     ("ZPrime1.json", ("4000",)), ("TTbar.json", ("inclusive",))):
+                     ("ZPrime1.json", ("4000",)), ("TTbar.json", ("TTto4Q",))):
         m = json.load(open(os.path.join(args.repo, "data/nanoAOD", js)))["2024"]
         for k in keys:
             key = [x for x in m if x == k or x.startswith(k)][0]

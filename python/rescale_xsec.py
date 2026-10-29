@@ -17,7 +17,7 @@ file's recorded xsec already differs from the stated old value -- prevents
 double-applying). Data outputs are rejected (no xsec normalization).
 
 CLI:
-    python python/rescale_xsec.py outputs/dy/TTbar_2024_inclusive.coffea \
+    python python/rescale_xsec.py outputs/dy/TTbar_2024_TTto4Q.coffea \
         --old-xsec 350.6 --new-xsec 419.9
 """
 
