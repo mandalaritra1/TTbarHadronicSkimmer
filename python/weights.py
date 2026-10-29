@@ -6,7 +6,7 @@ import numpy as np
 from coffea.analysis_tools import Weights
 
 from corrections import GetPDFWeights, GetPSWeights, GetPUSF, GetQ2weights, GetTopPtResidual, GetTopPtWeight
-from truthstudy import MERGE_FULL, top_merge_category
+from truthstudy import MERGE_FULL, WLEP_NONE, top_merge_category, w_lepton_in_jet
 
 # Versioned top-tag SF table (data/toptag/ttag_sf_<version>.json). v1.3: the 2024 SFs from the
 # high-pT T&P re-measurement (four pT bins, band SF binned, f_lep efficiency included, covariance
@@ -25,6 +25,10 @@ TTAG_EIG_NUISANCES = tuple(f"ttag_eig{i}" for i in range(1, 9))
 # uncertainty added above the measured pT range (table entry 'extrapolation'), one per block, kept
 # out of the ttag_pt / ttag_eig nuisances so its size can be set in the fit
 EXTRAP_NUISANCES = {"tag": "ttag_extrap_tag", "antitag": "ttag_extrap_band"}
+
+# flat nuisance for tagged/antitag jets that hold a leptonic top (truth W lepton inside the jet) and
+# are not fully merged; tables with 'leptonic_unc' take these jets out of ttag_nonmerged
+LEPTONIC_NUISANCE = "ttag_leptonic"
 
 # SF_flep nuisances per block of the table's 'flep' entry
 FLEP_NUISANCES = {"tag": "ttag_flep_tag", "antitag": "ttag_flep_band"}
@@ -108,17 +112,24 @@ class Run3WeightManager:
         flep_on = flep_sf and any(s in self.systematics for s in FLEP_NUISANCES.values())
         sf_on = any(s in self.systematics for s in
                     TTAG_PT_NUISANCES + TTAG_EIG_NUISANCES + tuple(EXTRAP_NUISANCES.values()))
-        if flep_on or sf_on or any(s in self.systematics for s in ("ttag_nonmerged",) + DRIFT_NUISANCES):
-            merged = None
-            if self.ttag_sf["iovs"][self.iov].get("applies_to", "all") == "fully_merged":
+        nonmerged_on = any(s in self.systematics for s in ("ttag_nonmerged", LEPTONIC_NUISANCE))
+        if flep_on or sf_on or nonmerged_on or any(s in self.systematics for s in DRIFT_NUISANCES):
+            table = self.ttag_sf["iovs"][self.iov]
+            merged = leptonic = None
+            if table.get("applies_to", "all") == "fully_merged":
                 merged = tuple(
                     top_merge_category(events.GenPart, ak.to_numpy(j.p4.eta), ak.to_numpy(j.p4.phi)) == MERGE_FULL
                     for j in (jet0, jet1)
                 )
+                if nonmerged_on and table.get("leptonic_unc"):
+                    leptonic = tuple(
+                        w_lepton_in_jet(events.GenPart, ak.to_numpy(j.p4.eta), ak.to_numpy(j.p4.phi)) != WLEP_NONE
+                        for j in (jet0, jet1)
+                    )
             if sf_on:
                 self._add_ttag_pt_weights(weights, jet0, jet1, ttag2, antitag, merged)
-            if "ttag_nonmerged" in self.systematics:
-                self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged)
+            if nonmerged_on:
+                self._add_ttag_nonmerged_weights(weights, jet0, jet1, ttag2, antitag, merged, leptonic)
             if flep_on:
                 self._add_ttag_flep_weights(weights, jet0, jet1, ttag2, antitag, merged)
             if any(s in self.systematics for s in DRIFT_NUISANCES):
@@ -232,31 +243,49 @@ class Run3WeightManager:
             w = nominal if j == 0 else ones   # the drift nominal enters the event weight once
             weights.add(name, weight=w, weightUp=w * up[name], weightDown=w * down[name])
 
-    def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None):
-        """One flat nuisance for the tagged/antitag jets that are not fully merged tops.
+    def _add_ttag_nonmerged_weights(self, weights, jet0, jet1, ttag2, antitag, merged=None, leptonic=None):
+        """Flat nuisances for the tagged/antitag jets that are not fully merged tops.
 
         The SFs were measured for fully merged tops only, so these jets keep SF 1; each of
-        them gets +-nonmerged_unc (same size for all pT bins, tag and antitag alike).
-        Tables applied to all jets (legacy Run 2) carry no such uncertainty: weight 1."""
+        them gets +-nonmerged_unc (same size for all pT bins, tag and antitag alike), one
+        nuisance 'ttag_nonmerged'. A table with 'leptonic_unc' splits off the jets that hold a
+        leptonic top (per-jet truth flags `leptonic`, W lepton inside the jet): they get
+        +-leptonic_unc in their own nuisance LEPTONIC_NUISANCE instead. Requested nuisances a
+        table does not provide, and tables applied to all jets (legacy Run 2): weight 1."""
         table = self.ttag_sf["iovs"][self.iov]
         n = len(ak.to_numpy(jet0.p4.pt))
-        unc = table.get("nonmerged_unc") if table.get("applies_to", "all") == "fully_merged" else None
+        fully_merged = table.get("applies_to", "all") == "fully_merged"
+        unc = table.get("nonmerged_unc") if fully_merged else None
+        lep_unc = table.get("leptonic_unc") if fully_merged else None
+        ones = np.ones(n)
         if not unc:
-            ones = np.ones(n)
-            weights.add("ttag_nonmerged", weight=ones, weightUp=ones, weightDown=ones)
+            for name in ("ttag_nonmerged", LEPTONIC_NUISANCE):
+                if name in self.systematics:
+                    weights.add(name, weight=ones, weightUp=ones, weightDown=ones)
             return
         if merged is None:
             raise ValueError(f"top-tag SFs for {self.iov} apply to fully merged tops only: "
                              "pass the per-jet gen merge flags")
+        if lep_unc and leptonic is None:
+            raise ValueError(f"top-tag SF table for {self.iov} has leptonic_unc: pass the per-jet leptonic-top flags")
         merged0, merged1 = (np.asarray(m, dtype=bool) for m in merged)
+        lep0, lep1 = ((np.asarray(f, dtype=bool) for f in leptonic) if lep_unc
+                      else (np.zeros(n, bool), np.zeros(n, bool)))
         ptbins = table.get("pt_edges", self.ttag_sf["pt_edges"])
         # same jets as the ttag_pt SFs: jet0, and jet1 when tagged or antitag, in the SF pT range
         in0 = np.digitize(ak.to_numpy(jet0.p4.pt), ptbins) - 1 >= 1
         in1 = np.digitize(ak.to_numpy(jet1.p4.pt), ptbins) - 1 >= 1
         sel1 = np.asarray(ak.to_numpy(ttag2), dtype=bool) | np.asarray(ak.to_numpy(antitag), dtype=bool)
-        n_nonmerged = (in0 & ~merged0).astype(int) + (in1 & sel1 & ~merged1).astype(int)
-        weights.add("ttag_nonmerged", weight=np.ones(n),
-                    weightUp=(1.0 + unc) ** n_nonmerged, weightDown=(1.0 - unc) ** n_nonmerged)
+        cand0, cand1 = in0 & ~merged0, in1 & sel1 & ~merged1
+        n_lep = (cand0 & lep0).astype(int) + (cand1 & lep1).astype(int)
+        n_other = (cand0 & ~lep0).astype(int) + (cand1 & ~lep1).astype(int)
+        if "ttag_nonmerged" in self.systematics:
+            weights.add("ttag_nonmerged", weight=ones,
+                        weightUp=(1.0 + unc) ** n_other, weightDown=(1.0 - unc) ** n_other)
+        if LEPTONIC_NUISANCE in self.systematics:
+            u = lep_unc or 0.0
+            weights.add(LEPTONIC_NUISANCE, weight=ones,
+                        weightUp=(1.0 + u) ** n_lep, weightDown=(1.0 - u) ** n_lep)
 
     def _add(self, weights, name, nom, up, down):
         """Add a weight with its variations when the nuisance is requested, else its nominal only

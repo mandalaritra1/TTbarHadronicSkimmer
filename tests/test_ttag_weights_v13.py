@@ -62,6 +62,34 @@ class V13TableTest(unittest.TestCase):
         for name in TTAG_EIG_NUISANCES:
             np.testing.assert_allclose(w.weight(f"{name}Up"), w.weight())
 
+    def test_leptonic_jets_get_their_own_nuisance(self):
+        # jet0 in the SF range in every row; jet1 tagged (rows 0, 1), antitag (row 2), neither (row 3)
+        jet0, jet1 = _jets([500.0] * 4), _jets([700.0] * 4)
+        ttag2, antitag = np.array([True, True, False, False]), np.array([False, False, True, False])
+        merged = (np.array([True, False, False, False]), np.array([False, True, False, False]))
+        lep = (np.array([False, True, False, False]), np.array([True, False, True, True]))
+        syst = ["ttag_nonmerged", "ttag_leptonic"]
+
+        def run(sf_file, leptonic):
+            m = Run3WeightManager(iov="2024", systematics=syst, no_syst=False, deepak8_cut="tight", ttag_sf_file=sf_file)
+            w = Weights(4)
+            m._add_ttag_nonmerged_weights(w, jet0, jet1, ttag2, antitag, merged, leptonic)
+            return w
+
+        w = run(NOFLEP, lep)
+        unc = load_ttag_sf(NOFLEP)["iovs"]["2024"]["leptonic_unc"]
+        self.assertEqual(unc, 0.15)
+        np.testing.assert_allclose(w.weight(), np.ones(4))
+        # leptonic, not fully merged: row 0 jet1, row 1 jet0, row 2 jet1 (antitag); row 3 jet1 is not selected
+        np.testing.assert_allclose(w.weight("ttag_leptonicUp"), [1 + unc, 1 + unc, 1 + unc, 1.0])
+        np.testing.assert_allclose(w.weight("ttag_leptonicDown"), [1 - unc, 1 - unc, 1 - unc, 1.0])
+        # the other non-merged jets: row 2 jet0, row 3 jet0
+        np.testing.assert_allclose(w.weight("ttag_nonmergedUp"), [1.0, 1.0, 1.25, 1.25])
+        # v1.3 has no leptonic_unc: every non-merged jet stays in ttag_nonmerged, ttag_leptonic is weight 1
+        w = run(V13, None)
+        np.testing.assert_allclose(w.weight("ttag_nonmergedUp"), [1.25, 1.25, 1.25 ** 2, 1.25])
+        np.testing.assert_allclose(w.weight("ttag_leptonicUp"), np.ones(4))
+
     def test_fourth_bin_and_binned_band_sf(self):
         # jet0 900 GeV tagged (bin 4), jet1 700 GeV band (bin 3): no interim hipt SF any more
         w = _weights([900.0], [700.0], [False], [True])

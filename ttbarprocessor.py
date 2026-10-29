@@ -172,7 +172,7 @@ class TTbarResProcessor(processor.ProcessorABC):
         iov='2024',
         noSyst=False,
         blinding=False,
-        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_pt4', 'ttag_eig1', 'ttag_eig2', 'ttag_eig3', 'ttag_eig4', 'ttag_eig5', 'ttag_eig6', 'ttag_eig7', 'ttag_eig8', 'ttag_extrap_tag', 'ttag_extrap_band', 'ttag_nonmerged', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt', 'toppt_rsd'],
+        systematics=['nominal', 'pileup', 'pdf', 'q2', 'ttag_pt1', 'ttag_pt2', 'ttag_pt3', 'ttag_pt4', 'ttag_eig1', 'ttag_eig2', 'ttag_eig3', 'ttag_eig4', 'ttag_eig5', 'ttag_eig6', 'ttag_eig7', 'ttag_eig8', 'ttag_extrap_tag', 'ttag_extrap_band', 'ttag_nonmerged', 'ttag_leptonic', 'ttag_drift_pt1', 'ttag_drift_pt2', 'ttag_drift_pt3', 'ttag_drift_band', 'toppt', 'toppt_rsd'],
         anacats=['atcen', 'atfwd', '2tcen', '2tfwd'],
         debug=False,
         cutflow_verbose=False,

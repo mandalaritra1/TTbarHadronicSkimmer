@@ -901,6 +901,7 @@ def run_analysis(args):
         "ttag_extrap_tag",
         "ttag_extrap_band",
         "ttag_nonmerged",
+        "ttag_leptonic",
         "ttag_drift_pt1",
         "ttag_drift_pt2",
         "ttag_drift_pt3",
